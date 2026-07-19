@@ -4,6 +4,7 @@ export * from "./interfaces";
 export { DrizzleCompaniesRepo } from "./companies.repo";
 export { DrizzleSettingsRepo } from "./settings.repo";
 export { DrizzleContentPlansRepo } from "./content-plans.repo";
+export { DrizzlePlanEntriesRepo } from "./plan-entries.repo";
 export { DrizzleRunsRepo } from "./runs.repo";
 export { DrizzleContentItemsRepo } from "./content-items.repo";
 export { DrizzleNotificationsRepo, DrizzleInboxRepo } from "./notifications.repo";

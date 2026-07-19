@@ -11,6 +11,7 @@ import type {
   runStatusSchema,
   itemStatusSchema,
   channelSchema,
+  planEntryStatusSchema,
 } from "@forteq/shared";
 import type { DbExecutor, AuthCtx, Paged, PageParams } from "../di/types";
 
@@ -27,6 +28,7 @@ export type SettingsPatch = z.infer<typeof updateSettingsRequest>;
 export type RunStatus = z.infer<typeof runStatusSchema>;
 export type ItemStatus = z.infer<typeof itemStatusSchema>;
 export type Channel = z.infer<typeof channelSchema>;
+export type PlanEntryStatus = z.infer<typeof planEntryStatusSchema>;
 
 // company_settings / content_plans не мають окремого response-DTO у @forteq/shared —
 // мапимо рядок у ці локальні форми (шов web↔api лишається на request/response-схемах).
@@ -121,6 +123,52 @@ export interface ContentPlansRepo {
   updateById(accountId: string, id: string, patch: ContentPlanPatch): Promise<ContentPlan | null>;
 }
 
+// ── plan_entries (планувальник, §2.11) ────────────────────────────────────────
+export interface PlanEntry {
+  id: string;
+  date: string | null;
+  channel: Channel;
+  topic: string | null;
+  keyMessage: string | null;
+  seoKeywords: string[];
+  pillar: string | null;
+  source: "ai_suggested" | "user_defined";
+  status: PlanEntryStatus;
+}
+
+export interface NewPlanEntry {
+  companyId: string;
+  contentPlanId: string;
+  date: string | null;
+  channel: Channel;
+  pillar?: string | null;
+  source?: "ai_suggested" | "user_defined";
+}
+
+export interface PlanEntryPatch {
+  topic?: string;
+  keyMessage?: string;
+  seoKeywords?: string[];
+  pillar?: string;
+  date?: string | null;
+}
+
+export interface PlanEntriesRepo {
+  listByCompany(
+    accountId: string,
+    companyId: string,
+    range?: { from?: string; to?: string },
+  ): Promise<PlanEntry[]>;
+  listDatedKeys(
+    accountId: string,
+    companyId: string,
+  ): Promise<Array<{ date: string | null; channel: string }>>;
+  insertMany(accountId: string, rows: NewPlanEntry[]): Promise<number>;
+  findById(accountId: string, id: string): Promise<PlanEntry | null>;
+  patch(accountId: string, id: string, patch: PlanEntryPatch): Promise<PlanEntry | null>;
+  approve(accountId: string, ids: string[]): Promise<number>;
+}
+
 // Проєкція рядка run під HITL-рішення (§7): статус + threadId (langgraph_thread_id) для resume-job.
 export interface RunDecisionRow {
   id: string;
@@ -210,6 +258,7 @@ export interface Repos {
   companies: CompaniesRepo;
   settings: SettingsRepo;
   contentPlans: ContentPlansRepo;
+  planEntries: PlanEntriesRepo;
   runs: RunsRepo;
   contentItems: ContentItemsRepo;
   notifications: NotificationsRepo;

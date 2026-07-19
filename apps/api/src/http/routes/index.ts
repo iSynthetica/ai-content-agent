@@ -8,6 +8,7 @@ import { onboardingController } from "../../controllers/onboarding.controller";
 import { runsController } from "../../controllers/runs.controller";
 import { decisionsController } from "../../controllers/decisions.controller";
 import { notificationsController } from "../../controllers/notifications.controller";
+import { plannerController } from "../../controllers/planner.controller";
 
 // Бізнес-роути під /v1 (за auth-middleware). Кожен контролер сам відкриває request-scope (openScope):
 // BEGIN + SET LOCAL app.current_* → репо/сервіси на tx → COMMIT/ROLLBACK + after-commit-хуки (§2.10.3).
@@ -21,6 +22,7 @@ export function businessRoutes(root: Composition): Router {
   const runs = runsController(root);
   const decisions = decisionsController(root);
   const notifications = notificationsController(root);
+  const planner = plannerController(root);
 
   // Акаунти користувача + компанії акаунта (switcher-и shell)
   r.get("/accounts", accounts.list);
@@ -66,6 +68,12 @@ export function businessRoutes(root: Composition): Router {
   r.post("/notifications/read-all", notifications.markAllRead);
   r.get("/inbox", notifications.inbox);
   r.post("/inbox/:id/resolve", notifications.resolveInbox);
+
+  // Планувальник (§2.11): слоти плану окремо від прогонів
+  r.get("/companies/:companyId/plan-entries", planner.list);
+  r.post("/companies/:companyId/plan/materialize", planner.materialize);
+  r.patch("/plan-entries/:id", planner.patch);
+  r.post("/plan-entries/approve", planner.approve);
 
   return r;
 }

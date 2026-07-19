@@ -8,6 +8,7 @@ import { DrizzleAccountsRepo } from "../repositories/accounts.repo";
 import { DrizzleCompaniesRepo } from "../repositories/companies.repo";
 import { DrizzleSettingsRepo } from "../repositories/settings.repo";
 import { DrizzleContentPlansRepo } from "../repositories/content-plans.repo";
+import { DrizzlePlanEntriesRepo } from "../repositories/plan-entries.repo";
 import { DrizzleRunsRepo } from "../repositories/runs.repo";
 import { DrizzleContentItemsRepo } from "../repositories/content-items.repo";
 import { DrizzleInboxRepo, DrizzleNotificationsRepo } from "../repositories/notifications.repo";
@@ -20,6 +21,7 @@ import { OnboardingService } from "../services/onboarding.service";
 import { RunsService } from "../services/runs.service";
 import { ContentItemsService } from "../services/content-items.service";
 import { NotificationsFeedService } from "../services/notifications-feed.service";
+import { PlannerService } from "../services/planner.service";
 import {
   NotificationServiceImpl,
   type NotificationService,
@@ -35,6 +37,7 @@ export interface Services {
   contentItems: ContentItemsService;
   notifications: NotificationService;
   feed: NotificationsFeedService;
+  planner: PlannerService;
 }
 
 export interface RequestScope {
@@ -51,6 +54,7 @@ export function buildRepos(tx: DbExecutor): Repos {
     companies: new DrizzleCompaniesRepo(tx),
     settings: new DrizzleSettingsRepo(tx),
     contentPlans: new DrizzleContentPlansRepo(tx),
+    planEntries: new DrizzlePlanEntriesRepo(tx),
     runs: new DrizzleRunsRepo(tx),
     contentItems: new DrizzleContentItemsRepo(tx),
     notifications: new DrizzleNotificationsRepo(tx),
@@ -90,6 +94,7 @@ export function buildRequestScope(
     // per-item HITL (§7): чіпає contentItems (статус) + runs (getForDecision для rerun-resume) +
     // afterCommit (enqueue resume на свіжому PostCommitScope, §2.10.3).
     feed: new NotificationsFeedService(repos.notifications, repos.inbox),
+    planner: new PlannerService(repos.planEntries, repos.contentPlans, repos.companies),
     contentItems: new ContentItemsService(repos.contentItems, repos.runs, afterCommit, logger),
     notifications,
   };
