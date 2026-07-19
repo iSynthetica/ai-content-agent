@@ -7,10 +7,18 @@
 // Патерни в ALLOW — шлях api БЕЗ префікса /api і БЕЗ версійного /v1 (той додає forward()).
 // Білдери endpoints.* повертають шлях ВЖЕ з /api (клієнт б'є в same-origin /api/*).
 
+// Список ЗВІРЯЄТЬСЯ з роутами api автотестом (apps/api/test/route-allowlist.contract.test.ts).
+// Він падає в обидва боки: і коли роут є в api, але його забули тут (фронт отримає 404 у проксі),
+// і коли тут лишився запис без реалізації — така «обіцянка» ендпоінта помічається лише в рантаймі.
+// SSE (/runs/:id/stream) і /media свідомо ПРИБРАНІ: це шви на майбутнє, і доки їх немає в api,
+// їм тут не місце.
 export const ALLOW: ReadonlyArray<{ method: string; pattern: RegExp }> = [
   { method: "GET", pattern: /^\/accounts$/ },
   { method: "GET", pattern: /^\/accounts\/[^/]+\/companies$/ },
+  { method: "GET", pattern: /^\/companies$/ },
+  { method: "POST", pattern: /^\/companies$/ },
   { method: "GET", pattern: /^\/companies\/[^/]+$/ },
+  { method: "DELETE", pattern: /^\/companies\/[^/]+$/ },
   { method: "PATCH", pattern: /^\/companies\/[^/]+$/ }, // company core
   { method: "GET", pattern: /^\/companies\/[^/]+\/settings$/ }, // бренд + дефолти генерації (read)
   { method: "PUT", pattern: /^\/companies\/[^/]+\/settings$/ }, // бренд + дефолти генерації (write)
@@ -19,11 +27,9 @@ export const ALLOW: ReadonlyArray<{ method: string; pattern: RegExp }> = [
   { method: "POST", pattern: /^\/companies\/[^/]+\/runs$/ }, // створити run — companyId у шляху
   { method: "GET", pattern: /^\/runs\/[^/]+$/ },
   { method: "GET", pattern: /^\/runs\/[^/]+\/items$/ },
-  { method: "GET", pattern: /^\/runs\/[^/]+\/stream$/ }, // SSE-шов (§2.4; у МВП — polling)
   { method: "POST", pattern: /^\/runs\/[^/]+\/decision$/ }, // { action, feedback } по всьому run
   { method: "POST", pattern: /^\/content-items\/[^/]+\/decision$/ }, // { action, feedback } по item
   { method: "GET", pattern: /^\/runs\/[^/]+\/export$/ },
-  { method: "GET", pattern: /^\/media\/.+$/ },
 
   // §13 онбординг + bootstrap
   { method: "POST", pattern: /^\/onboarding$/ },

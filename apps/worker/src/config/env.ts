@@ -3,6 +3,15 @@ import { z } from "zod";
 // Валідація process.env worker'а. Падаємо на СТАРТІ, якщо конфіг невалідний (spike-1 §6).
 // Секрети (OPENAI/ANTHROPIC/TAVILY) читаються ТІЛЬКИ тут (composition root) і не потрапляють
 // у пайплайн як env — вони замикаються у ModelFactoryBuilder/адаптерах (§6, §11).
+// Порожній рядок = змінна НЕ задана. Docker Compose підставляє "" для `${VAR:-}`, тобто змінна
+// приходить присутньою й порожньою, і `.min(1)` валив старт воркера з повідомленням, яке виглядало
+// як «ключ невалідний», хоча його просто не задавали. Те саме буває в CI, де секрети мапляться
+// в порожні рядки для форків.
+const optionalSecret = z
+  .string()
+  .optional()
+  .transform((v) => (v && v.trim().length > 0 ? v : undefined));
+
 export const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 
@@ -15,13 +24,13 @@ export const envSchema = z.object({
   // LLM-секрети. ОПЦІЙНІ: якщо ключів нема (або FAKE_MODELS=1) — composition інжектить
   // ФЕЙКОВИЙ ModelFactory (детерміновані відповіді), тож end-to-end плумбінг проходить БЕЗ реальних
   // LLM-викликів/ключів (spike-1 §14, барʼєр B2). Реальний прогін вимагає OPENAI/ANTHROPIC ключа.
-  OPENAI_API_KEY: z.string().min(1).optional(),
-  ANTHROPIC_API_KEY: z.string().min(1).optional(),
-  TAVILY_API_KEY: z.string().min(1).optional(),
+  OPENAI_API_KEY: optionalSecret,
+  ANTHROPIC_API_KEY: optionalSecret,
+  TAVILY_API_KEY: optionalSecret,
 
   // Прапорець фейкових моделей для smoke/CI: "1" → детермінований ModelFactory без мережі.
   // z.string (не enum), щоб несподіване значення не валило старт worker'а — активний лише рівно "1".
-  FAKE_MODELS: z.string().optional(),
+  FAKE_MODELS: optionalSecret,
 
   // Штучна затримка на КОЖЕН fake-виклик моделі (мс). Робить per-node прогрес видимим наживо на демо
   // (кожна нода «висить» помітний час). Стосується ЛИШЕ фейкових моделей; реальні LLM не чіпаємо.

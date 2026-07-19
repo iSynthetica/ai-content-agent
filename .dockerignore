@@ -1,0 +1,16 @@
+# Усе, що не має потрапляти в контекст збірки. Без цього docker копіює сотні мегабайт
+# node_modules і .next, і кожна збірка починається з довгої передачі контексту.
+node_modules
+**/node_modules
+.next
+**/.next
+dist
+**/dist
+*.tsbuildinfo
+.git
+.env
+.env.local
+**/.env
+**/.env.local
+/tmp
+coverage
