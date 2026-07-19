@@ -138,7 +138,17 @@ pnpm -r typecheck
 pnpm -r test
 ```
 
-Both must be green. Beyond that, **exercise the change**: typecheck and unit tests do not prove the
+Both must be green. Tenant isolation has its own suite because it needs a live
+database, and a test that silently skips without infrastructure is worse than no
+test — it implies coverage where nothing is checked:
+
+```bash
+pnpm docker:up
+pnpm --filter @forteq/db test:rls
+```
+
+Run it whenever you touch RLS policies, migrations on tenant tables, or the
+request scoping middleware. Beyond that, **exercise the change**: typecheck and unit tests do not prove the
 system works, and most failures in this project have been runtime behaviour that compiled perfectly.
 The `verify` skill has the procedure for driving a real run.
 
