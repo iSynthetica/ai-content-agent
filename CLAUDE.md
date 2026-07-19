@@ -27,6 +27,9 @@ pnpm dev:web      # :3000
 
 ## Hard boundaries (breaking these is an architecture bug)
 
+Each of these is recorded with its reasoning and cost in `docs/adr/`. If one looks wrong, read the
+ADR before changing it — most of them exist because the obvious alternative was tried and failed.
+
 1. **`apps/web` has no access to the DB or the pipeline.** HTTP to `api` only. Importing
    `@forteq/db|pipeline|evaluators` is blocked by lint — do not work around it.
 2. **`apps/api` never runs the graph.** It only enqueues jobs. Only `worker` executes the graph.
@@ -105,3 +108,6 @@ resume → background images → MD/JSON export → notifications and inbox.
 
 Not built: planner calendar, onboarding wizard with AI bootstrap, role-based RBAC, Dockerfiles for
 the apps, e2e tests. Full breakdown and plan: `../agent-plan/05-retrospective.md`.
+
+Architecture decisions and their rationale: `docs/adr/` — start with the index in
+`docs/adr/README.md`.
