@@ -46,10 +46,15 @@ export const onboardingRequest = z.object({
 });
 export const onboardingResponse = z.object({ companyId: z.string() });
 export const bootstrapResponse = z.object({ jobId: z.string() });
+// Стан AI-bootstrap. `idle` — ніколи не запускали (візард показує кнопку, а не спінер);
+// `running` — задача в роботі. Без цих двох «не запускали», «працює» і «впало» виглядали
+// однаково, і візард міг показати лише нескінченне очікування.
 export const bootstrapStatusResponse = z.object({
-  status: z.enum(["pending", "done", "failed"]),
+  status: z.enum(["idle", "pending", "running", "done", "failed"]),
+  error: z.string().nullable().optional(),
   profile: z.record(z.unknown()).optional(),
 });
+export type BootstrapStatusResponse = z.infer<typeof bootstrapStatusResponse>;
 
 // ── компанія + налаштування ──────────────────────────────────────────────────
 export const companyDTO = z.object({
