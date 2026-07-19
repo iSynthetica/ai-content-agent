@@ -7,8 +7,9 @@ what the code does not show: commands, hard boundaries, and landmines we already
 
 ```bash
 pnpm -r typecheck                     # all 7 packages
-pnpm -r test                          # 82 tests (pipeline, evaluators, api)
+pnpm -r test                          # 106 offline tests
 pnpm --filter @forteq/pipeline test   # single package
+pnpm --filter @forteq/db test:rls     # tenant isolation, needs a live database
 
 pnpm docker:up                        # postgres(5433) + redis + minio
 pnpm db:migrate                       # apply migrations
@@ -58,8 +59,18 @@ Process conventions — branch names, commit format, definition of done — are 
 - Postgres runs on **5433**, not 5432 (5432 is taken by another local instance).
 - **Never run `next build` while `next dev` is running** — the production build overwrites `.next`
   and dev then returns 500 with `React Client Manifest`. Fix: `rm -rf apps/web/.next` and restart.
-- **Only ONE worker at a time.** Multiple processes compete for jobs and the stale one often wins,
-  which looks exactly like "my changes did not apply". Check with `ps aux | grep tsx`.
+- **Only ONE instance of each service.** This bites hardest on the worker — competing workers race
+  for jobs and the stale one often wins, which looks exactly like "my changes did not apply". But
+  api and web fail the same way: a second instance loses the port, logs `EADDRINUSE` and dies, while
+  requests keep hitting the old process running old code. Symptoms are indistinguishable from a real
+  bug, so check the processes before debugging the code:
+
+  ```bash
+  lsof -ti :3000 :4000            # expect at most one pid each
+  ps aux | grep '[t]sx watch'     # expect one api, one worker
+  ```
+
+  `pkill -f "tsx watch"` does not always reach them — kill by port when in doubt.
 - BullMQ: queue names and `jobId` **must not contain a colon** — use dashes.
 
 **Database**
@@ -106,11 +117,12 @@ not written, so verify manually when adding a route.
 
 ## Project state
 
-Working end to end: company → brief → run (4 agents + auto-revisions) → HITL pause → decision →
-resume → background images → MD/JSON export → notifications and inbox.
+Working end to end: onboarding with AI brief draft → schedule → plan slots → topics → approval →
+run (4 agents + auto-revisions) → HITL pause → decision → resume → background images → MD/JSON
+export → notifications and inbox. `docker compose up` brings the whole stack up.
 
-Not built: planner calendar, onboarding wizard with AI bootstrap, role-based RBAC, Dockerfiles for
-the apps, e2e tests. Full breakdown and plan: `../agent-plan/05-retrospective.md`.
+Not built: role-based RBAC, drag-and-drop backlog, topicMode switching, scheduled auto-generation,
+browser e2e (Playwright). Full breakdown and plan: `../agent-plan/05-retrospective.md`.
 
 Architecture decisions and their rationale: `docs/adr/` — start with the index in
 `docs/adr/README.md`.

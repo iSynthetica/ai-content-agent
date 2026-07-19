@@ -31,9 +31,9 @@ export function Sidebar() {
   const companyItems: NavItem[] = cid
     ? [
         { href: `/companies/${cid}`, label: "Дашборд", icon: LayoutDashboard },
-        { href: `/companies/${cid}/plan`, label: "Календар", icon: CalendarDays },
+        { href: `/companies/${cid}/plan`, label: "Планувальник", icon: CalendarDays },
         { href: `/companies/${cid}/brief`, label: "Бренд", icon: SquarePen },
-        { href: `/companies/${cid}/plan/settings`, label: "Налаштування плану", icon: Settings2 },
+        { href: `/companies/${cid}/plan/settings`, label: "Розклад", icon: Settings2 },
       ]
     : [];
 

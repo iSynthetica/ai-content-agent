@@ -1,31 +1,98 @@
 # AI Content Agent
 
-Мультиагентна платформа генерації контенту для IT-компаній. Монорепо (pnpm workspaces), TypeScript, Docker.
+Мультиагентна платформа генерації контенту для IT-компаній: бриф компанії → план публікацій →
+пости під чотири канали → рецензія людиною → експорт.
 
-Архітектура і план — у `../agent-plan/architecture/` (context, api-contract, design-system, spike-1..3, roadmap).
+Монорепо на pnpm, TypeScript, LangGraph, Postgres із RLS, BullMQ.
+
+## Що вміє
+
+- **Планування** окремо від генерації: розклад публікацій → датовані слоти → теми → погодження.
+  План можна переглянути **до** того, як витрачені гроші на модель.
+- **Генерація** чотирма агентами (researcher → strategist → writer → reviewer) з автоматичною
+  петлею доопрацювання.
+- **Рецензія людиною** обов'язкова: система нічого не публікує сама. Порушення показуються з
+  цитатою з тексту.
+- **Онбординг за два кроки**: назва + сайт, решту брифу чернетить AI.
+- **Експорт** пакета у Markdown або JSON, сповіщення та inbox задач.
+
+## Запуск у Docker
+
+```bash
+cp .env.example .env          # впишіть OPENAI_API_KEY і AUTH_SECRET
+docker compose up -d --build
+```
+
+Далі один раз підготувати базу:
+
+```bash
+pnpm install
+pnpm db:migrate
+pnpm --filter @forteq/api seed                    # демо-акаунт
+pnpm --filter @forteq/worker setup:checkpointer   # таблиці чекпоінтера (роль owner)
+```
+
+- UI — http://localhost:3000, вхід `demo@forteq.dev` / `demo1234`
+- API — http://localhost:4000
+
+Без LLM-ключа воркер **навмисно не стартує** (ADR-0014): мовчазна генерація фейкового контенту
+небезпечніша за відмову піднятися. Для демо без ключа: `FAKE_MODELS=1 docker compose up -d`.
+
+## Запуск локально (розробка)
+
+`.env` не підвантажується автоматично — у коді немає dotenv:
+
+```bash
+pnpm docker:up                # лише postgres + redis + minio
+set -a; . ./.env; set +a
+pnpm dev:api                  # :4000
+pnpm dev:worker               # РІВНО один: кілька воркерів конкурують за задачі
+pnpm dev:web                  # :3000
+```
+
+## Демо-сценарій
+
+1. **Нова компанія** → `/onboarding`: назва + сайт → AI чернетить бриф за ~30 с.
+2. **Бриф** → перевірити чернетку. Усе, чого тут немає, Reviewer вважатиме вигадкою.
+3. **Розклад** → `/companies/:id/plan/settings`: обрати дні публікацій по каналах.
+4. **Планувальник** → «Оновити слоти», далі «Підібрати теми», далі «Погодити всі».
+5. **Генерація** → з дашборда компанії. Текст на рецензії за ~20 с, картинки доїжджають фоном.
+6. **Рецензія** → оцінки за чотирма критеріями, порушення з цитатами, рішення approve/reject/rerun.
+7. **Експорт** → Markdown або JSON.
 
 ## Структура
 
 ```
 apps/
-  web/        Next.js (UI + BFF-проксі → api)
-  api/        Express (єдиний вхід до БД і пайплайна)
-  worker/     BullMQ consumer (виконує LangGraph-граф)
+  web/        Next.js — UI + BFF-проксі до api
+  api/        Express — єдиний вхід до БД і черги
+  worker/     BullMQ — єдиний виконавець графа
 packages/
-  pipeline/   LangGraph.js: агенти, граф, стан, схеми
-  evaluators/ rule-based + llm-judge
-  db/         Drizzle schema + міграції (Postgres, RLS)
-  shared/     Zod-контракти (api DTO + job-контракти) + config
+  pipeline/   LangGraph: агенти, граф, планувальник тем, онбординг
+  evaluators/ rule-based перевірки + LLM-judge
+  db/         Drizzle-схема, міграції, RLS
+  shared/     Zod-контракти межі + каталог подій
 ```
 
-## Швидкий старт (Фаза 0)
+## Перевірка
 
 ```bash
-pnpm install
-cp .env.example .env
-pnpm docker:up            # postgres + redis + minio
-pnpm db:generate          # згенерувати SQL-міграцію зі схеми
-pnpm db:migrate           # застосувати
+pnpm -r typecheck
+pnpm -r test                              # 106 тестів, офлайн
+pnpm --filter @forteq/db test:rls         # ізоляція орендарів, потрібна жива БД
 ```
 
-Тверда межа: `web` ходить у `api` лише по HTTP; прямого доступу до БД/пайплайна з `web` немає.
+## Документація
+
+| Що | Де |
+|---|---|
+| Правила роботи в репозиторії, граблі | `CLAUDE.md` |
+| Гілки, коміти, definition of done | `CONTRIBUTING.md` |
+| Архітектурні рішення та їхня ціна | `docs/adr/` |
+| Покрокові процедури розробки | `.claude/skills/` |
+| План, ретроспектива, стан МВП | `../agent-plan/` |
+
+## Тверді межі
+
+`web` ходить в `api` лише по HTTP. `api` ніколи не виконує граф — лише кладе задачу. Доступ до БД
+тільки в короткій транзакції зі скоупом орендаря. Деталі й обґрунтування — у `docs/adr/`.
