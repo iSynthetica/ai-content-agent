@@ -1,0 +1,208 @@
+"use client";
+
+// Деталь run (spike-3 §9, §10.2). Клієнтський оркестратор: useRun (єдиний polling-таймер) +
+// useItems (рефетчиться реактивно від зміни run.counts.items/status, §9 п.6). HITL-банер на
+// needs_review (Approve/Reject/Rerun по всьому run), стани generating/failed, ChannelTabs з картками.
+import * as React from "react";
+import Link from "next/link";
+import { AlertTriangle, ArrowLeft, Loader2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatusBadge } from "@/components/common/status-badge";
+import { RerunDialog } from "@/components/common/rerun-dialog";
+import { ChannelTabs } from "@/features/content/ChannelTabs";
+import { PipelineFlow } from "@/components/runs/PipelineFlow";
+import { GenerateButton } from "@/features/runs/GenerateButton";
+import { useRun } from "@/features/runs/use-run";
+import { useItems } from "@/features/content/use-items";
+import { useRunDecision } from "@/features/runs/use-run-decision";
+import { qk } from "@/lib/query-keys";
+import { isRunGenerating, type RunStatus } from "@/lib/status";
+import { ExportMenu } from "@/components/runs/ExportMenu";
+import { formatCost, formatDateTime } from "@/lib/format";
+import type { RunDTO } from "@/features/runs/schemas";
+import type { ContentItemDTO } from "@/features/content/schemas";
+
+export function RunDetail({
+  runId,
+  initialRun,
+  initialItems,
+}: {
+  runId: string;
+  initialRun: RunDTO;
+  initialItems: ContentItemDTO[];
+}) {
+  const qc = useQueryClient();
+  const { data: run, isError } = useRun(runId, initialRun);
+  const { data: items } = useItems(runId, initialItems);
+  const runDecision = useRunDecision(runId, initialRun.companyId);
+  const [rerunOpen, setRerunOpen] = React.useState(false);
+
+  const itemsCount = run?.counts?.items;
+  const status = run?.status;
+
+  // Єдиний механізм появи карток (§9 п.6): коли зростає лічильник або змінюється статус —
+  // інвалідуємо айтеми (їх поллить не окремий таймер, а цей реактивний тригер). Ref не дає
+  // зайвого рефетчу на першому рендері (знімок RSC уже свіжий).
+  const prev = React.useRef<{ count?: number; status?: RunStatus }>({ count: itemsCount, status });
+  React.useEffect(() => {
+    if (prev.current.count !== itemsCount || prev.current.status !== status) {
+      prev.current = { count: itemsCount, status };
+      qc.invalidateQueries({ queryKey: qk.items(runId) });
+    }
+  }, [itemsCount, status, runId, qc]);
+
+  if (!run) {
+    return (
+      <div className="flex flex-col gap-4">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-40 w-full" />
+      </div>
+    );
+  }
+
+  const companyId = run.companyId;
+  const generating = isRunGenerating(run.status);
+  const decisionPending = runDecision.isPending;
+
+  return (
+    <div className="mx-auto flex max-w-4xl flex-col gap-6">
+      {/* ── Шапка ── */}
+      <header className="flex flex-col gap-3">
+        <Link
+          href={`/companies/${companyId}`}
+          className="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          До компанії
+        </Link>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-col gap-1">
+            <h1 className="font-mono text-xl font-semibold tracking-tight">
+              Прогін {run.id.slice(0, 8)}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {formatDateTime(run.createdAt)} · {formatCost(run.costCents)}
+              {run.counts ? ` · постів: ${run.counts.items}` : ""}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* Поки граф працює, постів ще немає — вивантажувати нічого. */}
+            <ExportMenu runId={run.id} disabled={generating} />
+            <StatusBadge domain="run" status={run.status} />
+          </div>
+        </div>
+      </header>
+
+      {/* ── Стан: генерується ── */}
+      {generating && (
+        <Card>
+          <CardContent className="flex items-center gap-3 py-5 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            {run.status === "queued"
+              ? "У черзі на генерацію…"
+              : "Агенти працюють над контентом. Картки з'являтимуться поступово."}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Стан: помилка прогону ── */}
+      {run.status === "failed" && (
+        <Card className="border-destructive">
+          <CardContent className="flex flex-col gap-3 py-5">
+            <div className="flex items-center gap-2 text-sm font-medium text-destructive">
+              <AlertTriangle className="h-4 w-4" aria-hidden />
+              Прогін завершився помилкою
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Можна повторити генерацію з тими самими налаштуваннями компанії.
+            </p>
+            <GenerateButton companyId={companyId} className="w-fit" />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── HITL-банер: потрібне рішення по всьому run ── */}
+      {run.status === "needs_review" && (
+        <Card className="border-warning">
+          <CardContent className="flex flex-col gap-3 py-5">
+            <div className="flex items-center gap-2 text-sm font-medium text-warning">
+              <AlertTriangle className="h-4 w-4" aria-hidden />
+              Прогін очікує на ваше рішення
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {run.counts
+                ? `Постів: ${run.counts.items}. Потребують уваги: ${run.counts.needsReview}.`
+                : "Перегляньте пости нижче й ухваліть рішення по всьому прогону."}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                onClick={() => runDecision.mutate({ action: "approve" })}
+                disabled={decisionPending}
+              >
+                Схвалити прогін
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => runDecision.mutate({ action: "reject" })}
+                disabled={decisionPending}
+              >
+                Відхилити прогін
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setRerunOpen(true)}
+                disabled={decisionPending}
+              >
+                Перегенерувати
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Помилка завантаження run ── */}
+      {isError && (
+        <Card>
+          <CardContent className="py-6 text-center text-sm text-muted-foreground">
+            Не вдалося оновити статус прогону. Дані можуть бути неактуальними.
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Флоу пайплайна: ролі-ноди й хто зараз виконується (над картками статей) ── */}
+      <PipelineFlow run={run} />
+
+      {/* ── Пости за каналами ── */}
+      {items && items.length > 0 ? (
+        <ChannelTabs items={items} runId={runId} companyId={companyId} />
+      ) : !generating ? (
+        <Card>
+          <CardContent className="py-8 text-center text-sm text-muted-foreground">
+            У цьому прогоні ще немає постів.
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <RerunDialog
+        open={rerunOpen}
+        onOpenChange={setRerunOpen}
+        pending={decisionPending}
+        title="Перегенерувати прогін"
+        description="Прогін піде на нову ітерацію. Можна додати спільну інструкцію для агентів."
+        onConfirm={(feedback) =>
+          runDecision.mutate(
+            { action: "rerun", feedback },
+            { onSuccess: () => setRerunOpen(false) },
+          )
+        }
+      />
+    </div>
+  );
+}
