@@ -46,6 +46,17 @@ export function plannerController(root: Composition) {
       res.status(200).json(entry);
     }),
 
+    suggestTopics: asyncHandler(async (req: Request, res: Response) => {
+      const auth = requireAuth(req);
+      const companyId = companyIdParam.parse(req.params.companyId);
+      const body = z.object({ planEntryIds: z.array(z.string().uuid()).optional() }).parse(req.body ?? {});
+      const out = await root.openScope(auth, (s) =>
+        s.services.planner.requestTopics(auth, companyId, body.planEntryIds),
+      );
+      // 202: робота фонова, теми з'являться у слотах пізніше.
+      res.status(202).json(out);
+    }),
+
     approve: asyncHandler(async (req: Request, res: Response) => {
       const auth = requireAuth(req);
       const { ids } = approveEntriesRequest.parse(req.body);

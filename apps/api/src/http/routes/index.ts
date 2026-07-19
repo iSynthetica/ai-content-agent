@@ -72,6 +72,7 @@ export function businessRoutes(root: Composition): Router {
   // Планувальник (§2.11): слоти плану окремо від прогонів
   r.get("/companies/:companyId/plan-entries", planner.list);
   r.post("/companies/:companyId/plan/materialize", planner.materialize);
+  r.post("/companies/:companyId/plan/suggest-topics", planner.suggestTopics);
   r.patch("/plan-entries/:id", planner.patch);
   r.post("/plan-entries/approve", planner.approve);
 

@@ -182,6 +182,8 @@ export {
 } from "./state";
 export { buildGraph, routeAfterReviewer, routeAfterHuman } from "./graph";
 export { buildImagePrompt, renderVisuals } from "./visuals";
+export { suggestTopics } from "./planner";
+export type { TopicSlot, SuggestedTopic } from "./planner";
 export type { VisualTarget, RenderedVisual } from "./visuals";
 
 // defaultModelFactory — експортована зручність для worker (composition root замикає секрети, §5/§6).

@@ -94,7 +94,7 @@ export function buildRequestScope(
     // per-item HITL (§7): чіпає contentItems (статус) + runs (getForDecision для rerun-resume) +
     // afterCommit (enqueue resume на свіжому PostCommitScope, §2.10.3).
     feed: new NotificationsFeedService(repos.notifications, repos.inbox),
-    planner: new PlannerService(repos.planEntries, repos.contentPlans, repos.companies),
+    planner: new PlannerService(repos.planEntries, repos.contentPlans, repos.companies, afterCommit),
     contentItems: new ContentItemsService(repos.contentItems, repos.runs, afterCommit, logger),
     notifications,
   };

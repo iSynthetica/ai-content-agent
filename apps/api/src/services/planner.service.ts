@@ -2,7 +2,7 @@
 // публікуємо. Наповнення слотів темами — окрема job (planner.suggest_topics), запуск генерації —
 // окремий прогін, скоупнутий на обрані слоти.
 import { AppError } from "../http/errors";
-import type { AuthCtx } from "../di/types";
+import type { AfterCommit, AuthCtx } from "../di/types";
 import type {
   CompaniesRepo,
   ContentPlansRepo,
@@ -21,6 +21,7 @@ export class PlannerService {
     private readonly entries: PlanEntriesRepo,
     private readonly plans: ContentPlansRepo,
     private readonly companies: CompaniesRepo,
+    private readonly afterCommit: AfterCommit,
   ) {}
 
   private async requirePlan(ctx: AuthCtx, companyId: string) {
@@ -108,5 +109,32 @@ export class PlannerService {
   async approve(ctx: AuthCtx, ids: string[]): Promise<{ approved: number; requested: number }> {
     const approved = await this.entries.approve(ctx.accountId, ids);
     return { approved, requested: ids.length };
+  }
+
+  /**
+   * Ставить job на підбір тем для порожніх слотів. Тверда межа (ADR-0002): api сам нічого не
+   * генерує — лише кладе задачу. Enqueue в after-commit-хук, щоб job не посилалась на слоти,
+   * яких після rollback не існує.
+   */
+  async requestTopics(
+    ctx: AuthCtx,
+    companyId: string,
+    planEntryIds?: string[],
+  ): Promise<{ contentPlanId: string }> {
+    const plan = await this.requirePlan(ctx, companyId);
+    this.afterCommit(async ({ ports, logger }) => {
+      try {
+        await ports.queue.enqueueSuggestTopics({
+          accountId: ctx.accountId,
+          companyId,
+          contentPlanId: plan.id,
+          planEntryIds,
+        });
+        logger.info({ companyId, contentPlanId: plan.id }, "suggest-topics enqueued");
+      } catch (err) {
+        logger.error({ companyId, err }, "suggest-topics enqueue failed after commit");
+      }
+    });
+    return { contentPlanId: plan.id };
   }
 }
