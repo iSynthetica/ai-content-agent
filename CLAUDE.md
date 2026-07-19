@@ -44,7 +44,8 @@ ADR before changing it — most of them exist because the obvious alternative wa
 
 Process conventions — branch names, commit format, definition of done — are in `CONTRIBUTING.md`.
 
-- **Code comments are written in Ukrainian.** Keep it that way — match the surrounding code.
+- **Code comments are written in Ukrainian; commit messages and docs are in English.** Match the
+  surrounding file.
   Comments explain *why*, not *what*; the most valuable ones cover non-obvious decisions and what
   breaks if you do the "more logical" thing instead.
 - Schemas are Zod in `packages/shared`; neither web nor api defines its own data shapes.

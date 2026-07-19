@@ -100,9 +100,10 @@ attribution — it makes authorship harder to read for no benefit.
 
 ### Language
 
-Commit messages and code comments are written in Ukrainian; documentation inside the repository
-(`README.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `docs/adr/`, `.claude/skills/`) is written in English.
-Match what is already there.
+**Commit messages are written in English**, together with all documentation inside the repository
+(`README.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `docs/adr/`, `.claude/skills/`).
+
+Code comments remain in Ukrainian — match the surrounding file.
 
 ## Automated enforcement
 
