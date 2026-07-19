@@ -102,8 +102,16 @@ export interface AccountsRepo {
   isMember(userId: string, accountId: string): Promise<boolean>;
 }
 
+// Стан AI-bootstrap. Окремо від Company DTO: це стан фонової задачі, а не властивість компанії,
+// і тягнути його у кожну відповідь про компанію означало б додавати шум усім споживачам.
+export interface BootstrapState {
+  status: string | null;
+  error: string | null;
+}
+
 export interface CompaniesRepo {
   create(accountId: string, data: NewCompany): Promise<Company>;
+  getBootstrapState(accountId: string, companyId: string): Promise<BootstrapState | null>;
   findById(accountId: string, id: string): Promise<Company | null>;
   list(accountId: string, page: PageParams): Promise<Paged<Company>>;
   // Компанії акаунта без пагінації (company switcher) — { items } на межі.

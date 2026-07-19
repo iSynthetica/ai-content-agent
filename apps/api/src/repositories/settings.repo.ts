@@ -43,6 +43,19 @@ export class DrizzleSettingsRepo implements SettingsRepo {
     if (patch.provider !== undefined) fields.provider = patch.provider;
     if (patch.models !== undefined) fields.models = patch.models;
 
+    // Порожній патч — окремою гілкою. Drizzle кидає «No values to set» на `set: {}` ще на
+    // побудові запиту, тож onboarding, який створює налаштування з самими DB-дефолтами
+    // (`upsert(..., {})`), падав з 500 і робив створення нової компанії неможливим.
+    if (Object.keys(fields).length === 0) {
+      await this.tx
+        .insert(companySettings)
+        .values({ companyId, accountId })
+        .onConflictDoNothing({ target: companySettings.companyId });
+      const existing = await this.getByCompany(accountId, companyId);
+      if (!existing) throw new Error(`settings.upsert: не вдалося створити налаштування ${companyId}`);
+      return existing;
+    }
+
     const [row] = await this.tx
       .insert(companySettings)
       .values({ companyId, accountId, ...fields })

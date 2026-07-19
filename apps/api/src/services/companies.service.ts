@@ -72,31 +72,42 @@ export class CompaniesService {
     return { jobId };
   }
 
-  // GET /v1/companies/:id/bootstrap (§2.12): статус для полінгу з візарда.
-  // Фаза 1: немає persist-стану job — деривуємо з полів компанії (enriched → done), інакше pending.
-  // TODO(Фаза 3): реальний статус job (стан BullMQ / службова колонка) + чернетка профілю з worker.
+  /**
+   * GET /v1/companies/:id/bootstrap (§2.12) — статус для полінгу з візарда.
+   *
+   * Читається РЕАЛЬНИЙ стан job із companies.bootstrap_status. Раніше він деривувався із
+   * заповненості полів, і три різні ситуації виглядали однаково: «ніколи не запускали»,
+   * «працює просто зараз» і «впало». Візард через це не міг показати ні прогрес, ні помилку —
+   * лише вічний спінер.
+   */
   async bootstrapStatus(
     ctx: AuthCtx,
     companyId: string,
-  ): Promise<{ status: "pending" | "done" | "failed"; profile?: Record<string, unknown> }> {
+  ): Promise<{
+    status: "idle" | "pending" | "running" | "done" | "failed";
+    error?: string | null;
+    profile?: Record<string, unknown>;
+  }> {
     const company = await this.companies.findById(ctx.accountId, companyId);
     if (!company) throw AppError.notFound("company");
-    const enriched =
-      Boolean(company.positioning) ||
-      company.stack.length > 0 ||
-      company.services.length > 0 ||
-      Boolean(company.audience);
-    if (enriched) {
-      return {
-        status: "done",
-        profile: {
-          positioning: company.positioning,
-          stack: company.stack,
-          services: company.services,
-          audience: company.audience,
-        },
-      };
-    }
-    return { status: "pending" };
+    const state = await this.companies.getBootstrapState(ctx.accountId, companyId);
+
+    const raw = state?.status ?? null;
+    // NULL означає, що bootstrap не запускали. Це не «pending»: візард має показати кнопку,
+    // а не крутилку очікування задачі, якої в черзі немає.
+    const status = raw === null || raw === undefined ? "idle" : (raw as "pending" | "running" | "done" | "failed");
+
+    if (status === "failed") return { status, error: state?.error ?? null };
+    if (status !== "done") return { status };
+
+    return {
+      status,
+      profile: {
+        positioning: company.positioning,
+        stack: company.stack,
+        services: company.services,
+        audience: company.audience,
+      },
+    };
   }
 }

@@ -81,6 +81,11 @@ export const companies = pgTable(
     stack: jsonb("stack").$type<string[]>().default([]).notNull(),
     services: jsonb("services").$type<string[]>().default([]).notNull(),
     audience: text("audience"),
+    // Стан AI-bootstrap (§6 раунд 2). NULL = ніколи не запускався. Без цієї колонки статус
+    // доводилось деривувати з заповненості полів, і «не запускали», «працює» та «впало»
+    // виглядали однаково — візард не міг показати ні прогрес, ні помилку.
+    bootstrapStatus: text("bootstrap_status"), // pending | running | done | failed
+    bootstrapError: text("bootstrap_error"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => ({ accountIdx: index("companies_account_idx").on(t.accountId) }),

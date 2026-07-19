@@ -44,6 +44,14 @@ export class DrizzleCompaniesRepo implements CompaniesRepo {
     return toCompany(row);
   }
 
+  async getBootstrapState(accountId: string, companyId: string) {
+    const [row] = await this.tx
+      .select({ status: companies.bootstrapStatus, error: companies.bootstrapError })
+      .from(companies)
+      .where(and(eq(companies.accountId, accountId), eq(companies.id, companyId)));
+    return row ?? null;
+  }
+
   async findById(accountId: string, id: string): Promise<Company | null> {
     const [row] = await this.tx
       .select()

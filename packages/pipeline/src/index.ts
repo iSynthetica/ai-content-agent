@@ -183,6 +183,8 @@ export {
 export { buildGraph, routeAfterReviewer, routeAfterHuman } from "./graph";
 export { buildImagePrompt, renderVisuals } from "./visuals";
 export { suggestTopics } from "./planner";
+export { draftBrandProfile, NotEnoughInputError } from "./onboarding";
+export type { BrandProfileDraft, DraftBrandProfileInput } from "./onboarding";
 export type { TopicSlot, SuggestedTopic } from "./planner";
 export type { VisualTarget, RenderedVisual } from "./visuals";
 
