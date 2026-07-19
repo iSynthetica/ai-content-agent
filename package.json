@@ -1,0 +1,28 @@
+{
+  "name": "ai-content-agent",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "dev:web": "pnpm --filter @forteq/web dev",
+    "dev:api": "pnpm --filter @forteq/api dev",
+    "dev:worker": "pnpm --filter @forteq/worker dev",
+    "db:generate": "pnpm --filter @forteq/db generate",
+    "db:migrate": "pnpm --filter @forteq/db migrate",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "tsx": "^4.19.2",
+    "@types/node": "^22.10.5"
+  },
+  "pnpm": {
+    "overrides": {
+      "ioredis": "^5.11.1"
+    }
+  }
+}

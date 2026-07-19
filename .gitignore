@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.next/
+.turbo/
+*.tsbuildinfo
+.env
+.env.local
+output/
+coverage/
+.DS_Store
+packages/db/drizzle/meta/_journal.json.lock
