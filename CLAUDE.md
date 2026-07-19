@@ -42,6 +42,8 @@ ADR before changing it — most of them exist because the obvious alternative wa
 
 ## Conventions
 
+Process conventions — branch names, commit format, definition of done — are in `CONTRIBUTING.md`.
+
 - **Code comments are written in Ukrainian.** Keep it that way — match the surrounding code.
   Comments explain *why*, not *what*; the most valuable ones cover non-obvious decisions and what
   breaks if you do the "more logical" thing instead.
