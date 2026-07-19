@@ -1,0 +1,29 @@
+{
+  "name": "@forteq/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "smoke": "tsx scripts/smoke.ts",
+    "setup:checkpointer": "tsx scripts/setupCheckpointer.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@forteq/db": "workspace:*",
+    "@forteq/shared": "workspace:*",
+    "@forteq/pipeline": "workspace:*",
+    "@langchain/langgraph": "^1.0.0",
+    "@langchain/langgraph-checkpoint-postgres": "^1.0.0",
+    "bullmq": "^5",
+    "drizzle-orm": "^0.38.3",
+    "ioredis": "^5",
+    "postgres": "^3.4.5",
+    "zod": "^3.24.1",
+    "pino": "^9"
+  },
+  "devDependencies": {
+    "tsx": "^4.19",
+    "@types/node": "^22"
+  }
+}
