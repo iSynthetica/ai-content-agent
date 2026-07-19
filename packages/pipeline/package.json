@@ -1,0 +1,27 @@
+{
+  "name": "@forteq/pipeline",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc && cp -R src/prompts dist/prompts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@langchain/langgraph": "^1.0.0",
+    "@langchain/core": "^1.0.0",
+    "@langchain/openai": "^1.0.0",
+    "@langchain/anthropic": "^1.0.0",
+    "langchain": "^1.0.0",
+    "zod": "^3.24.1",
+    "@forteq/shared": "workspace:*",
+    "@forteq/evaluators": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.4"
+  }
+}
