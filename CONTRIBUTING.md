@@ -104,6 +104,32 @@ Commit messages and code comments are written in Ukrainian; documentation inside
 (`README.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `docs/adr/`, `.claude/skills/`) is written in English.
 Match what is already there.
 
+## Automated enforcement
+
+Two git hooks (husky) run locally. They are installed by `pnpm install` via the `prepare` script —
+no manual setup.
+
+| Hook | What it does | Cost |
+|---|---|---|
+| `commit-msg` | commitlint against `commitlint.config.js` — types, scopes, formatting | instant |
+| `pre-push` | `pnpm -r typecheck` and `pnpm -r test` | ~40s |
+
+`commitlint.config.js` encodes the types and scopes documented above. **Adding a scope here means
+adding it there too**, otherwise the document and the hook drift apart.
+
+Subject casing is a **warning, not an error**: case rules assume Latin prose, and subjects here
+legitimately start with acronyms (`RLS-політики`, `NULLIF у RLS`, `ADR-записи`). Enforced as an
+error it rejected 5 of the first 38 commits, all correctly written.
+
+Bypass deliberately when you mean it — a WIP branch you are about to rebase:
+
+```bash
+git commit --no-verify
+git push --no-verify
+```
+
+Bypassing to avoid fixing a real failure is how a broken `main` happens.
+
 ## Before you push
 
 ```bash

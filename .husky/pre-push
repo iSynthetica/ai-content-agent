@@ -1,0 +1,6 @@
+# Definition of done, automated (CONTRIBUTING.md). Runs ~40s.
+# Deliberate bypass for a WIP branch: git push --no-verify
+echo "→ typecheck"
+pnpm -r typecheck || exit 1
+echo "→ tests"
+pnpm -r test || exit 1
