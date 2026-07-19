@@ -1,0 +1,30 @@
+{
+  "name": "@forteq/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "tsx src/main.ts",
+    "seed": "tsx scripts/seed.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@forteq/db": "workspace:*",
+    "@forteq/shared": "workspace:*",
+    "better-auth": "^1.2.0",
+    "bullmq": "^5",
+    "drizzle-orm": "^0.38.3",
+    "express": "^4.21",
+    "ioredis": "^5",
+    "pino": "^9",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17",
+    "@types/node": "^22",
+    "tsx": "^4.19",
+    "vitest": "^3.2.7"
+  }
+}
