@@ -111,3 +111,11 @@ the apps, e2e tests. Full breakdown and plan: `../agent-plan/05-retrospective.md
 
 Architecture decisions and their rationale: `docs/adr/` — start with the index in
 `docs/adr/README.md`.
+
+## Skills
+
+`.claude/skills/` holds step-by-step procedures for recurring work. They load on demand, so this
+file stays the always-on rules and they carry the how-to:
+
+`api-endpoint` · `db-migration` · `pipeline-agent` · `background-job` · `frontend-feature` ·
+`review` · `tests` · `verify`
