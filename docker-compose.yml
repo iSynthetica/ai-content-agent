@@ -68,6 +68,12 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       FAKE_MODELS: ${FAKE_MODELS:-}
       TAVILY_API_KEY: ${TAVILY_API_KEY:-}
+      # Трейсинг LangSmith (NFR-6.1). Вмикається САМИМИ змінними — коду не потребує; без них
+      # LangChain просто нічого не надсилає. Метадані прогону (runId/accountId/companyId) і теги
+      # пайплайн уже проставляє, тож трейси одразу групуються за акаунтом і прогоном.
+      LANGSMITH_TRACING: ${LANGSMITH_TRACING:-}
+      LANGSMITH_API_KEY: ${LANGSMITH_API_KEY:-}
+      LANGSMITH_PROJECT: ${LANGSMITH_PROJECT:-}
       LOG_LEVEL: info
     volumes: ["images:/data/images"]
 

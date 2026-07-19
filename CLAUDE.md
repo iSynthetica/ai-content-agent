@@ -93,6 +93,15 @@ Process conventions — branch names, commit format, definition of done — are 
   purpose: it used to silently generate fake content that was indistinguishable from real content
   in the UI.
 
+**Observability**
+- LangSmith tracing is wired but **off** (`LANGSMITH_TRACING=false`). Turning it on needs no code
+  change — the pipeline already attaches run metadata and tags. A `403 Forbidden` on
+  "Failed to send multipart request" in the worker log means the key was rejected, not that the
+  code is broken: usually a truncated key, a service key scoped to another workspace, or an EU
+  account that needs `LANGSMITH_ENDPOINT`.
+- `https://api.smith.langchain.com/info` returns 200 **without any key**, so it cannot be used to
+  check whether a key is valid. Use `/sessions?limit=1` instead.
+
 **Data**
 - `content_items.image_url` is owned **exclusively** by the `content.visuals` job. The pipeline
   persist path must not touch it — otherwise every revision wipes an already-rendered image.
