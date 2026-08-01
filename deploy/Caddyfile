@@ -1,0 +1,15 @@
+# Caddy - єдина публічна точка входу. Термінує HTTPS і проксує на web.
+#
+# TLS через Cloudflare Origin Certificate (безкоштовний, 15 років, без поновлення):
+#   Cloudflare -> SSL/TLS -> Origin Server -> Create Certificate.
+#   Зберегти як deploy/certs/origin.pem і deploy/certs/origin.key.
+#   У Cloudflare режим SSL виставити "Full (strict)", проксі (помаранчева хмара) увімкнути.
+#
+# Так публічний трафік шифрується Cloudflare, а плече Cloudflare<->сервер - цим origin-сертифікатом.
+# Бонус: реальний IP сервера прихований за Cloudflare.
+
+{$DOMAIN} {
+	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin.key
+	encode zstd gzip
+	reverse_proxy web:3000
+}

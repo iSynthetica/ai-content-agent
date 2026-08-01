@@ -27,6 +27,7 @@ export default {
         "shared",
         "evaluators",
         "infra",
+        "deploy",
         // cross-cutting feature scopes
         "runs",
         "content",
