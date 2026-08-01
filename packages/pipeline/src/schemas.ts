@@ -33,6 +33,7 @@ export const DraftItemSchema = z.object({
   id: z.string(),
   planItemId: z.string(), // === id; тримаємо обидва поля для явності join'у до плану
   channel: channelSchema,
+  topic: z.string(), // тема з ContentPlanItem — несемо крізь draft, щоб вона дожила до content_items
   text: z.string(),
   metadata: z
     .object({

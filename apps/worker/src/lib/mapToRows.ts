@@ -28,6 +28,7 @@ export function mapToRows(runId: string, final: FinalItem[]): MappedContentItem[
     id: f.id,
     runId,
     channel: f.channel,
+    topic: f.topic,
     text: f.text,
     scores: f.scores,
     violations: f.violations,

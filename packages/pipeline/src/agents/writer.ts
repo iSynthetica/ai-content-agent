@@ -104,6 +104,7 @@ async function writeOne(
     id: plan.id, // ІНВАРІАНТ: id === planItemId
     planItemId: plan.id,
     channel: plan.channel,
+    topic: plan.topic,
     text: parsed.text,
     metadata,
     revisionHistory,
