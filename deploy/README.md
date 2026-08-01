@@ -17,11 +17,13 @@ Internet -> Cloudflare (proxy, HTTPS) -> Caddy :443 -> web:3000
 
 ## 0. Create the server
 
-Hetzner Cloud console -> Add Server:
+Hetzner Cloud console -> create a Project, then Add Server:
 
-- Type: **CAX21** (ARM, 4 vCPU, 8 GB, ~EUR 8/mo). 8 GB is needed because `next build` runs on the
-  server; 4 GB can OOM. x86 alternative: **CPX31**.
-- Image: **Ubuntu 24.04**.
+- Type: an 8 GB shared instance is ideal (**CX33** / **CAX21**), because `next build` runs on the
+  server. These sell out on the cost-optimized line - a **4 GB CX23 works too** as long as you add
+  swap (step 2, below); the build is the only thing that needs the extra memory, and runtime fits
+  in ~1.5 GB.
+- Image: **Ubuntu 24.04** or newer.
 - SSH key: add yours (not a password).
 - Create a **Hetzner Cloud Firewall** and attach it: allow inbound **22, 80, 443** only.
 
@@ -36,6 +38,11 @@ Hetzner Cloud console -> Add Server:
 
 ```bash
 ssh root@SERVER_IP
+
+# On a 4 GB box, add swap first so `next build` does not OOM. Skip on 8 GB+.
+fallocate -l 4G /swapfile && chmod 600 /swapfile
+mkswap /swapfile && swapon /swapfile
+echo '/swapfile none swap sw 0 0' >> /etc/fstab
 
 # Docker + compose plugin
 apt-get update && apt-get install -y docker.io docker-compose-v2 git
