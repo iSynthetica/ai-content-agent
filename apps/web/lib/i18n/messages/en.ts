@@ -360,4 +360,10 @@ export const en: Record<string, string> = {
   "Перегенерувати прогін": "Regenerate run",
   "Прогін піде на нову ітерацію. Можна додати спільну інструкцію для агентів.":
     "The run will go through another iteration. You can add a shared instruction for the agents.",
+
+  // ── Global error fallbacks (BFF proxy, query client, api-error) ─────────
+  "Сталася непередбачена помилка. Спробуйте ще раз.": "An unexpected error occurred. Please try again.",
+  "Сталася помилка. Спробуйте ще раз.": "Something went wrong. Please try again.",
+  "Сервіс генерації тимчасово недоступний. Спробуйте ще раз.": "The generation service is temporarily unavailable. Please try again.",
+  "Ресурс не знайдено.": "Resource not found.",
 };

@@ -6,6 +6,8 @@
 import { MutationCache, QueryCache, QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ApiError, isAuthError } from "@/lib/api-error";
+import { languageFromDocumentCookie } from "@/lib/i18n/cookie";
+import { translate } from "@/lib/i18n/translate";
 
 function handleGlobalError(error: unknown) {
   if (isAuthError(error)) {
@@ -16,7 +18,9 @@ function handleGlobalError(error: unknown) {
     return;
   }
   const message =
-    error instanceof ApiError ? error.message : "Сталася помилка. Спробуйте ще раз.";
+    error instanceof ApiError
+      ? error.message
+      : translate(languageFromDocumentCookie(), "Сталася помилка. Спробуйте ще раз.");
   toast.error(message);
 }
 

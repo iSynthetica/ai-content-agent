@@ -27,7 +27,7 @@ async function request<T>(
   });
 
   if (!res.ok) {
-    throw toApiError(res.status, await safeJson(res));
+    throw toApiError(res.status, await safeJson(res), typeof document !== "undefined" ? document.cookie : null);
   }
   if (res.status === 204) {
     return undefined as T;

@@ -5,6 +5,8 @@
 //   3) forward() — cookie/Set-Cookie passthrough, normalize errors, 502, x-request-id.
 import { isAllowed } from "@/lib/endpoints";
 import { forward } from "@/server/proxy";
+import { languageFromCookieHeader } from "@/lib/i18n/cookie";
+import { translate } from "@/lib/i18n/translate";
 
 // Проксі має бути повністю динамічним (cookie, no cache).
 export const dynamic = "force-dynamic";
@@ -17,8 +19,9 @@ async function handle(
   const restPath = "/" + (proxy?.join("/") ?? "");
 
   if (!isAllowed(req.method, restPath)) {
+    const language = languageFromCookieHeader(req.headers.get("cookie"));
     return Response.json(
-      { error: { code: "NOT_FOUND", message: "Ресурс не знайдено." } },
+      { error: { code: "NOT_FOUND", message: translate(language, "Ресурс не знайдено.") } },
       { status: 404 },
     );
   }

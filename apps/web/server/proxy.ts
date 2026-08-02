@@ -9,16 +9,20 @@ import "server-only";
 //   • x-request-id для спостережуваності.
 // Path allowlist (isAllowed) перевіряється у route-handler ДО виклику forward().
 import { getMock } from "@/server/mocks";
+import { languageFromCookieHeader } from "@/lib/i18n/cookie";
+import { translate } from "@/lib/i18n/translate";
 
 const API = process.env.API_INTERNAL_URL ?? "http://localhost:4000";
 const MOCK = process.env.MOCK_API === "1";
 
-const HUMAN_502 = {
-  error: {
-    code: "UPSTREAM",
-    message: "Сервіс генерації тимчасово недоступний. Спробуйте ще раз.",
-  },
-};
+function human502(cookieHeader: string | null) {
+  return {
+    error: {
+      code: "UPSTREAM",
+      message: translate(languageFromCookieHeader(cookieHeader), "Сервіс генерації тимчасово недоступний. Спробуйте ще раз."),
+    },
+  };
+}
 
 // Заголовки, які форвардимо ДО api (усе інше відкидається).
 const REQUEST_WHITELIST = ["content-type", "cookie", "x-request-id", "origin", "referer"];
@@ -56,7 +60,7 @@ function passthroughHeaders(res: Response, requestId: string): Headers {
 }
 
 // Тільки для не-2xx: читаємо тіло api ПОВНІСТЮ й приводимо до ApiError (§3.3).
-async function normalizeError(res: Response, requestId: string): Promise<Response> {
+async function normalizeError(res: Response, requestId: string, cookieHeader: string | null): Promise<Response> {
   const text = await res.text();
   let parsed: unknown;
   try {
@@ -75,7 +79,11 @@ async function normalizeError(res: Response, requestId: string): Promise<Respons
     return jsonResponse(res.status, parsed, requestId);
   }
   return jsonResponse(res.status, {
-    error: { code: "INTERNAL", message: "Сталася непередбачена помилка. Спробуйте ще раз.", requestId },
+    error: {
+      code: "INTERNAL",
+      message: translate(languageFromCookieHeader(cookieHeader), "Сталася непередбачена помилка. Спробуйте ще раз."),
+      requestId,
+    },
   }, requestId);
 }
 
@@ -111,16 +119,18 @@ export async function forward(req: Request, restPath: string): Promise<Response>
     redirect: "manual",
   };
 
+  const cookieHeader = req.headers.get("cookie");
+
   let res: Response;
   try {
     res = await fetch(url, init);
   } catch {
-    return jsonResponse(502, HUMAN_502, requestId);
+    return jsonResponse(502, human502(cookieHeader), requestId);
   }
 
   if (res.ok) {
     // Стрім тіла наскрізь (нуль-копі). Passthrough content-type/disposition + Set-Cookie.
     return new Response(res.body, { status: res.status, headers: passthroughHeaders(res, requestId) });
   }
-  return normalizeError(res, requestId);
+  return normalizeError(res, requestId, cookieHeader);
 }

@@ -3,6 +3,9 @@
 // (toast/redirect/field-errors) уніфікована в одному місці.
 import { apiError } from "@forteq/shared";
 
+import { languageFromCookieHeader } from "@/lib/i18n/cookie";
+import { translate } from "@/lib/i18n/translate";
+
 export interface ApiErrorShape {
   code: string;
   message: string;
@@ -28,7 +31,10 @@ export class ApiError extends Error {
 
 // Витягує envelope { error: { code, message } } з тіла відповіді api (spike-3 §3.3).
 // Якщо тіло не відповідає envelope — деградуємо до INTERNAL з людським меседжем (NFR-3.2).
-export function toApiError(status: number, body: unknown): ApiError {
+// cookieHeader — сирий Cookie-заголовок (браузер: document.cookie; сервер: уже зібраний рядок).
+// Потрібен, щоб і цей локальний degrade-кейс (тіло не envelope) ішов мовою UI, а не завжди
+// українською — на відміну від message у envelope, який формує сам api.
+export function toApiError(status: number, body: unknown, cookieHeader?: string | null): ApiError {
   const parsed = apiError.safeParse(body);
   if (parsed.success) {
     const raw = body as {
@@ -41,9 +47,10 @@ export function toApiError(status: number, body: unknown): ApiError {
       requestId: raw.error.requestId,
     });
   }
+  const language = languageFromCookieHeader(cookieHeader);
   return new ApiError(status, {
     code: "INTERNAL",
-    message: "Сталася непередбачена помилка. Спробуйте ще раз.",
+    message: translate(language, "Сталася непередбачена помилка. Спробуйте ще раз."),
   });
 }
 

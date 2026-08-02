@@ -32,16 +32,17 @@ async function request<T>(
 ): Promise<T> {
   const rest = stripApiPrefix(path);
 
+  const cookieHeader = (await cookies()).toString();
+
   if (MOCK) {
     const mock = getMock(method, rest, new URLSearchParams(), body);
     if (mock) {
       const status = mock.status ?? 200;
-      if (status >= 400) throw toApiError(status, mock.json);
+      if (status >= 400) throw toApiError(status, mock.json, cookieHeader);
       return schema ? schema.parse(mock.json) : (mock.json as T);
     }
   }
 
-  const cookieHeader = (await cookies()).toString();
   const headers: Record<string, string> = { cookie: cookieHeader };
   if (body !== undefined) headers["content-type"] = "application/json";
 
@@ -53,7 +54,7 @@ async function request<T>(
   });
 
   if (!res.ok) {
-    throw toApiError(res.status, await safeJson(res));
+    throw toApiError(res.status, await safeJson(res), cookieHeader);
   }
   if (res.status === 204) {
     return undefined as T;
