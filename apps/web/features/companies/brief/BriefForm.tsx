@@ -42,6 +42,7 @@ import type { CompanySettingsDTO } from "@/lib/dto";
 import { useUpdateCompany } from "@/features/companies/brief/use-update-company";
 import { useUpdateSettings } from "@/features/companies/brief/use-update-settings";
 import { AgentModelsSection, type AgentModelsValue } from "@/features/companies/brief/AgentModelsSection";
+import { ApiKeysManager } from "@/features/api-keys/ApiKeysManager";
 import {
   briefSchema,
   joinList,
@@ -52,9 +53,11 @@ import {
 export function BriefForm({
   company,
   settings,
+  canManageKeys = false,
 }: {
   company: Company;
   settings?: CompanySettingsDTO | null;
+  canManageKeys?: boolean;
 }) {
   const updateCompany = useUpdateCompany(company.id);
   const updateSettings = useUpdateSettings(company.id);
@@ -261,6 +264,20 @@ export function BriefForm({
                 )}
               />
             </div>
+          </CardContent>
+        </Card>
+
+        {/* ── Провайдери та ключі (account-level BYOK) ── */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Провайдери та ключі</CardTitle>
+            <CardDescription>
+              Введіть API-ключ будь-якого або кількох провайдерів. Генерація йде на ваш ключ; роль без
+              ключа обраного провайдера блокує прогін. Ключі спільні для всіх компаній акаунта.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ApiKeysManager canManage={canManageKeys} />
           </CardContent>
         </Card>
 

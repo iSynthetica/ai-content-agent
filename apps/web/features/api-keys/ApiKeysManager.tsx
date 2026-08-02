@@ -25,7 +25,7 @@ export function ApiKeysManager({
   initialKeys,
   canManage,
 }: {
-  initialKeys: ApiKeyDTO[];
+  initialKeys?: ApiKeyDTO[];
   canManage: boolean;
 }) {
   const { data: keys = [] } = useApiKeys(initialKeys);
