@@ -361,6 +361,22 @@ export const en: Record<string, string> = {
   "Прогін піде на нову ітерацію. Можна додати спільну інструкцію для агентів.":
     "The run will go through another iteration. You can add a shared instruction for the agents.",
 
+  // ── Post editing + version history (§content-editing) ────────────────────
+  "Редагувати": "Edit",
+  "Заголовок (необовʼязково)": "Title (optional)",
+  "Текст поста не може бути порожнім": "The post text can't be empty",
+  "Пост збережено": "Post saved",
+  "Не вдалося зберегти правку": "Couldn't save the edit",
+  "Історія": "History",
+  "Історія версій": "Version history",
+  "Історія версій ще порожня.": "No versions yet.",
+  "Людська правка": "Human edit",
+  "Поточна": "Current",
+  "Відновити цю версію": "Restore this version",
+  "Відновлюємо…": "Restoring…",
+  "Пост відновлено до обраної версії": "Post restored to the selected version",
+  "Не вдалося відновити версію": "Couldn't restore the version",
+
   // ── Global error fallbacks (BFF proxy, query client, api-error) ─────────
   "Сталася непередбачена помилка. Спробуйте ще раз.": "An unexpected error occurred. Please try again.",
   "Сталася помилка. Спробуйте ще раз.": "Something went wrong. Please try again.",

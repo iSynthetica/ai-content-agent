@@ -21,10 +21,12 @@ export function ChannelTabs({
   items,
   runId,
   companyId,
+  canEdit,
 }: {
   items: ContentItemDTO[];
   runId: string;
   companyId: string;
+  canEdit: boolean;
 }) {
   const t = useT();
   const router = useRouter();
@@ -98,7 +100,13 @@ export function ChannelTabs({
       ) : (
         <div className="flex flex-col gap-4">
           {activeItems.map((item) => (
-            <ContentItemCard key={item.id} item={item} runId={runId} companyId={companyId} />
+            <ContentItemCard
+              key={item.id}
+              item={item}
+              runId={runId}
+              companyId={companyId}
+              canEdit={canEdit}
+            />
           ))}
         </div>
       )}

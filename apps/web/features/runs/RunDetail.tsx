@@ -31,10 +31,14 @@ export function RunDetail({
   runId,
   initialRun,
   initialItems,
+  canEdit,
 }: {
   runId: string;
   initialRun: RunDTO;
   initialItems: ContentItemDTO[];
+  // §content-editing: гейт Edit/Revert на постах — рахує роль сесії з RSC-сторінки (той самий
+  // патерн, що й ApiKeysManager.canManage), тож клієнтський дерево нижче лишається "тупим".
+  canEdit: boolean;
 }) {
   const { t, language } = useLanguage();
   const qc = useQueryClient();
@@ -199,7 +203,7 @@ export function RunDetail({
 
       {/* ── Пости за каналами ── */}
       {items && items.length > 0 ? (
-        <ChannelTabs items={items} runId={runId} companyId={companyId} />
+        <ChannelTabs items={items} runId={runId} companyId={companyId} canEdit={canEdit} />
       ) : !generating ? (
         <Card>
           <CardContent className="py-8 text-center text-sm text-muted-foreground">

@@ -7,6 +7,8 @@ export const qk = {
   runs: (companyId: string) => ["runs", companyId] as const,
   run: (runId: string) => ["run", runId] as const,
   items: (runId: string) => ["items", runId] as const,
+  // §content-editing: історія версій одного поста
+  itemVersions: (itemId: string) => ["item-versions", itemId] as const,
   // §13 онбординг
   bootstrap: (companyId: string) => ["bootstrap", companyId] as const,
   // §14 нотифікації + inbox (глобальні)
