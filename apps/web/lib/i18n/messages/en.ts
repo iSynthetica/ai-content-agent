@@ -285,4 +285,53 @@ export const en: Record<string, string> = {
     "Once a run finishes and posts are waiting for review, the task will show up here.",
   "Перейти": "Open",
   "Виконано": "Done",
+
+  // ── Runs list / generate button ──────────────────────────────────────────
+  "Прогони генерації": "Generation runs",
+  "Запустіть генерацію та стежте за статусами прогонів у реальному часі.":
+    "Start a generation and watch run statuses update in real time.",
+  "Не вдалося завантажити прогони. Спробуйте оновити сторінку.":
+    "Couldn't load runs. Try refreshing the page.",
+  "Ще немає прогонів": "No runs yet",
+  "Перед першою генерацією заповніть бренд-профіль і налаштуйте контент-план — на них спираються агенти.":
+    "Before your first generation, fill in the brand profile and set up the content plan — the agents rely on them.",
+  "Заповнити бренд-профіль": "Fill in the brand profile",
+  "Відкрити планувальник": "Open the planner",
+  "Згенерувати": "Generate",
+
+  // ── Run config dialog ─────────────────────────────────────────────────────
+  "Прогін запущено": "Run started",
+  "Налаштування прогону": "Run configuration",
+  "Перевірка перед запуском": "Review before starting",
+  "Закрити": "Close",
+  "обраних слотів із календаря. Теми й канали беруться зі слотів.":
+    "selected slots from the calendar. Topics and channels come from the slots.",
+  "Кількість постів": "Number of posts",
+  "Теми": "Topics",
+  "AI обере теми": "AI picks the topics",
+  "Вписати вручну": "Enter manually",
+  "По одній темі на рядок. Скільки тем — стільки постів (точна кількість).":
+    "One topic per line. As many posts as topics (exact count).",
+  "Тема 1\nТема 2": "Topic 1\nTopic 2",
+  "Акцент / кут кампанії (необов’язково)": "Campaign angle (optional)",
+  "напр. фокус на економії часу для DevOps-команд": "e.g. focus on time savings for DevOps teams",
+  "Моделі під ролі (необов’язково — інакше за налаштуваннями)": "Models per role (optional — otherwise follows settings)",
+  "Разом": "Total",
+  "постів": "posts",
+  "максимум": "maximum",
+  "на прогін": "per run",
+  "Що буде згенеровано": "What will be generated",
+  "слотів із календаря.": "slots from the calendar.",
+  "ваші теми": "your topics",
+  "теми обере AI": "AI picks the topics",
+  "Акцент": "Angle",
+  "Моделі": "Models",
+  "за збереженими налаштуваннями компанії": "using the company's saved settings",
+  "Орієнтовна вартість — типово ≈ $0.07 на gpt-5-nano; сильніші моделі дорожчі. Точна вартість зʼявиться після прогону. Генерація йде на ваш API-ключ (BYOK).":
+    "Estimated cost — typically ≈ $0.07 on gpt-5-nano; stronger models cost more. The exact cost appears after the run. Generation runs on your API key (BYOK).",
+  "Не вдалося запустити прогін": "Couldn't start the run",
+  "Назад": "Back",
+  "Далі": "Next",
+  "Запускаємо…": "Starting…",
+  "Запустити генерацію": "Start generation",
 };

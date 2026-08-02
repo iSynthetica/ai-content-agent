@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { RunCard } from "@/components/common/run-card";
 import { GenerateButton } from "@/features/runs/GenerateButton";
 import { useRuns } from "@/features/runs/use-runs";
+import { useT } from "@/lib/i18n";
 import type { RunDTO } from "@/features/runs/schemas";
 
 export function RunsList({
@@ -19,15 +20,16 @@ export function RunsList({
   companyId: string;
   initialRuns: RunDTO[];
 }) {
+  const t = useT();
   const { data: runs, isLoading, isError } = useRuns(companyId, initialRuns);
 
   return (
     <section className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-medium tracking-tight">Прогони генерації</h2>
+          <h2 className="text-lg font-medium tracking-tight">{t("Прогони генерації")}</h2>
           <p className="text-sm text-muted-foreground">
-            Запустіть генерацію та стежте за статусами прогонів у реальному часі.
+            {t("Запустіть генерацію та стежте за статусами прогонів у реальному часі.")}
           </p>
         </div>
         <GenerateButton companyId={companyId} />
@@ -42,24 +44,23 @@ export function RunsList({
       ) : isError ? (
         <Card>
           <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            Не вдалося завантажити прогони. Спробуйте оновити сторінку.
+            {t("Не вдалося завантажити прогони. Спробуйте оновити сторінку.")}
           </CardContent>
         </Card>
       ) : !runs || runs.length === 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle>Ще немає прогонів</CardTitle>
+            <CardTitle>{t("Ще немає прогонів")}</CardTitle>
             <CardDescription>
-              Перед першою генерацією заповніть бренд-профіль і налаштуйте контент-план — на них
-              спираються агенти.
+              {t("Перед першою генерацією заповніть бренд-профіль і налаштуйте контент-план — на них спираються агенти.")}
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-3">
             <Button asChild variant="outline">
-              <Link href={`/companies/${companyId}/brief`}>Заповнити бренд-профіль</Link>
+              <Link href={`/companies/${companyId}/brief`}>{t("Заповнити бренд-профіль")}</Link>
             </Button>
             <Button asChild variant="outline">
-              <Link href={`/companies/${companyId}/plan`}>Відкрити планувальник</Link>
+              <Link href={`/companies/${companyId}/plan`}>{t("Відкрити планувальник")}</Link>
             </Button>
           </CardContent>
         </Card>

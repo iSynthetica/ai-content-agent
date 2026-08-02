@@ -21,6 +21,7 @@ import {
   type AgentModelsValue,
 } from "@/features/companies/brief/AgentModelsSection";
 import { useCreateRun } from "@/features/runs/use-create-run";
+import { useT } from "@/lib/i18n";
 
 const CHANNEL_LABELS: Record<Channel, string> = {
   linkedin: "LinkedIn",
@@ -38,6 +39,7 @@ export function RunConfigDialog({
   planEntryIds?: string[];
   onClose: () => void;
 }) {
+  const t = useT();
   const scoped = (planEntryIds?.length ?? 0) > 0;
   const router = useRouter();
   const createRun = useCreateRun(companyId);
@@ -89,7 +91,7 @@ export function RunConfigDialog({
       },
       {
         onSuccess: ({ runId }) => {
-          toast.success("Прогін запущено");
+          toast.success(t("Прогін запущено"));
           onClose();
           router.push(`/runs/${runId}`);
         },
@@ -103,9 +105,9 @@ export function RunConfigDialog({
       <div className="relative flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-border bg-background shadow-lg">
         <div className="flex items-center justify-between border-b border-border px-5 py-3">
           <h2 className="text-base font-semibold">
-            {step === "configure" ? "Налаштування прогону" : "Перевірка перед запуском"}
+            {step === "configure" ? t("Налаштування прогону") : t("Перевірка перед запуском")}
           </h2>
-          <Button variant="ghost" size="icon" aria-label="Закрити" onClick={onClose}>
+          <Button variant="ghost" size="icon" aria-label={t("Закрити")} onClick={onClose}>
             <X />
           </Button>
         </div>
@@ -115,13 +117,12 @@ export function RunConfigDialog({
             <div className="flex flex-col gap-5">
               {scoped ? (
                 <p className="text-sm text-muted-foreground">
-                  Генерується {planEntryIds!.length} обраних слотів із календаря. Теми й канали беруться
-                  зі слотів.
+                  {t("Генерується")} {planEntryIds!.length} {t("обраних слотів із календаря. Теми й канали беруться зі слотів.")}
                 </p>
               ) : (
                 <>
                   <div className="flex flex-col gap-2">
-                    <Label>Канали</Label>
+                    <Label>{t("Канали")}</Label>
                     {CHANNELS.map((c) => (
                       <div key={c} className="flex items-center gap-3">
                         <input
@@ -132,7 +133,7 @@ export function RunConfigDialog({
                           className="h-4 w-4 accent-primary"
                         />
                         <label htmlFor={`ch-${c}`} className="w-28 text-sm">
-                          {CHANNEL_LABELS[c]}
+                          {t(CHANNEL_LABELS[c])}
                         </label>
                         {topicMode === "ai" && (
                           <Input
@@ -145,7 +146,7 @@ export function RunConfigDialog({
                               setCounts({ ...counts, [c]: Math.max(1, Number(e.target.value) || 1) })
                             }
                             className="w-20"
-                            aria-label={`Кількість постів ${CHANNEL_LABELS[c]}`}
+                            aria-label={`${t("Кількість постів")} ${t(CHANNEL_LABELS[c])}`}
                           />
                         )}
                       </div>
@@ -153,7 +154,7 @@ export function RunConfigDialog({
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    <Label>Теми</Label>
+                    <Label>{t("Теми")}</Label>
                     <div className="flex gap-4 text-sm">
                       <label className="flex items-center gap-1.5">
                         <input
@@ -162,7 +163,7 @@ export function RunConfigDialog({
                           onChange={() => setTopicMode("ai")}
                           className="accent-primary"
                         />
-                        AI обере теми
+                        {t("AI обере теми")}
                       </label>
                       <label className="flex items-center gap-1.5">
                         <input
@@ -171,23 +172,23 @@ export function RunConfigDialog({
                           onChange={() => setTopicMode("manual")}
                           className="accent-primary"
                         />
-                        Вписати вручну
+                        {t("Вписати вручну")}
                       </label>
                     </div>
                     {topicMode === "manual" && (
                       <div className="flex flex-col gap-3">
                         <p className="text-xs text-muted-foreground">
-                          По одній темі на рядок. Скільки тем — стільки постів (точна кількість).
+                          {t("По одній темі на рядок. Скільки тем — стільки постів (точна кількість).")}
                         </p>
                         {activeChannels.map((c) => (
                           <div key={c} className="flex flex-col gap-1">
                             <Label htmlFor={`tp-${c}`} className="text-xs">
-                              {CHANNEL_LABELS[c]} ({linesFor(c).length})
+                              {t(CHANNEL_LABELS[c])} ({linesFor(c).length})
                             </Label>
                             <Textarea
                               id={`tp-${c}`}
                               rows={3}
-                              placeholder={"Тема 1\nТема 2"}
+                              placeholder={t("Тема 1\nТема 2")}
                               value={manualTopics[c] ?? ""}
                               onChange={(e) => setManualTopics({ ...manualTopics, [c]: e.target.value })}
                             />
@@ -200,78 +201,77 @@ export function RunConfigDialog({
               )}
 
               <div className="flex flex-col gap-2">
-                <Label htmlFor="angle">Акцент / кут кампанії (необов’язково)</Label>
+                <Label htmlFor="angle">{t("Акцент / кут кампанії (необов’язково)")}</Label>
                 <Textarea
                   id="angle"
                   rows={2}
-                  placeholder="напр. фокус на економії часу для DevOps-команд"
+                  placeholder={t("напр. фокус на економії часу для DevOps-команд")}
                   value={angle}
                   onChange={(e) => setAngle(e.target.value)}
                 />
               </div>
 
               <div className="flex flex-col gap-2">
-                <Label>Моделі під ролі (необов’язково — інакше за налаштуваннями)</Label>
+                <Label>{t("Моделі під ролі (необов’язково — інакше за налаштуваннями)")}</Label>
                 <AgentModelsSection value={agentModels} onChange={setAgentModels} />
               </div>
 
               {!scoped && (
                 <p className={`text-xs ${tooMany ? "text-destructive" : "text-muted-foreground"}`}>
-                  Разом: {total} постів{tooMany ? ` — максимум ${MAX_POSTS_PER_RUN} на прогін` : ""}
+                  {t("Разом")}: {total} {t("постів")}{tooMany ? ` — ${t("максимум")} ${MAX_POSTS_PER_RUN} ${t("на прогін")}` : ""}
                 </p>
               )}
             </div>
           ) : (
             <div className="flex flex-col gap-4 text-sm">
               <div>
-                <p className="mb-1 font-medium">Що буде згенеровано</p>
+                <p className="mb-1 font-medium">{t("Що буде згенеровано")}</p>
                 {scoped ? (
-                  <p className="text-muted-foreground">{planEntryIds!.length} слотів із календаря.</p>
+                  <p className="text-muted-foreground">{planEntryIds!.length} {t("слотів із календаря.")}</p>
                 ) : topicMode === "manual" ? (
                   <ul className="text-muted-foreground">
                     {activeChannels
                       .filter((c) => linesFor(c).length > 0)
                       .map((c) => (
                         <li key={c}>
-                          {CHANNEL_LABELS[c]} — {linesFor(c).length} (ваші теми)
+                          {t(CHANNEL_LABELS[c])} — {linesFor(c).length} ({t("ваші теми")})
                         </li>
                       ))}
-                    <li className="mt-1 font-medium text-foreground">Разом: {total} постів</li>
+                    <li className="mt-1 font-medium text-foreground">{t("Разом")}: {total} {t("постів")}</li>
                   </ul>
                 ) : (
                   <ul className="text-muted-foreground">
                     {activeChannels.map((c) => (
                       <li key={c}>
-                        {CHANNEL_LABELS[c]} — {counts[c]} (теми обере AI)
+                        {t(CHANNEL_LABELS[c])} — {counts[c]} ({t("теми обере AI")})
                       </li>
                     ))}
-                    <li className="mt-1 font-medium text-foreground">Разом: {total} постів</li>
+                    <li className="mt-1 font-medium text-foreground">{t("Разом")}: {total} {t("постів")}</li>
                   </ul>
                 )}
               </div>
               {angle.trim() && (
                 <div>
-                  <p className="mb-1 font-medium">Акцент</p>
+                  <p className="mb-1 font-medium">{t("Акцент")}</p>
                   <p className="text-muted-foreground">{angle.trim()}</p>
                 </div>
               )}
               <div>
-                <p className="mb-1 font-medium">Моделі</p>
+                <p className="mb-1 font-medium">{t("Моделі")}</p>
                 <p className="text-muted-foreground">
                   {Object.keys(agentModels).length
                     ? Object.entries(agentModels)
                         .map(([role, m]) => `${role}: ${m.provider}/${m.model}`)
                         .join("; ")
-                    : "за збереженими налаштуваннями компанії"}
+                    : t("за збереженими налаштуваннями компанії")}
                 </p>
               </div>
               <p className="text-xs text-muted-foreground">
-                Орієнтовна вартість — типово ≈ $0.07 на gpt-5-nano; сильніші моделі дорожчі. Точна
-                вартість зʼявиться після прогону. Генерація йде на ваш API-ключ (BYOK).
+                {t("Орієнтовна вартість — типово ≈ $0.07 на gpt-5-nano; сильніші моделі дорожчі. Точна вартість зʼявиться після прогону. Генерація йде на ваш API-ключ (BYOK).")}
               </p>
               {createRun.isError && (
                 <p className="text-sm text-destructive">
-                  {(createRun.error as Error)?.message ?? "Не вдалося запустити прогін"}
+                  {(createRun.error as Error)?.message ?? t("Не вдалося запустити прогін")}
                 </p>
               )}
             </div>
@@ -281,18 +281,18 @@ export function RunConfigDialog({
         <div className="flex items-center justify-between gap-2 border-t border-border px-5 py-3">
           {step === "review" ? (
             <Button variant="ghost" onClick={() => setStep("configure")}>
-              Назад
+              {t("Назад")}
             </Button>
           ) : (
             <span />
           )}
           {step === "configure" ? (
             <Button disabled={!canProceed} onClick={() => setStep("review")}>
-              Далі
+              {t("Далі")}
             </Button>
           ) : (
             <Button disabled={createRun.isPending} onClick={confirm}>
-              {createRun.isPending ? "Запускаємо…" : "Запустити генерацію"}
+              {createRun.isPending ? t("Запускаємо…") : t("Запустити генерацію")}
             </Button>
           )}
         </div>

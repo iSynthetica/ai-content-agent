@@ -8,6 +8,7 @@ import { Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { RunConfigDialog } from "@/features/runs/RunConfigDialog";
+import { useT } from "@/lib/i18n";
 
 export function GenerateButton({
   companyId,
@@ -18,13 +19,14 @@ export function GenerateButton({
   planEntryIds?: string[];
   className?: string;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
 
   return (
     <>
       <Button onClick={() => setOpen(true)} className={className}>
         <Sparkles />
-        Згенерувати
+        {t("Згенерувати")}
       </Button>
       {open && (
         <RunConfigDialog
