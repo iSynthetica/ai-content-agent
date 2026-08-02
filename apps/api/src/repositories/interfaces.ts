@@ -125,6 +125,29 @@ export interface SettingsRepo {
   upsert(accountId: string, companyId: string, patch: SettingsPatch): Promise<CompanySettings>;
 }
 
+// ── BYOK: ключі провайдерів (§ADR-0016) ───────────────────────────────────────
+// Маскована форма для api/UI — БЕЗ шифротексту (repo не віддає його назовні; декрипт лише у воркері).
+export interface ApiKeyMasked {
+  provider: string;
+  last4: string;
+  label: string | null;
+  createdAt: string;
+  updatedAt: string;
+  lastUsedAt: string | null;
+}
+export interface NewApiKey {
+  provider: string;
+  ciphertext: string;
+  last4: string;
+  label?: string | null;
+}
+export interface ApiKeysRepo {
+  list(accountId: string): Promise<ApiKeyMasked[]>;
+  upsert(accountId: string, data: NewApiKey): Promise<void>;
+  delete(accountId: string, provider: string): Promise<boolean>;
+  exists(accountId: string, provider: string): Promise<boolean>;
+}
+
 export interface ContentPlansRepo {
   getByCompany(accountId: string, companyId: string): Promise<ContentPlan | null>;
   create(accountId: string, companyId: string, data: NewContentPlan): Promise<ContentPlan>;
@@ -265,6 +288,7 @@ export interface Repos {
   accounts: AccountsRepo;
   companies: CompaniesRepo;
   settings: SettingsRepo;
+  apiKeys: ApiKeysRepo;
   contentPlans: ContentPlansRepo;
   planEntries: PlanEntriesRepo;
   runs: RunsRepo;

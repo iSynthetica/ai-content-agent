@@ -19,6 +19,10 @@ export const envSchema = z.object({
   // Auth (§2.6). Мінімальна вимога до довжини секрету.
   AUTH_SECRET: z.string().min(16),
 
+  // BYOK (§ADR-0016): master-ключ для шифрування ключів провайдерів орендаря (AES-256-GCM).
+  // hex-64 або base64, рівно 32 байти — валідність перевіряє parseMasterKey у composition (fail-fast).
+  BYOK_ENCRYPTION_KEY: z.string().min(32),
+
   // CORS origin web-застосунку (§2.8.4) + сховище картинок (§4.3) — шви, з дефолтами.
   CORS_ORIGIN: z.string().url().default("http://localhost:3000"),
   IMAGE_STORAGE_DIR: z.string().default("/data/images"),

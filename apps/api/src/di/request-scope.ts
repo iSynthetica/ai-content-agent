@@ -7,6 +7,7 @@ import type { Repos } from "../repositories/interfaces";
 import { DrizzleAccountsRepo } from "../repositories/accounts.repo";
 import { DrizzleCompaniesRepo } from "../repositories/companies.repo";
 import { DrizzleSettingsRepo } from "../repositories/settings.repo";
+import { DrizzleApiKeysRepo } from "../repositories/api-keys.repo";
 import { DrizzleContentPlansRepo } from "../repositories/content-plans.repo";
 import { DrizzlePlanEntriesRepo } from "../repositories/plan-entries.repo";
 import { DrizzleRunsRepo } from "../repositories/runs.repo";
@@ -22,6 +23,7 @@ import { RunsService } from "../services/runs.service";
 import { ContentItemsService } from "../services/content-items.service";
 import { NotificationsFeedService } from "../services/notifications-feed.service";
 import { PlannerService } from "../services/planner.service";
+import { ApiKeysService } from "../services/api-keys.service";
 import {
   NotificationServiceImpl,
   type NotificationService,
@@ -38,6 +40,7 @@ export interface Services {
   notifications: NotificationService;
   feed: NotificationsFeedService;
   planner: PlannerService;
+  apiKeys: ApiKeysService;
 }
 
 export interface RequestScope {
@@ -55,6 +58,7 @@ export function buildRepos(tx: DbExecutor): Repos {
     settings: new DrizzleSettingsRepo(tx),
     contentPlans: new DrizzleContentPlansRepo(tx),
     planEntries: new DrizzlePlanEntriesRepo(tx),
+    apiKeys: new DrizzleApiKeysRepo(tx),
     runs: new DrizzleRunsRepo(tx),
     contentItems: new DrizzleContentItemsRepo(tx),
     notifications: new DrizzleNotificationsRepo(tx),
@@ -70,6 +74,7 @@ export function buildRequestScope(
   afterCommit: AfterCommit,
   _ports: Ports,
   logger: Logger,
+  masterKey: Buffer,
 ): RequestScope {
   const repos = buildRepos(tx);
   // NotificationService — реальна реалізація (Фаза 3, B11a): пише у notifications/inbox_items
@@ -97,6 +102,8 @@ export function buildRequestScope(
     planner: new PlannerService(repos.planEntries, repos.contentPlans, repos.companies, afterCommit),
     contentItems: new ContentItemsService(repos.contentItems, repos.runs, afterCommit, logger),
     notifications,
+    // BYOK: шифрування ключів орендаря master-ключем застосунку (§ADR-0016).
+    apiKeys: new ApiKeysService(repos.apiKeys, masterKey),
   };
 
   return { auth, afterCommit, repos, services };

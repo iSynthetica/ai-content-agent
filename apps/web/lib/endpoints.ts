@@ -52,6 +52,11 @@ export const ALLOW: ReadonlyArray<{ method: string; pattern: RegExp }> = [
   { method: "PATCH", pattern: /^\/plan-entries\/[^/]+$/ },
   { method: "POST", pattern: /^\/plan-entries\/approve$/ },
 
+  // BYOK: ключі провайдерів акаунта (list + set/remove per provider)
+  { method: "GET", pattern: /^\/api-keys$/ },
+  { method: "PUT", pattern: /^\/api-keys\/[^/]+$/ },
+  { method: "DELETE", pattern: /^\/api-keys\/[^/]+$/ },
+
   { method: "*", pattern: /^\/auth\/.+$/ }, // Better Auth: sign-in/out/session тощо
 ];
 
@@ -91,6 +96,10 @@ export const endpoints = {
   planEntries: (cid: string) => `/api/companies/${cid}/plan-entries`,
   planEntry: (id: string) => `/api/plan-entries/${id}`,
   planEntriesApprove: () => "/api/plan-entries/approve",
+
+  // BYOK: ключі провайдерів акаунта
+  apiKeys: () => "/api/api-keys",
+  apiKey: (provider: string) => `/api/api-keys/${provider}`,
 } as const;
 
 // Знімає провідний префікс /api (спільна нормалізація для proxy й apiClient).

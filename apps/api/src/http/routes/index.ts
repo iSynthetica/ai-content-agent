@@ -10,6 +10,7 @@ import { runsController } from "../../controllers/runs.controller";
 import { decisionsController } from "../../controllers/decisions.controller";
 import { notificationsController } from "../../controllers/notifications.controller";
 import { plannerController } from "../../controllers/planner.controller";
+import { apiKeysController } from "../../controllers/api-keys.controller";
 
 // Бізнес-роути під /v1 (за auth-middleware). Кожен контролер сам відкриває request-scope (openScope):
 // BEGIN + SET LOCAL app.current_* → репо/сервіси на tx → COMMIT/ROLLBACK + after-commit-хуки (§2.10.3).
@@ -24,6 +25,7 @@ export function businessRoutes(root: Composition): Router {
   const decisions = decisionsController(root);
   const notifications = notificationsController(root);
   const planner = plannerController(root);
+  const apiKeys = apiKeysController(root);
 
   // Акаунти користувача + компанії акаунта (switcher-и shell)
   r.get("/accounts", accounts.list);
@@ -73,6 +75,12 @@ export function businessRoutes(root: Composition): Router {
   r.post("/notifications/read-all", notifications.markAllRead);
   r.get("/inbox", notifications.inbox);
   r.post("/inbox/:id/resolve", notifications.resolveInbox);
+
+  // BYOK (§ADR-0016): ключі провайдерів акаунта. list — статус для будь-якого члена; set/remove —
+  // лише owner/admin (apikey:manage). Provider у path (openai|anthropic), ключ у тілі.
+  r.get("/api-keys", apiKeys.list);
+  r.put("/api-keys/:provider", requirePermission("apikey:manage"), apiKeys.set);
+  r.delete("/api-keys/:provider", requirePermission("apikey:manage"), apiKeys.remove);
 
   // Планувальник (§2.11): слоти плану окремо від прогонів. Усі мутації — plan:write.
   r.get("/companies/:companyId/plan-entries", planner.list);

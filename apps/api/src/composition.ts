@@ -1,4 +1,4 @@
-import { createDb, withAccountContext, type DB } from "@forteq/db";
+import { createDb, withAccountContext, parseMasterKey, type DB } from "@forteq/db";
 import { pino, type Logger } from "pino";
 import type { AppConfig } from "./config/env";
 import type { AuthCtx, AfterCommit, AfterCommitHook, Ports } from "./di/types";
@@ -49,6 +49,10 @@ export function buildComposition(config: AppConfig): Composition {
   // Better Auth self-host (email+password, ba_-таблиці) — синглтон, залежність, не глобал (§2.8).
   const auth = createAuth(db, config);
 
+  // BYOK master-ключ (§ADR-0016): парситься РАЗ на старті; невалідна довжина валить процес одразу,
+  // а не на першому записі ключа орендаря. Замикається у request-scope через buildRequestScope.
+  const masterKey = parseMasterKey(config.BYOK_ENCRYPTION_KEY);
+
   // openScope (§4.1): одна request-txn з SET LOCAL app.current_* → request-scoped scope → COMMIT.
   // Після коміту — after-commit-хуки, КОЖЕН на новій withAccountContext-txn зі свіжими репо
   // (request-tx уже закрито; enqueue/markи пишуться на живому tx2, §2.10.3).
@@ -62,7 +66,7 @@ export function buildComposition(config: AppConfig): Composition {
     };
 
     const result = await withAccountContext(db, authCtx, (tx) =>
-      fn(buildRequestScope(tx, authCtx, afterCommit, ports, logger)),
+      fn(buildRequestScope(tx, authCtx, afterCommit, ports, logger, masterKey)),
     );
 
     for (const hook of hooks) {

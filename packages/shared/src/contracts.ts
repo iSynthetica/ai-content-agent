@@ -95,6 +95,32 @@ export const companySettingsDTO = z.object({
 });
 export type CompanySettingsDTO = z.infer<typeof companySettingsDTO>;
 
+// ── BYOK: ключі провайдерів на рівні акаунта ──────────────────────────────────
+// Провайдери, для яких орендар приносить свій ключ = провайдери МОДЕЛЕЙ (генерація коштує його
+// грошей). Tavily лишається платформенним (пошук — не той ризик). db-колонка text — розширювана.
+export const apiKeyProviderSchema = z.enum(["openai", "anthropic"]);
+export type ApiKeyProvider = z.infer<typeof apiKeyProviderSchema>;
+
+// Маскований DTO — НІКОЛИ не містить самого ключа, лише last4. Читає будь-який член акаунта (щоб
+// UI показав статус «ключ налаштовано» і розумів, чому генерація доступна/ні); керують ключами
+// лише owner/admin (apikey:manage). Самого ключа немає навіть у відповіді на запис.
+export const apiKeyDTO = z.object({
+  provider: apiKeyProviderSchema,
+  last4: z.string(),
+  label: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  lastUsedAt: z.string().nullable(),
+});
+export type ApiKeyDTO = z.infer<typeof apiKeyDTO>;
+export const apiKeysResponse = z.object({ items: z.array(apiKeyDTO) });
+
+export const setApiKeyRequest = z.object({
+  key: z.string().min(16), // ключі провайдерів довгі; min відсікає очевидні помилки вводу
+  label: z.string().max(100).optional(),
+});
+export type SetApiKeyRequest = z.infer<typeof setApiKeyRequest>;
+
 // ── контент-план (конфіг) ─────────────────────────────────────────────────────
 export const cadenceSchema = z.record(
   z.object({
