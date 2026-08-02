@@ -130,6 +130,32 @@ $C down                    # stop (volumes kept)
 $C exec postgres pg_dump -U forteq_owner forteq | gzip > backup-$(date +%F).sql.gz
 ```
 
+## BYOK (tenant provider keys)
+
+Since ADR-0016 generation runs on the **tenant's** provider key, not a platform key. A run without a
+key for its provider is blocked with a clear message — there is no platform fallback.
+
+- Set `BYOK_ENCRYPTION_KEY` in `.env.prod` (`openssl rand -hex 32`). The **same** value is used by
+  api and worker (both read `.env.prod`). Changing it makes already-stored tenant keys unreadable.
+- Owners/admins add their own keys in the app under the account menu → **Ключі API**.
+- **Demo account** keeps generating on our key by intent — write the platform key as its tenant key:
+
+  ```bash
+  C="docker compose --env-file deploy/.env.prod -f deploy/compose.prod.yml"
+  source deploy/.env.prod
+  $C run --rm -e KEY_VALUE="$OPENAI_API_KEY" api \
+    pnpm --filter @forteq/api set-key -- --email demo@forteq.dev --provider openai --label platform
+  ```
+
+Updating a running deployment (BYOK or any change):
+
+```bash
+git pull
+# ensure BYOK_ENCRYPTION_KEY is in deploy/.env.prod before restarting the new code
+$C build api && $C run --rm api pnpm db:migrate     # apply new migrations with the new image
+$C up -d --build                                    # rebuild + restart with the new env
+```
+
 ## Notes and honest limitations
 
 - **Building on the server** keeps things simple (no registry) but ties deploys to server RAM. For
