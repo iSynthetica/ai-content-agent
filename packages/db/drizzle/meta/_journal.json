@@ -92,6 +92,13 @@
       "when": 1785689372562,
       "tag": "0012_right_the_leader",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1785695833522,
+      "tag": "0013_nosy_rogue",
+      "breakpoints": true
     }
   ]
 }

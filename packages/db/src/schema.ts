@@ -26,6 +26,9 @@ export const planEntryStatusEnum = pgEnum("plan_entry_status", [
 export const runTriggerEnum = pgEnum("run_trigger", ["manual", "scheduled"]);
 export const entrySourceEnum = pgEnum("entry_source", ["ai_suggested", "user_defined"]);
 export const inboxStatusEnum = pgEnum("inbox_status", ["open", "resolved"]);
+// Джерело версії тексту поста (content_item_versions.source, §content-editing): 'generated' —
+// знімок, який приніс пайплайн (Writer/revision); 'human' — людське редагування чи revert.
+export const contentSourceEnum = pgEnum("content_source", ["generated", "human"]);
 
 // Per-node прогрес пайплайна (§progress) — структурне дзеркало runProgress з @forteq/shared.
 // db НЕ залежить від shared, тож форму дублюємо тут (jsonb $type). Пише worker per-node.
@@ -202,6 +205,10 @@ export const contentItems = pgTable(
     runId: uuid("run_id").notNull().references(() => generationRuns.id, { onDelete: "cascade" }),
     channel: channelEnum("channel").notNull(),
     topic: text("topic"),
+    // title — заголовок поста (людське редагування, §content-editing). Nullable: пайплайн його не
+    // генерує (topic лишається робочою темою для UI/експорту), title з'являється лише коли редактор
+    // явно його задав через PATCH; порожній = використовуємо topic як заголовок у рендері.
+    title: text("title"),
     text: text("text"),
     scores: jsonb("scores").$type<Record<string, unknown>>(),
     violations: jsonb("violations").$type<unknown[]>(),
@@ -212,6 +219,30 @@ export const contentItems = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => ({ runIdx: index("content_items_run_idx").on(t.runId) }),
+);
+
+// Історія версій тексту поста (§content-editing): кожен запис — незмінний знімок тексту/заголовка
+// на момент persist (source='generated') або людської правки/revert (source='human'). Append-only —
+// навіть revert ДОДАЄ новий запис, а не видаляє історію (§ спека: "revert is a forward action").
+// Початкова згенерована версія пишеться воркером одразу після upsertContentItems (щоб
+// "згенерований текст" завжди можна було відновити, навіть якщо його ще ніхто не редагував).
+export const contentItemVersions = pgTable(
+  "content_item_versions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    contentItemId: uuid("content_item_id")
+      .notNull()
+      .references(() => contentItems.id, { onDelete: "cascade" }),
+    accountId: uuid("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
+    source: contentSourceEnum("source").notNull(),
+    text: text("text").notNull(),
+    title: text("title"),
+    editorUserId: uuid("editor_user_id").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    itemCreatedIdx: index("content_item_versions_item_created_idx").on(t.contentItemId, t.createdAt),
+  }),
 );
 
 // ── нотифікації + інбокс (§8 контексту) ──────────────────────────────────────
