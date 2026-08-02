@@ -112,14 +112,25 @@ describe("ContentItemsService.editItem", () => {
     expect(updated.title).toBe("Заголовок");
     expect(items.item.text).toBe("Нова версія тексту");
 
+    // Захист бази: айтем без версій → спершу знімок ОРИГІНАЛУ як 'generated', потім людська правка.
     const history = await versions.listByItem(ACCOUNT, ITEM_ID);
-    expect(history).toHaveLength(1);
+    expect(history).toHaveLength(2);
     expect(history[0]).toMatchObject({
       source: "human",
       text: "Нова версія тексту",
       title: "Заголовок",
       editorUserId: ctx.userId,
     });
+    expect(history[1]).toMatchObject({ source: "generated", text: "Оригінальний текст." });
+  });
+
+  it("НЕ дублює базу, якщо 'generated' версія вже є (нові айтеми з worker-хука)", async () => {
+    const { versions, service } = build();
+    await versions.insert(ACCOUNT, { contentItemId: ITEM_ID, source: "generated", text: "Оригінальний текст." });
+    await service.editItem(ctx, ITEM_ID, { text: "Правка" });
+    const history = await versions.listByItem(ACCOUNT, ITEM_ID);
+    expect(history.filter((v) => v.source === "generated")).toHaveLength(1); // без дубля бази
+    expect(history[0]).toMatchObject({ source: "human", text: "Правка" });
   });
 
   it("title відсутній у тілі запиту → пишеться null, а не старе значення", async () => {

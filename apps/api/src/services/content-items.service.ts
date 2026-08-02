@@ -98,6 +98,20 @@ export class ContentItemsService {
     const item = await this.items.findById(ctx.accountId, itemId);
     if (!item) throw AppError.notFound("content item");
 
+    // Захист бази: якщо для айтема ще НЕ записано жодної версії (створений до цієї фічі — на проді
+    // таких повно; worker-хук пише 'generated' лише для нових), спершу знімаємо ПОТОЧНИЙ (до-правки)
+    // текст як 'generated'. Інакше перша ж людська правка перезаписала б оригінал безповоротно.
+    const existing = await this.versions.listByItem(ctx.accountId, itemId);
+    if (existing.length === 0) {
+      await this.versions.insert(ctx.accountId, {
+        contentItemId: itemId,
+        source: "generated",
+        text: item.text ?? "",
+        title: item.title ?? null,
+        editorUserId: null,
+      });
+    }
+
     const title = patch.title ?? null;
     const updated = await this.items.updateContent(ctx.accountId, itemId, {
       text: patch.text,
