@@ -4,13 +4,16 @@
 // явного «Запустити генерацію» на кроці review. Два кроки: Configure → Review → (confirm). Scoped
 // (з календаря) пропускає вибір каналів/к-сті — їх задають обрані слоти.
 //
-// Теми (Phase 2): «AI обере» (Strategist вигадує, к-сть контрольована) або «вписати вручну» — тоді
-// генеруємо РІВНО введені теми (fan-out: один пост на тему), що дає точну к-сть і повний контроль.
-import { useState } from "react";
+// Теми (Phase 2): «AI обере» (Strategist вигадує на льоту, к-сть контрольована), «вписати вручну»
+// (генеруємо РІВНО введені теми — fan-out: один пост на тему, точна к-сть і повний контроль) або
+// «AI пропонує → редагувати» (topic preview, §runtopics): AI пропонує теми ЗАЗДАЛЕГІДЬ окремим
+// LLM-викликом (async job, поллінг), людина їх редагує, і вже затверджений список іде у ТОЙ САМИЙ
+// шлях, що ручний ввід — createRun.topics (жодного другого шляху створення прогону).
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { toast } from "sonner";
-import { CHANNELS, CHANNEL_DEFAULTS, MAX_POSTS_PER_RUN, type Channel } from "@forteq/shared";
+import { CHANNELS, CHANNEL_DEFAULTS, MAX_POSTS_PER_RUN, type Channel, type RunTopicInput } from "@forteq/shared";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +24,7 @@ import {
   type AgentModelsValue,
 } from "@/features/companies/brief/AgentModelsSection";
 import { useCreateRun } from "@/features/runs/use-create-run";
+import { useSuggestRunTopics, useTopicDraft } from "@/features/runs/use-suggest-topics";
 import { useT } from "@/lib/i18n";
 
 const CHANNEL_LABELS: Record<Channel, string> = {
@@ -43,14 +47,22 @@ export function RunConfigDialog({
   const scoped = (planEntryIds?.length ?? 0) > 0;
   const router = useRouter();
   const createRun = useCreateRun(companyId);
+  const suggestRunTopics = useSuggestRunTopics(companyId);
 
   const [step, setStep] = useState<"configure" | "review">("configure");
   const [included, setIncluded] = useState<Set<Channel>>(new Set(CHANNELS));
   const [counts, setCounts] = useState<Record<Channel, number>>({ ...CHANNEL_DEFAULTS });
-  const [topicMode, setTopicMode] = useState<"ai" | "manual">("ai");
+  const [topicMode, setTopicMode] = useState<"ai" | "manual" | "preview">("ai");
   const [manualTopics, setManualTopics] = useState<Record<string, string>>({});
   const [angle, setAngle] = useState("");
   const [agentModels, setAgentModels] = useState<AgentModelsValue>({});
+
+  // Topic preview (§runtopics): draftId — активний запит на пропозицію; previewTopics — РЕДАГОВАНА
+  // копія результату (не сам draft — draft лишається read-only знімком того, що повернув AI).
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [previewTopics, setPreviewTopics] = useState<RunTopicInput[]>([]);
+  const initializedDraftId = useRef<string | null>(null);
+  const draftQuery = useTopicDraft(companyId, draftId);
 
   const activeChannels = CHANNELS.filter((c) => included.has(c));
 
@@ -62,9 +74,63 @@ export function RunConfigDialog({
       .filter(Boolean);
   const manualList = activeChannels.flatMap((c) => linesFor(c).map((topic) => ({ channel: c, topic })));
 
+  // Коли пропозиція готова — переносимо результат у РЕДАГОВАНУ копію. Робимо це РІВНО раз на
+  // draftId (не на кожен рендер/poll): інакше правки людини затирались би повторним рефетчем.
+  useEffect(() => {
+    if (draftQuery.data?.status === "ready" && initializedDraftId.current !== draftId) {
+      initializedDraftId.current = draftId;
+      setPreviewTopics(draftQuery.data.topics ?? []);
+    }
+  }, [draftId, draftQuery.data]);
+
+  function requestPreview() {
+    setPreviewTopics([]);
+    initializedDraftId.current = null;
+    suggestRunTopics.mutate(
+      {
+        channels: activeChannels,
+        counts: Object.fromEntries(activeChannels.map((c) => [c, counts[c] || 1])),
+        ...(angle.trim() ? { angle: angle.trim() } : {}),
+      },
+      { onSuccess: ({ draftId: id }) => setDraftId(id) },
+    );
+  }
+
+  function resetPreview() {
+    setDraftId(null);
+    setPreviewTopics([]);
+    initializedDraftId.current = null;
+  }
+
+  function updatePreviewTopic(index: number, topic: string) {
+    setPreviewTopics(previewTopics.map((p, i) => (i === index ? { ...p, topic } : p)));
+  }
+  function removePreviewTopic(index: number) {
+    setPreviewTopics(previewTopics.filter((_, i) => i !== index));
+  }
+  function addPreviewTopic(channel: Channel) {
+    setPreviewTopics([...previewTopics, { channel, topic: "" }]);
+  }
+
+  const previewReady = draftQuery.data?.status === "ready";
+  const previewPending =
+    suggestRunTopics.isPending ||
+    (draftId !== null && (draftQuery.data?.status === "pending" || !draftQuery.data));
+  const previewFailed = draftQuery.data?.status === "failed";
+  const previewList = previewTopics.filter((p) => p.topic.trim());
+  // Канали для редагованого списку — з РЕЗУЛЬТАТУ (не з чекбоксів вгорі): після генерації людина
+  // працює зі списком, а не перевибирає канали.
+  const previewChannels = CHANNELS.filter((c) => previewTopics.some((p) => p.channel === c));
+
   // Підсумок для review + валідація.
   const aiTotal = activeChannels.reduce((s, c) => s + (counts[c] || 0), 0);
-  const total = scoped ? planEntryIds!.length : topicMode === "manual" ? manualList.length : aiTotal;
+  const total = scoped
+    ? planEntryIds!.length
+    : topicMode === "manual"
+      ? manualList.length
+      : topicMode === "preview"
+        ? previewList.length
+        : aiTotal;
   const tooMany = total > MAX_POSTS_PER_RUN;
   const canProceed = scoped || (total >= 1 && !tooMany);
 
@@ -79,10 +145,12 @@ export function RunConfigDialog({
       ? { planEntryIds }
       : topicMode === "manual"
         ? { topics: manualList }
-        : {
-            channels: activeChannels,
-            counts: Object.fromEntries(activeChannels.map((c) => [c, counts[c]])),
-          };
+        : topicMode === "preview"
+          ? { topics: previewList.map((p) => ({ ...p, topic: p.topic.trim() })) }
+          : {
+              channels: activeChannels,
+              counts: Object.fromEntries(activeChannels.map((c) => [c, counts[c]])),
+            };
     createRun.mutate(
       {
         ...body,
@@ -135,7 +203,7 @@ export function RunConfigDialog({
                         <label htmlFor={`ch-${c}`} className="w-28 text-sm">
                           {t(CHANNEL_LABELS[c])}
                         </label>
-                        {topicMode === "ai" && (
+                        {(topicMode === "ai" || (topicMode === "preview" && !previewReady && !previewPending)) && (
                           <Input
                             type="number"
                             min={1}
@@ -155,7 +223,7 @@ export function RunConfigDialog({
 
                   <div className="flex flex-col gap-2">
                     <Label>{t("Теми")}</Label>
-                    <div className="flex gap-4 text-sm">
+                    <div className="flex flex-wrap gap-4 text-sm">
                       <label className="flex items-center gap-1.5">
                         <input
                           type="radio"
@@ -174,7 +242,17 @@ export function RunConfigDialog({
                         />
                         {t("Вписати вручну")}
                       </label>
+                      <label className="flex items-center gap-1.5">
+                        <input
+                          type="radio"
+                          checked={topicMode === "preview"}
+                          onChange={() => setTopicMode("preview")}
+                          className="accent-primary"
+                        />
+                        {t("AI пропонує → редагувати")}
+                      </label>
                     </div>
+
                     {topicMode === "manual" && (
                       <div className="flex flex-col gap-3">
                         <p className="text-xs text-muted-foreground">
@@ -194,6 +272,93 @@ export function RunConfigDialog({
                             />
                           </div>
                         ))}
+                      </div>
+                    )}
+
+                    {topicMode === "preview" && (
+                      <div className="flex flex-col gap-3">
+                        {!draftId && !suggestRunTopics.isPending && (
+                          <>
+                            <p className="text-xs text-muted-foreground">
+                              {t("AI запропонує теми для обраних каналів — ви зможете відредагувати їх перед запуском.")}
+                            </p>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              disabled={activeChannels.length === 0}
+                              onClick={requestPreview}
+                            >
+                              {t("Запропонувати теми")}
+                            </Button>
+                          </>
+                        )}
+
+                        {suggestRunTopics.isError && (
+                          <p className="text-sm text-destructive">
+                            {(suggestRunTopics.error as Error)?.message ?? t("Не вдалося запросити теми")}
+                          </p>
+                        )}
+
+                        {previewPending && (
+                          <p className="text-sm text-muted-foreground">{t("Підбираємо теми…")}</p>
+                        )}
+
+                        {previewFailed && (
+                          <div className="flex flex-col gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-3">
+                            <p className="text-sm text-destructive">
+                              {draftQuery.data?.error ?? t("Не вдалося підібрати теми")}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {t("Спробуйте ще раз або оберіть інший режим тем вище.")}
+                            </p>
+                            <Button type="button" variant="outline" size="sm" onClick={resetPreview}>
+                              {t("Спробувати ще раз")}
+                            </Button>
+                          </div>
+                        )}
+
+                        {previewReady && (
+                          <div className="flex flex-col gap-4">
+                            {previewChannels.map((c) => (
+                              <div key={c} className="flex flex-col gap-1.5">
+                                <Label className="text-xs">{t(CHANNEL_LABELS[c])}</Label>
+                                {previewTopics.map((p, i) =>
+                                  p.channel === c ? (
+                                    <div key={i} className="flex items-center gap-1.5">
+                                      <Input
+                                        value={p.topic}
+                                        placeholder={t("Тема")}
+                                        onChange={(e) => updatePreviewTopic(i, e.target.value)}
+                                        aria-label={`${t("Тема")} ${t(CHANNEL_LABELS[c])} ${i + 1}`}
+                                      />
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        aria-label={t("Видалити тему")}
+                                        onClick={() => removePreviewTopic(i)}
+                                      >
+                                        <X className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  ) : null,
+                                )}
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="self-start"
+                                  onClick={() => addPreviewTopic(c)}
+                                >
+                                  {t("+ Додати тему")}
+                                </Button>
+                              </div>
+                            ))}
+                            <Button type="button" variant="outline" size="sm" className="self-start" onClick={resetPreview}>
+                              {t("Запропонувати ще раз")}
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -237,6 +402,15 @@ export function RunConfigDialog({
                           {t(CHANNEL_LABELS[c])} — {linesFor(c).length} ({t("ваші теми")})
                         </li>
                       ))}
+                    <li className="mt-1 font-medium text-foreground">{t("Разом")}: {total} {t("постів")}</li>
+                  </ul>
+                ) : topicMode === "preview" ? (
+                  <ul className="text-muted-foreground">
+                    {previewChannels.map((c) => (
+                      <li key={c}>
+                        {t(CHANNEL_LABELS[c])} — {previewList.filter((p) => p.channel === c).length} ({t("теми AI, відредаговані")})
+                      </li>
+                    ))}
                     <li className="mt-1 font-medium text-foreground">{t("Разом")}: {total} {t("постів")}</li>
                   </ul>
                 ) : (

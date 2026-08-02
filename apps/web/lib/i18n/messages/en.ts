@@ -332,6 +332,22 @@ export const en: Record<string, string> = {
   "Не вдалося запустити прогін": "Couldn't start the run",
   "Назад": "Back",
   "Далі": "Next",
+
+  // ── Run config dialog — topic preview (§runtopics) ─────────────────────────
+  "AI пропонує → редагувати": "AI suggests → edit",
+  "AI запропонує теми для обраних каналів — ви зможете відредагувати їх перед запуском.":
+    "AI will suggest topics for the selected channels — you'll be able to edit them before starting.",
+  "Запропонувати теми": "Suggest topics",
+  "Не вдалося запросити теми": "Couldn't request topics",
+  "Підбираємо теми…": "Suggesting topics…",
+  "Не вдалося підібрати теми": "Couldn't suggest topics",
+  "Спробуйте ще раз або оберіть інший режим тем вище.": "Try again, or pick a different topic mode above.",
+  "Спробувати ще раз": "Try again",
+  "Тема": "Topic",
+  "Видалити тему": "Remove topic",
+  "+ Додати тему": "+ Add topic",
+  "Запропонувати ще раз": "Suggest again",
+  "теми AI, відредаговані": "AI-suggested, edited",
   "Запускаємо…": "Starting…",
   "Запустити генерацію": "Start generation",
 

@@ -31,6 +31,10 @@ export const ALLOW: ReadonlyArray<{ method: string; pattern: RegExp }> = [
   { method: "POST", pattern: /^\/content-items\/[^/]+\/decision$/ }, // { action, feedback } по item
   { method: "GET", pattern: /^\/runs\/[^/]+\/export$/ },
 
+  // Topic preview (§runtopics): AI-підбір тем для ad-hoc прогону + поллінг чернетки
+  { method: "POST", pattern: /^\/companies\/[^/]+\/runs\/suggest-topics$/ },
+  { method: "GET", pattern: /^\/companies\/[^/]+\/topic-drafts\/[^/]+$/ },
+
   // §content-editing: людське редагування поста + версії
   { method: "PATCH", pattern: /^\/content-items\/[^/]+$/ }, // { text, title? }
   { method: "GET", pattern: /^\/content-items\/[^/]+\/versions$/ },
@@ -82,6 +86,10 @@ export const endpoints = {
   runDecision: (id: string) => `/api/runs/${id}/decision`,
   itemDecision: (id: string) => `/api/content-items/${id}/decision`,
   export: (id: string) => `/api/runs/${id}/export`,
+
+  // Topic preview (§runtopics)
+  suggestRunTopics: (cid: string) => `/api/companies/${cid}/runs/suggest-topics`,
+  topicDraft: (cid: string, draftId: string) => `/api/companies/${cid}/topic-drafts/${draftId}`,
 
   // §content-editing: людське редагування поста + версії
   itemEdit: (id: string) => `/api/content-items/${id}`,
