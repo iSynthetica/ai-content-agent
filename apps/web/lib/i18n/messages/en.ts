@@ -131,4 +131,16 @@ export const en: Record<string, string> = {
   "вище, інакше прогін не запуститься.": "key above, otherwise the run won't start.",
   "Вкажіть назву компанії": "Enter a company name",
   "Некоректний URL (приклад: https://forteq.systems)": "Invalid URL (example: https://forteq.systems)",
+
+  // ── Planner pages / account settings ─────────────────────────────────────
+  "Спершу слоти й теми, потім генерація — план можна переглянути до того, як витрачені гроші на модель.":
+    "Slots and topics first, then generation — you can review the plan before any model spend.",
+  "До планувальника": "Back to planner",
+  "Розклад публікацій": "Publishing schedule",
+  "Дні виходу по каналах, тематичні стовпи та горизонт планування.":
+    "Publishing days per channel, topic pillars, and the planning horizon.",
+  "Свій ключ провайдера на акаунт: генерація оплачується вашим ключем. Без ключа потрібного провайдера прогони не запускаються.":
+    "One provider key per account: generation is billed to your key. Without a key for the required provider, runs won't start.",
+  "Керувати ключами можуть лише власник і адміністратор акаунта.":
+    "Only the account owner and admin can manage keys.",
 };

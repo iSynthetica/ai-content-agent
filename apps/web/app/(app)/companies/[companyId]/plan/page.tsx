@@ -6,6 +6,7 @@ import { Settings2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { PlannerBoard } from "@/features/planner/PlannerBoard";
+import { getT } from "@/lib/i18n/server";
 
 export default async function PlanPage({
   params,
@@ -13,21 +14,21 @@ export default async function PlanPage({
   params: Promise<{ companyId: string }>;
 }) {
   const { companyId } = await params;
+  const t = await getT();
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Планувальник</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{t("Планувальник")}</h1>
           <p className="text-muted-foreground">
-            Спершу слоти й теми, потім генерація — план можна переглянути до того, як витрачені
-            гроші на модель.
+            {t("Спершу слоти й теми, потім генерація — план можна переглянути до того, як витрачені гроші на модель.")}
           </p>
         </div>
         <Button asChild variant="outline" size="sm">
           <Link href={`/companies/${companyId}/plan/settings`}>
             <Settings2 />
-            Розклад
+            {t("Розклад")}
           </Link>
         </Button>
       </header>
