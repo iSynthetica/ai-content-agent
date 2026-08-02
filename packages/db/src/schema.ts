@@ -245,6 +245,30 @@ export const contentItemVersions = pgTable(
   }),
 );
 
+// ── AI-підбір тем для ad-hoc прогону (topic preview) ──────────────────────────
+// Короткоживучі scratch-рядки: запит на пропозицію тем (input) + результат (topics), поки людина
+// не погодить їх і не запустить прогін через звичайний createRun.topics. Немає runId/planEntryId —
+// чернетка НЕ прив'язана до жодного вже існуючого рядка, вона сама лише вхід для наступного прогону.
+// v1: без cleanup job — чернетки не видаляються самі (малий обсяг, TTL — шов на майбутнє).
+export const runTopicDrafts = pgTable(
+  "run_topic_drafts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    accountId: uuid("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
+    companyId: uuid("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    status: text("status").default("pending").notNull(), // pending | ready | failed
+    // Запит: { channels: Channel[], counts: Record<Channel, number>, angle?: string }.
+    input: jsonb("input").$type<Record<string, unknown>>().notNull(),
+    // Результат: RunTopicInput[] (@forteq/shared) — null, доки status не 'ready'.
+    topics: jsonb("topics").$type<
+      Array<{ channel: string; topic: string; keyMessage?: string; seoKeywords?: string[] }>
+    >(),
+    error: text("error"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({ accountIdx: index("run_topic_drafts_account_idx").on(t.accountId) }),
+);
+
 // ── нотифікації + інбокс (§8 контексту) ──────────────────────────────────────
 export const notifications = pgTable(
   "notifications",
