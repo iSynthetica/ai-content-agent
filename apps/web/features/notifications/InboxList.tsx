@@ -11,15 +11,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useInbox, useResolveInbox } from "@/features/notifications/use-notifications";
 import { formatDateTime } from "@/lib/format";
+import { useLanguage } from "@/lib/i18n";
 
 export function InboxList() {
+  const { t, language } = useLanguage();
   const inbox = useInbox();
   const resolve = useResolveInbox();
 
   const items = inbox.data?.items ?? [];
 
   if (inbox.isLoading) {
-    return <p className="text-sm text-muted-foreground">Завантаження…</p>;
+    return <p className="text-sm text-muted-foreground">{t("Завантаження…")}</p>;
   }
 
   if (items.length === 0) {
@@ -27,9 +29,9 @@ export function InboxList() {
       <Card>
         <CardContent className="flex flex-col items-center gap-2 py-12 text-center">
           <CheckCircle2 className="size-8 text-success" aria-hidden />
-          <p className="font-medium">Немає задач</p>
+          <p className="font-medium">{t("Немає задач")}</p>
           <p className="text-sm text-muted-foreground">
-            Коли прогін завершиться і пости чекатимуть на рецензію, задача з’явиться тут.
+            {t("Коли прогін завершиться і пости чекатимуть на рецензію, задача з’явиться тут.")}
           </p>
         </CardContent>
       </Card>
@@ -48,7 +50,7 @@ export function InboxList() {
                 <div className="flex flex-col gap-0.5">
                   <span className="font-medium">{item.title}</span>
                   <span className="text-xs text-muted-foreground">
-                    {formatDateTime(item.createdAt)}
+                    {formatDateTime(item.createdAt, language)}
                   </span>
                 </div>
               </div>
@@ -56,7 +58,7 @@ export function InboxList() {
               <div className="flex items-center gap-2">
                 {href && (
                   <Button asChild size="sm">
-                    <Link href={href}>Перейти</Link>
+                    <Link href={href}>{t("Перейти")}</Link>
                   </Button>
                 )}
                 <Button
@@ -65,7 +67,7 @@ export function InboxList() {
                   onClick={() => resolve.mutate(item.id)}
                   disabled={resolve.isPending}
                 >
-                  Виконано
+                  {t("Виконано")}
                 </Button>
               </div>
             </CardContent>

@@ -277,4 +277,12 @@ export const en: Record<string, string> = {
   "Замінити ключ": "Replace key",
   "Додати ключ": "Add key",
   "Видалити ключ": "Delete key",
+
+  // ── Inbox ─────────────────────────────────────────────────────────────────
+  "Дії, що потребують вашої уваги.": "Actions that need your attention.",
+  "Немає задач": "No tasks",
+  "Коли прогін завершиться і пости чекатимуть на рецензію, задача з’явиться тут.":
+    "Once a run finishes and posts are waiting for review, the task will show up here.",
+  "Перейти": "Open",
+  "Виконано": "Done",
 };
