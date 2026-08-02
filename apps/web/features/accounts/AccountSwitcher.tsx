@@ -4,7 +4,7 @@
 // не транспорт авторизації) і веде на дефолтну компанію обраного акаунта (через індекс `/`).
 // Тенант-скоуп api виводить із сесії + RLS, а не з cookie.
 import { useRouter } from "next/navigation";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, KeyRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -58,6 +58,11 @@ export function AccountSwitcher({
             <Check className={cn("ml-auto", a.id === active.id ? "opacity-100" : "opacity-0")} />
           </DropdownMenuItem>
         ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => router.push("/settings")} className="gap-2">
+          <KeyRound className="opacity-70" />
+          <span>Ключі API</span>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

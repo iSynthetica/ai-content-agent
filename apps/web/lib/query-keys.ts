@@ -12,6 +12,8 @@ export const qk = {
   // §14 нотифікації + inbox (глобальні)
   notifications: () => ["notifications"] as const,
   inbox: () => ["inbox"] as const,
+  // BYOK: ключі провайдерів акаунта (§ADR-0016)
+  apiKeys: () => ["api-keys"] as const,
   // §15 план + слоти
   plan: (companyId: string) => ["plan", companyId] as const,
   planEntries: (companyId: string, range?: string) =>

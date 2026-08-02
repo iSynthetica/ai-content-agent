@@ -11,12 +11,19 @@ export {
   contentPlanDTO,
   // Історична назва у web-хуках (use-update-plan-config) — аліас на канонічний contentPlanDTO.
   contentPlanDTO as contentPlanResponse,
+  // BYOK: ключі провайдерів акаунта (§ADR-0016)
+  apiKeyDTO,
+  apiKeysResponse,
+  apiKeyProviderSchema,
+  setApiKeyRequest,
 } from "@forteq/shared";
 export type {
   AccountDTO,
   CompanySettingsDTO,
   ContentPlanDTO,
   ContentPlanDTO as ContentPlanResponse,
+  ApiKeyDTO,
+  ApiKeyProvider,
 } from "@forteq/shared";
 
 // Локальна відповідь-підтвердження для мутацій без сутності (НЕ частина контракту межі —
