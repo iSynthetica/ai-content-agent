@@ -4,6 +4,7 @@ import { handleStart } from "./handlers/start.js";
 import { handleResume } from "./handlers/resume.js";
 import { handleBootstrapOnboarding } from "./handlers/bootstrapOnboarding.js";
 import { handleSuggestTopics } from "./handlers/suggestTopics.js";
+import { handleSuggestRunTopics } from "./handlers/suggestRunTopics.js";
 import { handleContentVisuals } from "./handlers/contentVisuals.js";
 
 /**
@@ -20,6 +21,8 @@ export async function route(job: Job, ctx: HandlerContext): Promise<void> {
       return handleBootstrapOnboarding(job, ctx);
     case "planner.suggest_topics":
       return handleSuggestTopics(job, ctx);
+    case "runtopics.suggest":
+      return handleSuggestRunTopics(job, ctx);
     case "content.visuals":
       return handleContentVisuals(job, ctx);
     default: {
