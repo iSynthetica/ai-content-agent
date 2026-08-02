@@ -31,6 +31,11 @@ export const ALLOW: ReadonlyArray<{ method: string; pattern: RegExp }> = [
   { method: "POST", pattern: /^\/content-items\/[^/]+\/decision$/ }, // { action, feedback } по item
   { method: "GET", pattern: /^\/runs\/[^/]+\/export$/ },
 
+  // §content-editing: людське редагування поста + версії
+  { method: "PATCH", pattern: /^\/content-items\/[^/]+$/ }, // { text, title? }
+  { method: "GET", pattern: /^\/content-items\/[^/]+\/versions$/ },
+  { method: "POST", pattern: /^\/content-items\/[^/]+\/revert$/ }, // { versionId }
+
   // §13 онбординг + bootstrap
   { method: "POST", pattern: /^\/onboarding$/ },
   { method: "POST", pattern: /^\/companies\/[^/]+\/bootstrap$/ },
@@ -77,6 +82,11 @@ export const endpoints = {
   runDecision: (id: string) => `/api/runs/${id}/decision`,
   itemDecision: (id: string) => `/api/content-items/${id}/decision`,
   export: (id: string) => `/api/runs/${id}/export`,
+
+  // §content-editing: людське редагування поста + версії
+  itemEdit: (id: string) => `/api/content-items/${id}`,
+  itemVersions: (id: string) => `/api/content-items/${id}/versions`,
+  itemRevert: (id: string) => `/api/content-items/${id}/revert`,
 
   // §13 онбординг
   onboarding: () => "/api/onboarding",

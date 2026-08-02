@@ -12,6 +12,7 @@ import { DrizzleContentPlansRepo } from "../repositories/content-plans.repo";
 import { DrizzlePlanEntriesRepo } from "../repositories/plan-entries.repo";
 import { DrizzleRunsRepo } from "../repositories/runs.repo";
 import { DrizzleContentItemsRepo } from "../repositories/content-items.repo";
+import { DrizzleContentItemVersionsRepo } from "../repositories/content-item-versions.repo";
 import { DrizzleInboxRepo, DrizzleNotificationsRepo } from "../repositories/notifications.repo";
 
 import { AccountsService } from "../services/accounts.service";
@@ -61,6 +62,7 @@ export function buildRepos(tx: DbExecutor): Repos {
     apiKeys: new DrizzleApiKeysRepo(tx),
     runs: new DrizzleRunsRepo(tx),
     contentItems: new DrizzleContentItemsRepo(tx),
+    contentItemVersions: new DrizzleContentItemVersionsRepo(tx),
     notifications: new DrizzleNotificationsRepo(tx),
     inbox: new DrizzleInboxRepo(tx),
   };
@@ -101,7 +103,13 @@ export function buildRequestScope(
     // afterCommit (enqueue resume на свіжому PostCommitScope, §2.10.3).
     feed: new NotificationsFeedService(repos.notifications, repos.inbox),
     planner: new PlannerService(repos.planEntries, repos.contentPlans, repos.companies, afterCommit),
-    contentItems: new ContentItemsService(repos.contentItems, repos.runs, afterCommit, logger),
+    contentItems: new ContentItemsService(
+      repos.contentItems,
+      repos.runs,
+      repos.contentItemVersions,
+      afterCommit,
+      logger,
+    ),
     notifications,
     // BYOK: шифрування ключів орендаря master-ключем застосунку (§ADR-0016).
     apiKeys: new ApiKeysService(repos.apiKeys, masterKey),

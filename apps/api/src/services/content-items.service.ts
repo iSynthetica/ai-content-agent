@@ -1,19 +1,29 @@
 import type { Logger } from "pino";
-import type { DecisionRequest } from "@forteq/shared";
+import type { DecisionRequest, EditContentItemRequest } from "@forteq/shared";
 import { AppError } from "../http/errors";
 import type { AfterCommit, AuthCtx } from "../di/types";
-import type { ContentItem, ContentItemsRepo, RunsRepo } from "../repositories/interfaces";
+import type {
+  ContentItem,
+  ContentItemsRepo,
+  ContentItemVersion,
+  ContentItemVersionsRepo,
+  RunsRepo,
+} from "../repositories/interfaces";
 
-// ContentItemsService — per-item HITL-рішення (§7, POST /v1/content-items/:id/decision).
+// ContentItemsService — per-item HITL-рішення (§7, POST /v1/content-items/:id/decision) +
+// людське редагування тексту/заголовка з версіями (§content-editing).
 // Тверда межа (§11): api граф НЕ ганяє.
 //  • approve/reject — прямий workflow-статус айтема (approved/rejected) у scoped-txn, БЕЗ resume/графа.
 //  • rerun — item-rerun = resume НАЯВНОГО прогону (той самий threadId, живий checkpointer, §7):
 //      api лише ставить айтем у needs_revision + enqueue `generation.resume`; worker деривує itemIds
 //      з БД (status='needs_revision', B2) і перегенерує саме цей пост (Writer→Reviewer).
+//  • edit/revert — синхронна правка вмісту, БЕЗ enqueue: на відміну від rerun, це не перегенерація
+//    LLM, а пряма заміна тексту людиною, тож весь потік лишається в одній scoped-txn.
 export class ContentItemsService {
   constructor(
     private readonly items: ContentItemsRepo,
     private readonly runs: RunsRepo,
+    private readonly versions: ContentItemVersionsRepo,
     private readonly afterCommit: AfterCommit,
     private readonly logger: Logger,
   ) {}
@@ -74,6 +84,76 @@ export class ContentItemsService {
       }
     });
 
+    return updated;
+  }
+
+  // PATCH /v1/content-items/:id — людська правка тексту/заголовка. Пише content_items.text/title
+  // ТА нову source:'human'-версію в одній scoped-txn (обидва записи або жоден — не enqueue, не
+  // граф, звичайна атомарна правка).
+  async editItem(
+    ctx: AuthCtx,
+    itemId: string,
+    patch: EditContentItemRequest,
+  ): Promise<ContentItem> {
+    const item = await this.items.findById(ctx.accountId, itemId);
+    if (!item) throw AppError.notFound("content item");
+
+    const title = patch.title ?? null;
+    const updated = await this.items.updateContent(ctx.accountId, itemId, {
+      text: patch.text,
+      title,
+    });
+    if (!updated) throw AppError.notFound("content item");
+
+    await this.versions.insert(ctx.accountId, {
+      contentItemId: itemId,
+      source: "human",
+      text: patch.text,
+      title,
+      editorUserId: ctx.userId,
+    });
+
+    this.logger.info({ itemId }, "content item edited by human");
+    return updated;
+  }
+
+  // GET /v1/content-items/:id/versions — історія версій, найновіша перша. Read — доступний будь-
+  // якому члену акаунта (без RBAC-гварда на роуті), тож тут лише перевірка належності айтема.
+  async listVersions(ctx: AuthCtx, itemId: string): Promise<ContentItemVersion[]> {
+    const item = await this.items.findById(ctx.accountId, itemId);
+    if (!item) throw AppError.notFound("content item");
+    return this.versions.listByItem(ctx.accountId, itemId);
+  }
+
+  // POST /v1/content-items/:id/revert — { versionId } повертає вміст айтема до обраної версії.
+  // Append-only (§content-editing): сам revert ДОДАЄ нову source:'human'-версію з вмістом версії,
+  // на яку відкотились, — історія ніколи не втрачає записи, "відкат" видно як черговий крок уперед.
+  async revertItem(
+    ctx: AuthCtx,
+    itemId: string,
+    versionId: string,
+  ): Promise<ContentItem> {
+    const item = await this.items.findById(ctx.accountId, itemId);
+    if (!item) throw AppError.notFound("content item");
+
+    const version = await this.versions.findById(ctx.accountId, versionId);
+    if (!version || version.contentItemId !== itemId) throw AppError.notFound("version");
+
+    const updated = await this.items.updateContent(ctx.accountId, itemId, {
+      text: version.text,
+      title: version.title,
+    });
+    if (!updated) throw AppError.notFound("content item");
+
+    await this.versions.insert(ctx.accountId, {
+      contentItemId: itemId,
+      source: "human",
+      text: version.text,
+      title: version.title,
+      editorUserId: ctx.userId,
+    });
+
+    this.logger.info({ itemId, versionId }, "content item reverted to earlier version");
     return updated;
   }
 }

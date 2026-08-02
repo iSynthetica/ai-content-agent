@@ -1,7 +1,13 @@
 import { and, asc, eq } from "drizzle-orm";
 import { contentItems } from "@forteq/db";
 import type { DbExecutor } from "../di/types";
-import type { ContentItem, ContentItemsRepo, ItemStatus, ItemsQuery } from "./interfaces";
+import type {
+  ContentItem,
+  ContentItemContentPatch,
+  ContentItemsRepo,
+  ItemStatus,
+  ItemsQuery,
+} from "./interfaces";
 
 type ItemRow = typeof contentItems.$inferSelect;
 
@@ -11,6 +17,7 @@ function toItem(row: ItemRow): ContentItem {
     runId: row.runId,
     channel: row.channel,
     topic: row.topic,
+    title: row.title,
     text: row.text,
     // scores/violations — jsonb, форму валідує контракт межі; тут проєкція без ре-парсингу.
     scores: (row.scores ?? null) as ContentItem["scores"],
@@ -53,6 +60,22 @@ export class DrizzleContentItemsRepo implements ContentItemsRepo {
     const [row] = await this.tx
       .update(contentItems)
       .set({ status })
+      .where(and(eq(contentItems.accountId, accountId), eq(contentItems.id, id)))
+      .returning();
+    return row ? toItem(row) : null;
+  }
+
+  // Людська правка тексту/заголовка (§content-editing). Свідомо НЕ чіпає image_url (ADR-0012,
+  // власник — job content.visuals) і не рухає status/scores/violations — це правка вмісту, а не
+  // workflow-рішення.
+  async updateContent(
+    accountId: string,
+    id: string,
+    patch: ContentItemContentPatch,
+  ): Promise<ContentItem | null> {
+    const [row] = await this.tx
+      .update(contentItems)
+      .set({ text: patch.text, title: patch.title })
       .where(and(eq(contentItems.accountId, accountId), eq(contentItems.id, id)))
       .returning();
     return row ? toItem(row) : null;

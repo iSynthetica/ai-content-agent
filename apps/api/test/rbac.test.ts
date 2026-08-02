@@ -21,6 +21,7 @@ const EXPECTED: Record<Role, Permission[]> = {
     "run:start",
     "decision:make",
     "apikey:manage",
+    "content:edit",
   ],
   admin: [
     "company:write",
@@ -30,8 +31,16 @@ const EXPECTED: Record<Role, Permission[]> = {
     "run:start",
     "decision:make",
     "apikey:manage",
+    "content:edit",
   ],
-  editor: ["company:write", "settings:write", "plan:write", "run:start", "decision:make"],
+  editor: [
+    "company:write",
+    "settings:write",
+    "plan:write",
+    "run:start",
+    "decision:make",
+    "content:edit",
+  ],
   reviewer: ["decision:make"],
   viewer: [],
 };
@@ -59,6 +68,17 @@ describe("RBAC matrix (can)", () => {
   it("editor may not manage API keys or delete companies", () => {
     expect(can("editor", "apikey:manage")).toBe(false);
     expect(can("editor", "company:delete")).toBe(false);
+  });
+
+  it("reviewer may decide but not edit post content directly", () => {
+    expect(can("reviewer", "decision:make")).toBe(true);
+    expect(can("reviewer", "content:edit")).toBe(false);
+  });
+
+  it("editor and above may edit post content", () => {
+    expect(can("owner", "content:edit")).toBe(true);
+    expect(can("admin", "content:edit")).toBe(true);
+    expect(can("editor", "content:edit")).toBe(true);
   });
 });
 
@@ -99,6 +119,16 @@ describe("requirePermission guard", () => {
 
     const denied = vi.fn();
     requirePermission("run:start")(reqAs("reviewer"), {} as never, denied);
+    expect((denied.mock.calls[0]![0] as AppError).status).toBe(403);
+  });
+
+  it("gates content:edit — editor passes, reviewer is denied", () => {
+    const ok = vi.fn();
+    requirePermission("content:edit")(reqAs("editor"), {} as never, ok);
+    expect(ok).toHaveBeenCalledWith();
+
+    const denied = vi.fn();
+    requirePermission("content:edit")(reqAs("reviewer"), {} as never, denied);
     expect((denied.mock.calls[0]![0] as AppError).status).toBe(403);
   });
 });

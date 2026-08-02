@@ -220,11 +220,49 @@ export interface RunsRepo {
   updateStatus(accountId: string, id: string, status: RunStatus): Promise<void>;
 }
 
+// Правка тексту/заголовка людиною (§content-editing, PATCH /v1/content-items/:id). title — явно
+// nullable (не Partial-опційний): PATCH завжди задає title разом із text, `null` = очистити.
+export interface ContentItemContentPatch {
+  text: string;
+  title: string | null;
+}
+
 export interface ContentItemsRepo {
   listByRun(accountId: string, runId: string, query: ItemsQuery): Promise<ContentItem[]>;
   // per-item HITL (§7): читання айтема (скоуп/DTO) + прямий workflow-статус (approve/reject/rerun).
   findById(accountId: string, id: string): Promise<ContentItem | null>;
   updateStatus(accountId: string, id: string, status: ItemStatus): Promise<ContentItem | null>;
+  // Людська правка тексту/заголовка (§content-editing). НЕ чіпає status/scores/violations/imageUrl —
+  // ті лишаються власністю пайплайна/reviewer'а; правка тексту — окрема дія, не workflow-рішення.
+  updateContent(accountId: string, id: string, patch: ContentItemContentPatch): Promise<ContentItem | null>;
+}
+
+// ── версії тексту поста (§content-editing) ────────────────────────────────────
+export type ContentVersionSource = "generated" | "human";
+
+export interface ContentItemVersion {
+  id: string;
+  contentItemId: string;
+  source: ContentVersionSource;
+  text: string;
+  title: string | null;
+  editorUserId: string | null;
+  createdAt: string;
+}
+
+export interface NewContentItemVersion {
+  contentItemId: string;
+  source: ContentVersionSource;
+  text: string;
+  title?: string | null;
+  editorUserId?: string | null;
+}
+
+export interface ContentItemVersionsRepo {
+  insert(accountId: string, row: NewContentItemVersion): Promise<ContentItemVersion>;
+  // Найновіша перша (GET /v1/content-items/:id/versions) — так історія читається як лог правок.
+  listByItem(accountId: string, contentItemId: string): Promise<ContentItemVersion[]>;
+  findById(accountId: string, id: string): Promise<ContentItemVersion | null>;
 }
 
 // ── Нотифікації та inbox (§2.13) ─────────────────────────────────────────────
@@ -295,6 +333,7 @@ export interface Repos {
   planEntries: PlanEntriesRepo;
   runs: RunsRepo;
   contentItems: ContentItemsRepo;
+  contentItemVersions: ContentItemVersionsRepo;
   notifications: NotificationsRepo;
   inbox: InboxItemsRepo;
 }

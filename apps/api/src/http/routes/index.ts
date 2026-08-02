@@ -8,6 +8,7 @@ import { contentPlansController } from "../../controllers/content-plans.controll
 import { onboardingController } from "../../controllers/onboarding.controller";
 import { runsController } from "../../controllers/runs.controller";
 import { decisionsController } from "../../controllers/decisions.controller";
+import { contentItemsController } from "../../controllers/content-items.controller";
 import { notificationsController } from "../../controllers/notifications.controller";
 import { plannerController } from "../../controllers/planner.controller";
 import { apiKeysController } from "../../controllers/api-keys.controller";
@@ -23,6 +24,7 @@ export function businessRoutes(root: Composition): Router {
   const onboarding = onboardingController(root);
   const runs = runsController(root);
   const decisions = decisionsController(root);
+  const contentItems = contentItemsController(root);
   const notifications = notificationsController(root);
   const planner = plannerController(root);
   const apiKeys = apiKeysController(root);
@@ -68,6 +70,12 @@ export function businessRoutes(root: Composition): Router {
   // Тверда межа: api лише enqueue resume-job — граф ганяє worker.
   r.post("/runs/:id/decision", requirePermission("decision:make"), decisions.run);
   r.post("/content-items/:id/decision", requirePermission("decision:make"), decisions.item);
+
+  // Людське редагування постів + версії (§content-editing). edit/revert — content:edit (правка
+  // вмісту, не workflow-рішення); versions — read, без гварда (будь-який член акаунта).
+  r.patch("/content-items/:id", requirePermission("content:edit"), contentItems.edit);
+  r.get("/content-items/:id/versions", contentItems.versions);
+  r.post("/content-items/:id/revert", requirePermission("content:edit"), contentItems.revert);
 
   // Нотифікації + Inbox (§2.13) — персональний фід, без RBAC-гварда (див. коментар вище)
   r.get("/notifications", notifications.list);
