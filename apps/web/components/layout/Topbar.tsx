@@ -8,6 +8,7 @@ import { LogOut, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 
 import { Button } from "@/components/ui/button";
+import { MobileNav } from "@/components/layout/MobileNav";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import {
   DropdownMenu,
@@ -65,6 +66,7 @@ export function Topbar({
   return (
     <header className="flex h-14 items-center gap-2 border-b border-border bg-background px-4">
       <div className="flex items-center gap-1">
+        <MobileNav companies={companies} />
         <AccountSwitcher accounts={accounts} activeAccountId={activeAccountId} />
         <span className="text-muted-foreground">/</span>
         <CompanySwitcher accountId={activeAccountId} companies={companies} />

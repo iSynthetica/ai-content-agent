@@ -24,7 +24,7 @@ export function AppShell({
 }) {
   return (
     <div className="flex min-h-screen bg-background">
-      <Sidebar />
+      <Sidebar companies={companies} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar
           session={session}
