@@ -106,7 +106,7 @@ export async function handleStart(job: GenerationStartJob, ctx: HandlerContext):
       toneExamples: settings?.toneExamples ?? [],
       visualStyle: settings?.visualStyle ?? undefined,
       forbiddenPhrases: settings?.forbiddenPhrases ?? [],
-      language: settings?.language ?? "uk",
+      language: settings?.language ?? "en",
     };
 
     // ModelConfig — снапшот прогону (generation_runs.model_config) поверх company_settings, fallback DEFAULT_MODELS.

@@ -59,7 +59,7 @@ export async function handleBootstrapOnboarding(
       name: company.name,
       websiteUrl: company.websiteUrl,
       description: company.description,
-      language: settings?.language ?? "uk",
+      language: settings?.language ?? "en",
       modelConfig: resolveModelConfig(snapshot, DEFAULT_MODELS),
     };
   });

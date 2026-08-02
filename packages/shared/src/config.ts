@@ -21,6 +21,25 @@ export const PLAN_ENTRY_STATUSES = [
 export const ROLES = ["owner", "admin", "editor", "reviewer", "viewer"] as const;
 export const WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 
+// Мова ГЕНЕРАЦІЇ контенту (окремо від мови UI). Зберігається кодом; іде у промпти як {language}.
+// Дефолт — англійська. Коди сумісні з наявними даними ("uk"/"en"), тож без міграції значень.
+export const DEFAULT_GENERATION_LANGUAGE = "en";
+export const GENERATION_LANGUAGES: ReadonlyArray<{ code: string; label: string }> = [
+  { code: "en", label: "English" },
+  { code: "uk", label: "Ukrainian (Українська)" },
+  { code: "es", label: "Spanish (Español)" },
+  { code: "de", label: "German (Deutsch)" },
+  { code: "fr", label: "French (Français)" },
+  { code: "pt", label: "Portuguese (Português)" },
+  { code: "it", label: "Italian (Italiano)" },
+  { code: "pl", label: "Polish (Polski)" },
+  { code: "nl", label: "Dutch (Nederlands)" },
+  { code: "tr", label: "Turkish (Türkçe)" },
+  { code: "ja", label: "Japanese (日本語)" },
+  { code: "zh", label: "Chinese (中文)" },
+  { code: "ar", label: "Arabic (العربية)" },
+];
+
 // ── Каталог моделей для селектора в налаштуваннях ─────────────────────────────
 // ID звірено з реальним прайсом користувача (2026-07). Ціни в лейблах: input/output за 1M токенів.
 // provider обирає набір ТЕКСТОВИХ моделей; зображення — завжди OpenAI (Anthropic їх не робить).

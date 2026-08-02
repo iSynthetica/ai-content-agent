@@ -9,7 +9,9 @@ import { toast } from "sonner";
 import {
   AGENT_MODEL_KEYS,
   AGENT_MODEL_LABELS,
+  DEFAULT_GENERATION_LANGUAGE,
   DEFAULT_MODELS_BY_PROVIDER,
+  GENERATION_LANGUAGES,
   IMAGE_MODELS,
   PROVIDERS,
   PROVIDER_LABELS,
@@ -85,7 +87,7 @@ export function BriefForm({
       toneExamples: joinList(settings?.toneExamples, "newline"),
       visualStyle: settings?.visualStyle ?? "",
       forbiddenPhrases: joinList(settings?.forbiddenPhrases),
-      language: settings?.language ?? "uk",
+      language: settings?.language ?? DEFAULT_GENERATION_LANGUAGE,
       provider: initialProvider,
       models: initialModels,
       agentModels: (settings?.agentModels ?? {}) as Record<string, { provider: Provider; model: string }>,
@@ -350,7 +352,19 @@ export function BriefForm({
                   <FormItem>
                     <FormLabel>Мова контенту</FormLabel>
                     <FormControl>
-                      <Input placeholder="uk" {...field} />
+                      <Select
+                        value={(field.value as string | undefined) ?? DEFAULT_GENERATION_LANGUAGE}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
+                      >
+                        {GENERATION_LANGUAGES.map((l) => (
+                          <option key={l.code} value={l.code}>
+                            {l.label}
+                          </option>
+                        ))}
+                      </Select>
                     </FormControl>
                     <FormMessage />
                   </FormItem>

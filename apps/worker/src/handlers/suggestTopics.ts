@@ -74,7 +74,7 @@ export async function handleSuggestTopics(
       toneExamples: settings?.toneExamples ?? [],
       visualStyle: settings?.visualStyle ?? undefined,
       forbiddenPhrases: settings?.forbiddenPhrases ?? [],
-      language: settings?.language ?? "uk",
+      language: settings?.language ?? "en",
     };
 
     const config = (plan?.config ?? {}) as { pillars?: string[] };

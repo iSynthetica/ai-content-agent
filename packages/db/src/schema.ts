@@ -120,7 +120,7 @@ export const companySettings = pgTable("company_settings", {
   toneExamples: jsonb("tone_examples").$type<string[]>().default([]).notNull(),
   visualStyle: text("visual_style"),
   forbiddenPhrases: jsonb("forbidden_phrases").$type<string[]>().default([]).notNull(),
-  language: text("language").default("uk").notNull(),
+  language: text("language").default("en").notNull(), // мова генерації; дефолт — англійська
   provider: text("provider").default("openai").notNull(), // фолбек-провайдер (легасі + не-override слоти)
   models: jsonb("models").$type<Record<string, string>>(), // фолбек per-slot id
   // Per-slot override provider+model (§ADR-0017). NULL = легасі-режим (один provider на компанію).
