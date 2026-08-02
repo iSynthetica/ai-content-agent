@@ -24,7 +24,7 @@ export const briefSchema = z.object({
   forbiddenPhrases: z.string().optional(), // «революційний, унікальний»
   language: z.string().optional(),
   // Дефолти LLM для генерації (дзеркало updateSettingsRequest із @forteq/shared):
-  provider: z.enum(["openai", "anthropic"]).optional(),
+  provider: z.enum(["openai", "anthropic", "gemini"]).optional(),
   models: z.record(z.string()).optional(), // { <agentKey>: modelId, visual: modelId }
 });
 

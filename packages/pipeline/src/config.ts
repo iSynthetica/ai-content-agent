@@ -16,9 +16,12 @@ export const MAX_HUMAN_REVISIONS = 2; // людська петля gate→revisi
 export const ITEM_CONCURRENCY = 4; // текстові вузли: writer, reviewer
 export const IMAGE_CONCURRENCY = 2; // картинки дорожчі й жорсткіші за лімітами
 
+// Провайдери текстових моделей. Зображення — завжди OpenAI (gpt-image-1), незалежно від цього.
+export type ModelProvider = "openai" | "anthropic" | "gemini";
+
 // Резолвлений снапшот моделей на момент запуску (кладеться у стан → персиститься у checkpointer).
 export interface ModelConfig {
-  provider: "openai" | "anthropic";
+  provider: ModelProvider;
   models: Record<ModelSlot, string>; // per-agent id
 }
 
@@ -53,7 +56,9 @@ export function resolveModelConfig(
 }
 
 // Секрети, потрібні defaultModelFactory у worker. Тут — лише тип-контракт (пайплайн їх не читає).
+// Зображення завжди OpenAI, тож openaiApiKey потрібен для visual навіть коли текст на іншому провайдері.
 export interface ModelSecrets {
   openaiApiKey?: string;
   anthropicApiKey?: string;
+  geminiApiKey?: string;
 }

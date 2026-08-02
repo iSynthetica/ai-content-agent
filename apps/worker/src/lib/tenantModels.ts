@@ -21,7 +21,9 @@ export class NoTenantKeyError extends Error {
 }
 
 function keyFor(secrets: ModelSecrets, provider: string): string | undefined {
-  return provider === "anthropic" ? secrets.anthropicApiKey : secrets.openaiApiKey;
+  if (provider === "anthropic") return secrets.anthropicApiKey;
+  if (provider === "gemini") return secrets.geminiApiKey;
+  return secrets.openaiApiKey;
 }
 
 // Завантажує й розшифровує ВСІ ключі акаунта у ModelSecrets. RLS скоупить вибірку за accountId,
@@ -39,6 +41,7 @@ async function loadTenantSecrets(ctx: HandlerContext, accountId: string): Promis
     const plain = decryptSecret(r.ciphertext, key);
     if (r.provider === "openai") out.openaiApiKey = plain;
     else if (r.provider === "anthropic") out.anthropicApiKey = plain;
+    else if (r.provider === "gemini") out.geminiApiKey = plain;
   }
   return out;
 }

@@ -18,6 +18,7 @@ import { useApiKeys, useDeleteApiKey, useSetApiKey } from "@/features/api-keys/u
 const PROVIDERS: Array<{ id: ApiKeyProvider; label: string; hint: string }> = [
   { id: "openai", label: "OpenAI", hint: "Потрібен для генерації тексту й зображень (gpt-image-1)." },
   { id: "anthropic", label: "Anthropic", hint: "Потрібен, лише якщо в налаштуваннях обрано Claude." },
+  { id: "gemini", label: "Google Gemini", hint: "Потрібен, лише якщо в налаштуваннях обрано Gemini." },
 ];
 
 export function ApiKeysManager({

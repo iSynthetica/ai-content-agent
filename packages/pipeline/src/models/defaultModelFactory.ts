@@ -4,6 +4,7 @@
 // DI не порушено — worker сам вирішує, що інжектити; тести інжектять FakeModelFactory (той самий контракт).
 import { ChatOpenAI } from "@langchain/openai";
 import { ChatAnthropic } from "@langchain/anthropic";
+import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import type { AgentName, ModelConfig, ModelSecrets } from "../config";
 import type { ImageModel, ModelFactory } from "../ports";
@@ -12,6 +13,11 @@ export function defaultModelFactory(config: ModelConfig, secrets: ModelSecrets):
   const buildChat = (modelId: string): BaseChatModel => {
     if (config.provider === "anthropic") {
       return new ChatAnthropic({ model: modelId, apiKey: secrets.anthropicApiKey, temperature: 0.7 });
+    }
+    if (config.provider === "gemini") {
+      // Gemini structured-output йде через function-calling (не strict-JSON як OpenAI), тож
+      // .withStructuredOutput у агентах працює, але поведінка інша — потребує перевірки живим ключем.
+      return new ChatGoogleGenerativeAI({ model: modelId, apiKey: secrets.geminiApiKey, temperature: 0.7 });
     }
     // GPT-5-família та o-series — reasoning-моделі: (1) приймають ЛИШЕ дефолтну temperature (1),
     // кастомна → 400; (2) БЕЗ reasoning_effort «думають» задовго (десятки секунд навіть на дрібних

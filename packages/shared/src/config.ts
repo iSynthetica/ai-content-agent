@@ -24,8 +24,16 @@ export const WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as con
 // ── Каталог моделей для селектора в налаштуваннях ─────────────────────────────
 // ID звірено з реальним прайсом користувача (2026-07). Ціни в лейблах: input/output за 1M токенів.
 // provider обирає набір ТЕКСТОВИХ моделей; зображення — завжди OpenAI (Anthropic їх не робить).
-export const PROVIDERS = ["openai", "anthropic"] as const;
+export const PROVIDERS = ["openai", "anthropic", "gemini"] as const;
 export type Provider = (typeof PROVIDERS)[number];
+
+// Людські назви провайдерів — єдине джерело для селекторів UI (щоб новий провайдер не показувався
+// під чужим лейблом через захардкоджений тернар).
+export const PROVIDER_LABELS: Record<Provider, string> = {
+  openai: "OpenAI",
+  anthropic: "Anthropic",
+  gemini: "Google Gemini",
+};
 
 // Текстові агенти, для яких обирається модель.
 export const AGENT_MODEL_KEYS = ["researcher", "strategist", "writer", "reviewer", "judge"] as const;
@@ -64,6 +72,11 @@ export const TEXT_MODELS: Record<Provider, ModelOption[]> = {
     { id: "claude-sonnet-5", label: "Claude Sonnet 5 — збалансований" },
     { id: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5 — швидкий" },
   ],
+  gemini: [
+    { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro — флагман" },
+    { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash — збалансований" },
+    { id: "gemini-2.0-flash", label: "Gemini 2.0 Flash — швидкий/дешевий" },
+  ],
 };
 
 // Зображення (Visual-агент) — лише OpenAI.
@@ -87,6 +100,15 @@ export const DEFAULT_MODELS_BY_PROVIDER: Record<Provider, Record<string, string>
     writer: "claude-opus-4-8",
     reviewer: "claude-sonnet-5",
     judge: "claude-opus-4-8",
+    visual: "gpt-image-1",
+  },
+  gemini: {
+    // Зображення завжди OpenAI (Gemini генерацію gpt-image-1 не робить) — visual лишається gpt-image-1.
+    researcher: "gemini-2.0-flash",
+    strategist: "gemini-2.5-flash",
+    writer: "gemini-2.5-pro",
+    reviewer: "gemini-2.5-flash",
+    judge: "gemini-2.5-pro",
     visual: "gpt-image-1",
   },
 };

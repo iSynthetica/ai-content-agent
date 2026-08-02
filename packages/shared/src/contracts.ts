@@ -78,7 +78,7 @@ export const updateSettingsRequest = z.object({
   visualStyle: z.string().optional(),
   forbiddenPhrases: z.array(z.string()).optional(),
   language: z.string().optional(),
-  provider: z.enum(["openai", "anthropic"]).optional(),
+  provider: z.enum(["openai", "anthropic", "gemini"]).optional(),
   models: z.record(z.string()).optional(),
 });
 
@@ -90,7 +90,7 @@ export const companySettingsDTO = z.object({
   visualStyle: z.string().nullable(),
   forbiddenPhrases: z.array(z.string()),
   language: z.string(),
-  provider: z.enum(["openai", "anthropic"]),
+  provider: z.enum(["openai", "anthropic", "gemini"]),
   models: z.record(z.string()).nullable(),
 });
 export type CompanySettingsDTO = z.infer<typeof companySettingsDTO>;
@@ -98,7 +98,7 @@ export type CompanySettingsDTO = z.infer<typeof companySettingsDTO>;
 // ── BYOK: ключі провайдерів на рівні акаунта ──────────────────────────────────
 // Провайдери, для яких орендар приносить свій ключ = провайдери МОДЕЛЕЙ (генерація коштує його
 // грошей). Tavily лишається платформенним (пошук — не той ризик). db-колонка text — розширювана.
-export const apiKeyProviderSchema = z.enum(["openai", "anthropic"]);
+export const apiKeyProviderSchema = z.enum(["openai", "anthropic", "gemini"]);
 export type ApiKeyProvider = z.infer<typeof apiKeyProviderSchema>;
 
 // Маскований DTO — НІКОЛИ не містить самого ключа, лише last4. Читає будь-який член акаунта (щоб

@@ -53,7 +53,7 @@ export const contentVisualsJob = z.object({
   // Снапшот прогону — щоб фонова генерація малювала ТІЄЮ Ж моделлю, що обрана в налаштуваннях
   // на момент запуску (а не тією, що стане дефолтною пізніше).
   modelConfig: z.object({
-    provider: z.enum(["openai", "anthropic"]),
+    provider: z.enum(["openai", "anthropic", "gemini"]),
     models: z.record(z.string()),
   }),
   targets: z.array(z.object({ itemId: z.string(), prompt: z.string() })).min(1),

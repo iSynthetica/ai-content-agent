@@ -12,6 +12,7 @@ import {
   DEFAULT_MODELS_BY_PROVIDER,
   IMAGE_MODELS,
   PROVIDERS,
+  PROVIDER_LABELS,
   TEXT_MODELS,
   type Provider,
 } from "@forteq/shared";
@@ -374,7 +375,7 @@ export function BriefForm({
                     >
                       {PROVIDERS.map((p) => (
                         <option key={p} value={p}>
-                          {p === "openai" ? "OpenAI" : "Anthropic"}
+                          {PROVIDER_LABELS[p]}
                         </option>
                       ))}
                     </Select>
