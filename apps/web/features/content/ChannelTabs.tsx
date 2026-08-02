@@ -10,6 +10,7 @@ import { CHANNELS, type Channel } from "@forteq/shared";
 import { cn } from "@/lib/utils";
 import { CHANNEL_META } from "@/components/common/channel-badge";
 import { ContentItemCard } from "@/components/common/content-item-card";
+import { useT } from "@/lib/i18n";
 import type { ContentItemDTO } from "@/features/content/schemas";
 
 function isChannel(v: string | null): v is Channel {
@@ -25,6 +26,7 @@ export function ChannelTabs({
   runId: string;
   companyId: string;
 }) {
+  const t = useT();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -53,7 +55,7 @@ export function ChannelTabs({
     <div className="flex flex-col gap-4">
       <div
         role="tablist"
-        aria-label="Канали"
+        aria-label={t("Канали")}
         className="flex flex-wrap gap-1 border-b border-border"
       >
         {CHANNELS.map((ch) => {
@@ -76,11 +78,11 @@ export function ChannelTabs({
               )}
             >
               <Icon className="h-3.5 w-3.5" aria-hidden />
-              {label}
+              {t(label)}
               <span className="tabular-nums text-xs text-muted-foreground">{chItems.length}</span>
               {flagged && (
                 <span
-                  aria-label="є порушення"
+                  aria-label={t("є порушення")}
                   className="h-1.5 w-1.5 rounded-full bg-warning"
                 />
               )}
@@ -91,7 +93,7 @@ export function ChannelTabs({
 
       {activeItems.length === 0 ? (
         <p className="py-8 text-center text-sm text-muted-foreground">
-          Для цього каналу ще немає постів.
+          {t("Для цього каналу ще немає постів.")}
         </p>
       ) : (
         <div className="flex flex-col gap-4">

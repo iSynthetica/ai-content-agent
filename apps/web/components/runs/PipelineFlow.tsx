@@ -1,3 +1,5 @@
+"use client";
+
 // PipelineFlow — n8n-подібна флоу-діаграма пайплайна генерації на сторінці run'у.
 // Горизонтальний ряд нод-ролей зі стрілками-конекторами; на вузькому — вертикальний стек.
 // Статус кожної ноди береться з run.progress (derivePipelineNodes). Кольори/motion — лише
@@ -9,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { isRunTerminal } from "@/lib/status";
+import { useT } from "@/lib/i18n";
 import type { RunDTO } from "@/features/runs/schemas";
 import {
   derivePipelineNodes,
@@ -56,6 +59,7 @@ function NodeIndicator({ state }: { state: NodeState }) {
 
 // Одна нода флоу — картка-бокс із роллю, статусом і (за потреби) бейджами.
 function PipelineNode({ node }: { node: PipelineNodeView }) {
+  const t = useT();
   return (
     <div
       className={cn(
@@ -69,17 +73,17 @@ function PipelineNode({ node }: { node: PipelineNodeView }) {
       </span>
       <div className="flex min-w-0 flex-col gap-1">
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-sm font-medium leading-none">{node.label}</span>
+          <span className="text-sm font-medium leading-none">{t(node.label)}</span>
           {node.revision && (
             <Badge variant="muted" className="px-1.5 py-0 text-[10px] font-medium">
-              ревізія
+              {t("ревізія")}
             </Badge>
           )}
         </div>
-        <span className="text-xs text-muted-foreground">{NODE_STATE_LABEL[node.state]}</span>
+        <span className="text-xs text-muted-foreground">{t(NODE_STATE_LABEL[node.state])}</span>
         {node.conditional && (
           <span className="text-[10px] uppercase tracking-wide text-muted-foreground/70">
-            умовний
+            {t("умовний")}
           </span>
         )}
       </div>
@@ -100,6 +104,7 @@ function Connector() {
 }
 
 export function PipelineFlow({ run }: { run: RunWithProgress }) {
+  const t = useT();
   const progress = run.progress ?? null;
   const nodes = derivePipelineNodes(progress, run.status);
   const terminal = isRunTerminal(run.status);
@@ -110,20 +115,20 @@ export function PipelineFlow({ run }: { run: RunWithProgress }) {
       <CardContent className="flex flex-col gap-4 py-5">
         {/* ── Верхній рядок: заголовок + «Зараз: <роль>» / «Завершено» ── */}
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-medium">Пайплайн</h2>
+          <h2 className="text-sm font-medium">{t("Пайплайн")}</h2>
           {terminal ? (
-            <span className="text-sm text-muted-foreground">Завершено</span>
+            <span className="text-sm text-muted-foreground">{t("Завершено")}</span>
           ) : currentRole ? (
             <span className="inline-flex items-center gap-2 text-sm">
               <span
                 aria-hidden
                 className="inline-block h-2 w-2 rounded-full bg-info motion-safe:animate-pulse"
               />
-              <span className="text-muted-foreground">Зараз:</span>
-              <span className="font-medium text-foreground">{currentRole}</span>
+              <span className="text-muted-foreground">{t("Зараз")}:</span>
+              <span className="font-medium text-foreground">{t(currentRole)}</span>
             </span>
           ) : (
-            <span className="text-sm text-muted-foreground">Очікує на старт</span>
+            <span className="text-sm text-muted-foreground">{t("Очікує на старт")}</span>
           )}
         </div>
 

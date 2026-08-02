@@ -247,4 +247,21 @@ export const en: Record<string, string> = {
   "Що саме змінити у наступній ітерації? Напр.: «прибрати заклики до дії, додати конкретику».":
     "What exactly should change in the next iteration? E.g. \"remove calls to action, add more specifics.\"",
   "Відправляємо…": "Sending…",
+
+  // ── Pipeline flow ─────────────────────────────────────────────────────────
+  "Візуал": "Visual",
+  "Рев'ю людини": "Human review",
+  "Очікує": "Pending",
+  "ревізія": "revision",
+  "умовний": "conditional",
+  "Пайплайн": "Pipeline",
+  "Завершено": "Completed",
+  "Зараз": "Now",
+  "Очікує на старт": "Waiting to start",
+
+  // ── Channel tabs / export menu ───────────────────────────────────────────
+  "Канали": "Channels",
+  "є порушення": "has violations",
+  "Для цього каналу ще немає постів.": "No posts for this channel yet.",
+  "Експорт": "Export",
 };

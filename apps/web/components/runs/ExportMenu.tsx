@@ -15,8 +15,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { endpoints } from "@/lib/endpoints";
+import { useT } from "@/lib/i18n";
 
 export function ExportMenu({ runId, disabled }: { runId: string; disabled?: boolean }) {
+  const t = useT();
   const href = (format: "md" | "json") => `${endpoints.export(runId)}?format=${format}`;
 
   return (
@@ -24,7 +26,7 @@ export function ExportMenu({ runId, disabled }: { runId: string; disabled?: bool
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" disabled={disabled}>
           <Download />
-          Експорт
+          {t("Експорт")}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
