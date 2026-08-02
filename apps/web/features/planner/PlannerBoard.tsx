@@ -23,10 +23,12 @@ import {
   useUpdateEntry,
   type PlanEntry,
 } from "@/features/planner/use-plan-entries";
+import { useLanguage, useT, type Language } from "@/lib/i18n";
 
-function formatDay(date: string | null): string {
-  if (!date) return "Без дати";
-  return new Date(`${date}T00:00:00Z`).toLocaleDateString("uk-UA", {
+function formatDay(date: string | null, language: Language, noDateLabel: string): string {
+  if (!date) return noDateLabel;
+  const locale = language === "en" ? "en-US" : "uk-UA";
+  return new Date(`${date}T00:00:00Z`).toLocaleDateString(locale, {
     weekday: "short",
     day: "numeric",
     month: "long",
@@ -51,6 +53,7 @@ function groupByDay(items: PlanEntry[]): Array<[string, PlanEntry[]]> {
 }
 
 function EntryRow({ entry, companyId }: { entry: PlanEntry; companyId: string }) {
+  const t = useT();
   const update = useUpdateEntry(companyId);
   const [editing, setEditing] = React.useState(false);
   const [topic, setTopic] = React.useState(entry.topic ?? "");
@@ -65,7 +68,7 @@ function EntryRow({ entry, companyId }: { entry: PlanEntry; companyId: string })
       { id: entry.id, topic, keyMessage },
       {
         onSuccess: () => setEditing(false),
-        onError: () => toast.error("Не вдалося зберегти тему"),
+        onError: () => toast.error(t("Не вдалося зберегти тему")),
       },
     );
   }
@@ -82,19 +85,19 @@ function EntryRow({ entry, companyId }: { entry: PlanEntry; companyId: string })
 
       {editing ? (
         <div className="flex flex-col gap-2">
-          <Input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Тема поста" />
+          <Input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder={t("Тема поста")} />
           <Textarea
             value={keyMessage}
             onChange={(e) => setKeyMessage(e.target.value)}
-            placeholder="Ключове повідомлення"
+            placeholder={t("Ключове повідомлення")}
             rows={2}
           />
           <div className="flex gap-2">
             <Button size="sm" onClick={save} disabled={update.isPending || !topic.trim()}>
-              Зберегти
+              {t("Зберегти")}
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
-              Скасувати
+              {t("Скасувати")}
             </Button>
           </div>
         </div>
@@ -109,7 +112,7 @@ function EntryRow({ entry, companyId }: { entry: PlanEntry; companyId: string })
             <span className="text-sm font-medium">{entry.topic}</span>
           ) : (
             <span className="text-sm italic text-muted-foreground">
-              Тема ще не підібрана — натисніть «Підібрати теми» або впишіть свою
+              {t("Тема ще не підібрана — натисніть «Підібрати теми» або впишіть свою")}
             </span>
           )}
           {entry.keyMessage && (
@@ -122,6 +125,7 @@ function EntryRow({ entry, companyId }: { entry: PlanEntry; companyId: string })
 }
 
 export function PlannerBoard({ companyId }: { companyId: string }) {
+  const { t, language } = useLanguage();
   const entries = usePlanEntries(companyId);
   const materialize = useMaterializePlan(companyId);
   const suggest = useSuggestTopics(companyId);
@@ -137,11 +141,11 @@ export function PlannerBoard({ companyId }: { companyId: string }) {
       onSuccess: (r) =>
         toast.success(
           r.created > 0
-            ? `Додано слотів: ${r.created}`
-            : "Нових слотів немає — план уже покриває горизонт",
+            ? `${t("Додано слотів")}: ${r.created}`
+            : t("Нових слотів немає — план уже покриває горизонт"),
         ),
       // Найчастіша причина — не налаштований cadence. Показуємо повідомлення з api, а не загальне.
-      onError: (e) => toast.error(e instanceof Error ? e.message : "Не вдалося оновити план"),
+      onError: (e) => toast.error(e instanceof Error ? e.message : t("Не вдалося оновити план")),
     });
   }
 
@@ -153,10 +157,10 @@ export function PlannerBoard({ companyId }: { companyId: string }) {
           // Розбіжність показуємо чесно: частина слотів могла бути вже не в `proposed`.
           toast.success(
             r.approved === r.requested
-              ? `Погоджено: ${r.approved}`
-              : `Погоджено ${r.approved} із ${r.requested} — решта вже змінили статус`,
+              ? `${t("Погоджено")}: ${r.approved}`
+              : `${t("Погоджено")} ${r.approved} ${t("із")} ${r.requested} — ${t("решта вже змінили статус")}`,
           ),
-        onError: () => toast.error("Не вдалося погодити слоти"),
+        onError: () => toast.error(t("Не вдалося погодити слоти")),
       },
     );
   }
@@ -166,7 +170,7 @@ export function PlannerBoard({ companyId }: { companyId: string }) {
       <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" variant="outline" onClick={onMaterialize} disabled={materialize.isPending}>
           {materialize.isPending ? <Loader2 className="animate-spin" /> : <CalendarPlus />}
-          Оновити слоти
+          {t("Оновити слоти")}
         </Button>
         <Button
           size="sm"
@@ -175,31 +179,30 @@ export function PlannerBoard({ companyId }: { companyId: string }) {
           disabled={suggest.isPending || missingTopics === 0}
         >
           {suggest.isPending ? <Loader2 className="animate-spin" /> : <Sparkles />}
-          Підібрати теми{missingTopics > 0 ? ` (${missingTopics})` : ""}
+          {t("Підібрати теми")}{missingTopics > 0 ? ` (${missingTopics})` : ""}
         </Button>
         <Button size="sm" onClick={onApproveAll} disabled={approve.isPending || proposed.length === 0}>
           <Check />
-          Погодити всі ({proposed.length})
+          {t("Погодити всі")} ({proposed.length})
         </Button>
       </div>
 
       {entries.isLoading ? (
-        <p className="text-sm text-muted-foreground">Завантаження…</p>
+        <p className="text-sm text-muted-foreground">{t("Завантаження…")}</p>
       ) : items.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center gap-2 py-12 text-center">
             <CalendarPlus className="size-8 text-muted-foreground" aria-hidden />
-            <p className="font-medium">Слотів ще немає</p>
+            <p className="font-medium">{t("Слотів ще немає")}</p>
             <p className="max-w-sm text-sm text-muted-foreground">
-              Налаштуйте розклад публікацій у конфігурації плану, потім натисніть «Оновити слоти» —
-              вони з’являться на горизонті планування.
+              {t("Налаштуйте розклад публікацій у конфігурації плану, потім натисніть «Оновити слоти» — вони з’являться на горизонті планування.")}
             </p>
           </CardContent>
         </Card>
       ) : (
         groups.map(([day, dayItems]) => (
           <div key={day || "backlog"} className="flex flex-col gap-2">
-            <h3 className="text-sm font-medium text-muted-foreground">{formatDay(day || null)}</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">{formatDay(day || null, language, t("Без дати"))}</h3>
             {dayItems.map((e) => (
               <EntryRow key={e.id} entry={e} companyId={companyId} />
             ))}

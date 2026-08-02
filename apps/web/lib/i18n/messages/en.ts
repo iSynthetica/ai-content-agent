@@ -143,4 +143,59 @@ export const en: Record<string, string> = {
     "One provider key per account: generation is billed to your key. Without a key for the required provider, runs won't start.",
   "Керувати ключами можуть лише власник і адміністратор акаунта.":
     "Only the account owner and admin can manage keys.",
+
+  // ── Planner board ─────────────────────────────────────────────────────────
+  "Без дати": "No date",
+  "Не вдалося зберегти тему": "Couldn't save the topic",
+  "Тема поста": "Post topic",
+  "Ключове повідомлення": "Key message",
+  "Скасувати": "Cancel",
+  "Тема ще не підібрана — натисніть «Підібрати теми» або впишіть свою":
+    "No topic picked yet — click \"Suggest topics\" or write your own",
+  "Додано слотів": "Slots added",
+  "Нових слотів немає — план уже покриває горизонт": "No new slots — the plan already covers the horizon",
+  "Не вдалося оновити план": "Couldn't update the plan",
+  "Погоджено": "Approved",
+  "із": "of",
+  "решта вже змінили статус": "the rest already changed status",
+  "Не вдалося погодити слоти": "Couldn't approve the slots",
+  "Оновити слоти": "Refresh slots",
+  "Підібрати теми": "Suggest topics",
+  "Погодити всі": "Approve all",
+  "Завантаження…": "Loading…",
+  "Слотів ще немає": "No slots yet",
+  "Налаштуйте розклад публікацій у конфігурації плану, потім натисніть «Оновити слоти» — вони з’являться на горизонті планування.":
+    "Set up the publishing schedule in the plan configuration, then click \"Refresh slots\" — they'll appear within the planning horizon.",
+
+  // ── Plan config form ─────────────────────────────────────────────────────
+  "Пн": "Mon",
+  "Вт": "Tue",
+  "Ср": "Wed",
+  "Чт": "Thu",
+  "Пт": "Fri",
+  "Сб": "Sat",
+  "Нд": "Sun",
+  "Блог": "Blog",
+  "Горизонт має бути додатним числом тижнів": "The horizon must be a positive number of weeks",
+  "Розклад збережено": "Schedule saved",
+  "Не вдалося зберегти розклад": "Couldn't save the schedule",
+  "Дні тижня, у які виходить контент кожного каналу. З цього розкладу планувальник створює порожні слоти на горизонт планування.":
+    "The days of the week each channel publishes on. The planner uses this schedule to create empty slots for the planning horizon.",
+  "тиждень": "week",
+  "періодично": "periodic",
+  "не публікуємо": "not publishing",
+  "Налаштовано окремим правилом: раз на": "Configured with a separate rule: every",
+  "тиж.": "wk",
+  "Вибір днів нижче його замінить.": "Picking days below will replace it.",
+  "Не обрано жодного дня — планувальник не зможе створити слоти.":
+    "No day is selected — the planner won't be able to create slots.",
+  "Теми й горизонт": "Topics and horizon",
+  "Стовпи задають тематичні напрями, у межах яких підбираються теми.":
+    "Pillars define the topic areas that topics are picked from.",
+  "Тематичні стовпи": "Topic pillars",
+  "архітектура, DevOps, кейси клієнтів": "architecture, DevOps, customer case studies",
+  "Горизонт планування, тижнів": "Planning horizon, weeks",
+  "На скільки тижнів наперед створюються слоти. Орієнтовно": "How many weeks ahead slots are created. Approximately",
+  "слотів.": "slots.",
+  "Зберегти розклад": "Save schedule",
 };

@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useUpdatePlanConfig } from "@/features/planner/use-update-plan-config";
+import { useT } from "@/lib/i18n";
 
 const WEEKDAY_LABELS: Record<string, string> = {
   mon: "Пн",
@@ -54,6 +55,7 @@ export function PlanConfigForm({
   companyId: string;
   initial: { cadence?: Cadence; pillars?: string[]; planningHorizonWeeks?: number } | null;
 }) {
+  const t = useT();
   const update = useUpdatePlanConfig(companyId);
 
   const [cadence, setCadence] = React.useState<Cadence>(initial?.cadence ?? {});
@@ -94,7 +96,7 @@ export function PlanConfigForm({
   function onSave() {
     const weeks = Number(horizon);
     if (!Number.isFinite(weeks) || weeks < 1) {
-      toast.error("Горизонт має бути додатним числом тижнів");
+      toast.error(t("Горизонт має бути додатним числом тижнів"));
       return;
     }
     update.mutate(
@@ -109,8 +111,8 @@ export function PlanConfigForm({
         },
       },
       {
-        onSuccess: () => toast.success("Розклад збережено"),
-        onError: () => toast.error("Не вдалося зберегти розклад"),
+        onSuccess: () => toast.success(t("Розклад збережено")),
+        onError: () => toast.error(t("Не вдалося зберегти розклад")),
       },
     );
   }
@@ -119,10 +121,9 @@ export function PlanConfigForm({
     <div className="flex flex-col gap-6">
       <Card>
         <CardHeader>
-          <CardTitle>Розклад публікацій</CardTitle>
+          <CardTitle>{t("Розклад публікацій")}</CardTitle>
           <CardDescription>
-            Дні тижня, у які виходить контент кожного каналу. З цього розкладу планувальник створює
-            порожні слоти на горизонт планування.
+            {t("Дні тижня, у які виходить контент кожного каналу. З цього розкладу планувальник створює порожні слоти на горизонт планування.")}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-5">
@@ -131,24 +132,24 @@ export function PlanConfigForm({
             return (
               <div key={channel} className="flex flex-col gap-2">
                 <div className="flex items-center justify-between">
-                  <Label>{CHANNEL_LABELS[channel] ?? channel}</Label>
+                  <Label>{t(CHANNEL_LABELS[channel] ?? channel)}</Label>
                   <span className="text-xs text-muted-foreground">
                     {days.length > 0
-                      ? `${days.length}/тиждень`
+                      ? `${days.length}/${t("тиждень")}`
                       : isPeriodic(cadence[channel])
-                        ? "періодично"
-                        : "не публікуємо"}
+                        ? t("періодично")
+                        : t("не публікуємо")}
                   </span>
                 </div>
                 {isPeriodic(cadence[channel]) && (
                   // Канал налаштований періодичним правилом. Кажемо це прямо, інакше порожні
                   // перемикачі читались би як «не публікуємо», що неправда.
                   <p className="text-xs text-info">
-                    Налаштовано окремим правилом: раз на {cadence[channel]!.everyNWeeks} тиж.
+                    {t("Налаштовано окремим правилом: раз на")} {cadence[channel]!.everyNWeeks} {t("тиж.")}
                     {cadence[channel]!.weekday
-                      ? ` (${WEEKDAY_LABELS[cadence[channel]!.weekday!]})`
+                      ? ` (${t(WEEKDAY_LABELS[cadence[channel]!.weekday!])})`
                       : ""}
-                    . Вибір днів нижче його замінить.
+                    . {t("Вибір днів нижче його замінить.")}
                   </p>
                 )}
                 <div className="flex flex-wrap gap-1.5">
@@ -167,7 +168,7 @@ export function PlanConfigForm({
                             : "border-border bg-background hover:bg-muted",
                         )}
                       >
-                        {WEEKDAY_LABELS[day]}
+                        {t(WEEKDAY_LABELS[day])}
                       </button>
                     );
                   })}
@@ -180,7 +181,7 @@ export function PlanConfigForm({
             // Попереджаємо ДО збереження: без жодного дня матеріалізація поверне 400, і краще
             // сказати про це тут, ніж дати натиснути «Оновити слоти» і отримати помилку.
             <p className="text-sm text-warning">
-              Не обрано жодного дня — планувальник не зможе створити слоти.
+              {t("Не обрано жодного дня — планувальник не зможе створити слоти.")}
             </p>
           )}
         </CardContent>
@@ -188,25 +189,25 @@ export function PlanConfigForm({
 
       <Card>
         <CardHeader>
-          <CardTitle>Теми й горизонт</CardTitle>
+          <CardTitle>{t("Теми й горизонт")}</CardTitle>
           <CardDescription>
-            Стовпи задають тематичні напрями, у межах яких підбираються теми.
+            {t("Стовпи задають тематичні напрями, у межах яких підбираються теми.")}
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-5">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="pillars">Тематичні стовпи</Label>
+            <Label htmlFor="pillars">{t("Тематичні стовпи")}</Label>
             <Input
               id="pillars"
               value={pillars}
               onChange={(e) => setPillars(e.target.value)}
-              placeholder="архітектура, DevOps, кейси клієнтів"
+              placeholder={t("архітектура, DevOps, кейси клієнтів")}
             />
-            <p className="text-xs text-muted-foreground">Через кому.</p>
+            <p className="text-xs text-muted-foreground">{t("Через кому.")}</p>
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="horizon">Горизонт планування, тижнів</Label>
+            <Label htmlFor="horizon">{t("Горизонт планування, тижнів")}</Label>
             <Input
               id="horizon"
               type="number"
@@ -216,8 +217,8 @@ export function PlanConfigForm({
               className="max-w-32"
             />
             <p className="text-xs text-muted-foreground">
-              На скільки тижнів наперед створюються слоти. Орієнтовно{" "}
-              {totalPerWeek * (Number(horizon) || 0)} слотів.
+              {t("На скільки тижнів наперед створюються слоти. Орієнтовно")}{" "}
+              {totalPerWeek * (Number(horizon) || 0)} {t("слотів.")}
             </p>
           </div>
         </CardContent>
@@ -226,7 +227,7 @@ export function PlanConfigForm({
       <div className="flex justify-end">
         <Button onClick={onSave} disabled={update.isPending}>
           {update.isPending && <Loader2 className="animate-spin" />}
-          Зберегти розклад
+          {t("Зберегти розклад")}
         </Button>
       </div>
     </div>
