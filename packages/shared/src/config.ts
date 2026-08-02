@@ -72,13 +72,13 @@ export interface ModelOption {
 
 export const TEXT_MODELS: Record<Provider, ModelOption[]> = {
   openai: [
-    { id: "gpt-5.2", label: "GPT-5.2 — флагман · $1.75/$14" },
+    { id: "gpt-5.2", label: "GPT-5.2 — flagship · $1.75/$14" },
     { id: "gpt-5.2-pro", label: "GPT-5.2 Pro — reasoning · $21/$168" },
     { id: "gpt-5.1", label: "GPT-5.1 · $1.25/$10" },
     { id: "gpt-5", label: "GPT-5 · $1.25/$10" },
     { id: "gpt-5-pro", label: "GPT-5 Pro — reasoning · $15/$120" },
-    { id: "gpt-5-mini", label: "GPT-5 mini — збалансований · $0.25/$2" },
-    { id: "gpt-5-nano", label: "GPT-5 nano — найдешевший · $0.05/$0.40" },
+    { id: "gpt-5-mini", label: "GPT-5 mini — balanced · $0.25/$2" },
+    { id: "gpt-5-nano", label: "GPT-5 nano — cheapest · $0.05/$0.40" },
     { id: "gpt-4.1", label: "GPT-4.1 · $2/$8" },
     { id: "gpt-4.1-mini", label: "GPT-4.1 mini · $0.40/$1.60" },
     { id: "gpt-4.1-nano", label: "GPT-4.1 nano · $0.10/$0.40" },
@@ -87,14 +87,14 @@ export const TEXT_MODELS: Record<Provider, ModelOption[]> = {
     { id: "o4-mini", label: "o4-mini — reasoning · $1.10/$4.40" },
   ],
   anthropic: [
-    { id: "claude-opus-4-8", label: "Claude Opus 4.8 — флагман" },
-    { id: "claude-sonnet-5", label: "Claude Sonnet 5 — збалансований" },
-    { id: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5 — швидкий" },
+    { id: "claude-opus-4-8", label: "Claude Opus 4.8 — flagship" },
+    { id: "claude-sonnet-5", label: "Claude Sonnet 5 — balanced" },
+    { id: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5 — fast" },
   ],
   gemini: [
-    { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro — флагман" },
-    { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash — збалансований" },
-    { id: "gemini-2.0-flash", label: "Gemini 2.0 Flash — швидкий/дешевий" },
+    { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro — flagship" },
+    { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash — balanced" },
+    { id: "gemini-2.0-flash", label: "Gemini 2.0 Flash — fast/cheap" },
   ],
 };
 
