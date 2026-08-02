@@ -21,6 +21,7 @@ import {
 import { AccountSwitcher } from "@/features/accounts/AccountSwitcher";
 import { CompanySwitcher } from "@/features/companies/CompanySwitcher";
 import { SESSION_COOKIE } from "@/lib/auth-constants";
+import { useT } from "@/lib/i18n";
 import type { AccountDTO } from "@/lib/dto";
 import type { Company } from "@/features/companies/use-companies";
 import type { Session } from "@/server/auth";
@@ -43,6 +44,7 @@ export function Topbar({
   companies: Company[];
   activeAccountId: string;
 }) {
+  const t = useT();
   const router = useRouter();
   const { resolvedTheme, setTheme } = useTheme();
   // Іконку теми рендеримо лише після монтування — інакше SSR/CSR-розбіжність (resolvedTheme
@@ -76,7 +78,7 @@ export function Topbar({
         <Button
           variant="ghost"
           size="icon"
-          aria-label="Перемкнути тему"
+          aria-label={t("Перемкнути тему")}
           onClick={() => setTheme(isDark ? "light" : "dark")}
         >
           {isDark ? <Sun /> : <Moon />}
@@ -86,7 +88,7 @@ export function Topbar({
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label="Меню користувача">
+            <Button variant="ghost" size="icon" aria-label={t("Меню користувача")}>
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
                 {initials(session.user.name, session.user.email)}
               </span>
@@ -94,13 +96,13 @@ export function Topbar({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel className="flex flex-col gap-0.5">
-              <span className="text-sm font-medium">{session.user.name ?? "Користувач"}</span>
+              <span className="text-sm font-medium">{session.user.name ?? t("Користувач")}</span>
               <span className="text-xs font-normal text-muted-foreground">{session.user.email}</span>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={handleSignOut} className="gap-2">
               <LogOut className="h-4 w-4" />
-              Вийти
+              {t("Вийти")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

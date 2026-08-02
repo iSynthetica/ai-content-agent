@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { setActiveAccountCookie } from "@/lib/active-account";
+import { useT } from "@/lib/i18n";
 import { useAccounts } from "@/features/accounts/use-accounts";
 import type { AccountDTO } from "@/lib/dto";
 
@@ -27,6 +28,7 @@ export function AccountSwitcher({
   accounts: AccountDTO[];
   activeAccountId: string;
 }) {
+  const t = useT();
   const router = useRouter();
   const { data: accounts = initial } = useAccounts(initial);
   const active = accounts.find((a) => a.id === activeAccountId) ?? accounts[0];
@@ -50,7 +52,7 @@ export function AccountSwitcher({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-56">
-        <DropdownMenuLabel className="text-muted-foreground">Акаунт</DropdownMenuLabel>
+        <DropdownMenuLabel className="text-muted-foreground">{t("Акаунт")}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {accounts.map((a) => (
           <DropdownMenuItem key={a.id} onSelect={() => select(a.id)} className="gap-2">
@@ -61,7 +63,7 @@ export function AccountSwitcher({
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => router.push("/settings")} className="gap-2">
           <KeyRound className="opacity-70" />
-          <span>Ключі API</span>
+          <span>{t("Ключі API")}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

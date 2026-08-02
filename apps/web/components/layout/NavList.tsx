@@ -16,6 +16,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import type { Company } from "@/features/companies/use-companies";
 
 interface NavItem {
@@ -31,20 +32,21 @@ export function NavList({
   companies: Company[];
   onNavigate?: () => void;
 }) {
+  const t = useT();
   const pathname = usePathname();
   const params = useParams<{ companyId?: string }>();
   const cid = params.companyId ?? companies[0]?.id;
 
   const companyItems: NavItem[] = cid
     ? [
-        { href: `/companies/${cid}`, label: "Дашборд", icon: LayoutDashboard },
-        { href: `/companies/${cid}/plan`, label: "Планувальник", icon: CalendarDays },
-        { href: `/companies/${cid}/brief`, label: "Бренд", icon: SquarePen },
-        { href: `/companies/${cid}/plan/settings`, label: "Розклад", icon: Settings2 },
+        { href: `/companies/${cid}`, label: t("Дашборд"), icon: LayoutDashboard },
+        { href: `/companies/${cid}/plan`, label: t("Планувальник"), icon: CalendarDays },
+        { href: `/companies/${cid}/brief`, label: t("Бренд"), icon: SquarePen },
+        { href: `/companies/${cid}/plan/settings`, label: t("Розклад"), icon: Settings2 },
       ]
     : [];
 
-  const globalItems: NavItem[] = [{ href: "/inbox", label: "Задачі", icon: Inbox }];
+  const globalItems: NavItem[] = [{ href: "/inbox", label: t("Задачі"), icon: Inbox }];
 
   return (
     <nav className="flex flex-1 flex-col gap-1 px-3 py-2">

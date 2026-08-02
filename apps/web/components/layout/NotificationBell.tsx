@@ -19,8 +19,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useInbox, useMarkAllRead, useNotifications } from "@/features/notifications/use-notifications";
 import { formatDateTime } from "@/lib/format";
+import { useLanguage } from "@/lib/i18n";
 
 export function NotificationBell() {
+  const { t, language } = useLanguage();
   const notifications = useNotifications();
   const inbox = useInbox();
   const markAll = useMarkAllRead();
@@ -32,7 +34,7 @@ export function NotificationBell() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label={`Сповіщення${openTasks ? `, задач: ${openTasks}` : ""}`} className="relative">
+        <Button variant="ghost" size="icon" aria-label={`${t("Сповіщення")}${openTasks ? `, ${t("задач")}: ${openTasks}` : ""}`} className="relative">
           <Bell />
           {openTasks > 0 && (
             <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-warning px-1 text-[10px] font-medium text-warning-foreground">
@@ -48,7 +50,7 @@ export function NotificationBell() {
             <DropdownMenuItem asChild>
               <Link href="/inbox" className="flex items-center gap-2 font-medium">
                 <InboxIcon className="size-4 text-warning" />
-                Потребують дії: {openTasks}
+                {t("Потребують дії")}: {openTasks}
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
@@ -56,7 +58,7 @@ export function NotificationBell() {
         )}
 
         <DropdownMenuLabel className="flex items-center justify-between">
-          <span>Сповіщення</span>
+          <span>{t("Сповіщення")}</span>
           {unread > 0 && (
             <button
               type="button"
@@ -64,14 +66,14 @@ export function NotificationBell() {
               onClick={() => markAll.mutate()}
               disabled={markAll.isPending}
             >
-              Прочитати всі
+              {t("Прочитати всі")}
             </button>
           )}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
 
         {items.length === 0 ? (
-          <p className="px-2 py-6 text-center text-sm text-muted-foreground">Сповіщень немає</p>
+          <p className="px-2 py-6 text-center text-sm text-muted-foreground">{t("Сповіщень немає")}</p>
         ) : (
           <div className="max-h-80 overflow-y-auto">
             {items.slice(0, 12).map((n) => (
@@ -81,7 +83,7 @@ export function NotificationBell() {
               >
                 <span className="font-medium">{n.title}</span>
                 {n.body && <span className="text-xs text-muted-foreground">{n.body}</span>}
-                <span className="text-xs text-muted-foreground">{formatDateTime(n.createdAt)}</span>
+                <span className="text-xs text-muted-foreground">{formatDateTime(n.createdAt, language)}</span>
               </div>
             ))}
           </div>

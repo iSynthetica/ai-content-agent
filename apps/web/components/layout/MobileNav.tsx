@@ -9,9 +9,11 @@ import { Menu, Sparkles, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { NavList } from "@/components/layout/NavList";
+import { useT } from "@/lib/i18n";
 import type { Company } from "@/features/companies/use-companies";
 
 export function MobileNav({ companies }: { companies: Company[] }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
 
   // Escape закриває; body-scroll лочимо, поки drawer відкритий (інакше фон скролиться під ним).
@@ -32,7 +34,7 @@ export function MobileNav({ companies }: { companies: Company[] }) {
         variant="ghost"
         size="icon"
         className="md:hidden"
-        aria-label="Відкрити меню"
+        aria-label={t("Відкрити меню")}
         aria-expanded={open}
         onClick={() => setOpen(true)}
       >
@@ -55,7 +57,7 @@ export function MobileNav({ companies }: { companies: Company[] }) {
               <Button
                 variant="ghost"
                 size="icon"
-                aria-label="Закрити меню"
+                aria-label={t("Закрити меню")}
                 onClick={() => setOpen(false)}
               >
                 <X />

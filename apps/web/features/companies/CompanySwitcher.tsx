@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import { useCompanies, type Company } from "@/features/companies/use-companies";
 
 export function CompanySwitcher({
@@ -24,6 +25,7 @@ export function CompanySwitcher({
   accountId: string;
   companies: Company[];
 }) {
+  const t = useT();
   const router = useRouter();
   const params = useParams<{ companyId?: string }>();
   const { data: companies = initial } = useCompanies(accountId, initial);
@@ -37,7 +39,7 @@ export function CompanySwitcher({
     return (
       <Button variant="ghost" size="sm" className="gap-2" onClick={() => router.push("/onboarding")}>
         <Building2 />
-        Створити компанію
+        {t("Створити компанію")}
       </Button>
     );
   }
@@ -52,7 +54,7 @@ export function CompanySwitcher({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-60">
-        <DropdownMenuLabel className="text-muted-foreground">Компанія</DropdownMenuLabel>
+        <DropdownMenuLabel className="text-muted-foreground">{t("Компанія")}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {companies.map((c) => (
           <DropdownMenuItem key={c.id} onSelect={() => select(c.id)} className="gap-2">
@@ -63,7 +65,7 @@ export function CompanySwitcher({
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => router.push("/onboarding")} className="gap-2">
           <Building2 className="opacity-70" />
-          Нова компанія
+          {t("Нова компанія")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
