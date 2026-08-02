@@ -1,3 +1,5 @@
+"use client";
+
 // ScoreMeter / ScoresPanel (DS §6.2) — 4 критерії Reviewer'а (1–5), компактні смужки.
 // Колір за значенням (семантичні токени DS §2): ≥4 success, 3 warning, <3 destructive.
 // Кожен рядок має tooltip з `why` (FR-6.2). Web НЕ інтерпретує scores — лише рендерить.
@@ -5,6 +7,7 @@ import { Info } from "lucide-react";
 
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import type { ContentItemDTO } from "@/features/content/schemas";
 
 // scores з контракту: Record<критерій, { score, why }> | null (criterionScore у contentItemDTO).
@@ -27,9 +30,10 @@ function toneClass(score: number): string {
 }
 
 export function ScoreMeter({ scores, className }: { scores: Scores; className?: string }) {
+  const t = useT();
   const entries = scores ? Object.entries(scores) : [];
   if (entries.length === 0) {
-    return <p className="text-xs text-muted-foreground">Оцінок ще немає.</p>;
+    return <p className="text-xs text-muted-foreground">{t("Оцінок ще немає.")}</p>;
   }
 
   return (
@@ -37,7 +41,7 @@ export function ScoreMeter({ scores, className }: { scores: Scores; className?: 
       {entries.map(([key, { score, why }]) => (
         <li key={key} className="flex items-center gap-3 text-sm">
           <span className="w-40 shrink-0 text-muted-foreground">
-            {CRITERION_LABELS[key] ?? key}
+            {t(CRITERION_LABELS[key] ?? key)}
           </span>
           <span className="flex flex-1 items-center gap-1" aria-hidden>
             {Array.from({ length: MAX_SCORE }, (_, i) => (
@@ -57,7 +61,7 @@ export function ScoreMeter({ scores, className }: { scores: Scores; className?: 
           <Tooltip content={why}>
             <button
               type="button"
-              aria-label={`Чому: ${CRITERION_LABELS[key] ?? key}`}
+              aria-label={`${t("Чому")}: ${t(CRITERION_LABELS[key] ?? key)}`}
               className="text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:text-foreground"
             >
               <Info className="h-3.5 w-3.5" />

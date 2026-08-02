@@ -198,4 +198,29 @@ export const en: Record<string, string> = {
   "На скільки тижнів наперед створюються слоти. Орієнтовно": "How many weeks ahead slots are created. Approximately",
   "слотів.": "slots.",
   "Зберегти розклад": "Save schedule",
+
+  // ── Status labels (lib/status.ts, translated at the StatusBadge render site) ─
+  "У черзі": "Queued",
+  "Виконується": "Running",
+  "На рецензії": "In review",
+  "Схвалено": "Approved",
+  "Відхилено": "Rejected",
+  "Помилка": "Failed",
+  "Чернетка": "Draft",
+  "Потребує правок": "Needs revision",
+  "Запропоновано": "Proposed",
+  "Заплановано": "Scheduled",
+  "Генерується": "Generating",
+  "Згенеровано": "Generated",
+  "Пропущено": "Skipped",
+  "Порушення": "Violations",
+
+  // ── Channel / score / violations panels ──────────────────────────────────
+  "Оцінок ще немає.": "No scores yet.",
+  "Тон": "Tone",
+  "Конкретність": "Specificity",
+  "Фактичність": "Factual accuracy",
+  "Відповідність каналу": "Channel fit",
+  "Чому": "Why",
+  "Порушень не виявлено": "No violations found",
 };

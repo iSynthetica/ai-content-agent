@@ -4,9 +4,12 @@
 // Кожне порушення прив'язане до тексту: quote — дослівний фрагмент поста, issue — суть проблеми.
 // Показуємо саме цитату, бо рецензенту треба бачити ДЕ проблема, а не лише що вона є. Порушення
 // без валідної цитати до UI не доходять — їх відкидає Reviewer (groundViolations).
+"use client";
+
 import { CheckCircle2, ShieldAlert } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 export interface Violation {
   quote: string;
@@ -20,13 +23,14 @@ export function ViolationsPanel({
   violations: Violation[] | null;
   className?: string;
 }) {
+  const t = useT();
   const list = violations ?? [];
 
   if (list.length === 0) {
     return (
       <p className={cn("inline-flex items-center gap-1.5 text-sm text-success", className)}>
         <CheckCircle2 className="h-4 w-4" aria-hidden />
-        Порушень не виявлено
+        {t("Порушень не виявлено")}
       </p>
     );
   }

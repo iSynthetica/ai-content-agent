@@ -1,8 +1,12 @@
+"use client";
+
 // StatusBadge — композит поверх shadcn Badge. Кольори статусів беруться ВИКЛЮЧНО
 // з lib/status.ts (єдина точка правди, DS §3). Компонент не знає доменної логіки —
-// лише рендерить обчислений StatusVisual.
+// лише рендерить обчислений StatusVisual. visual.label — український рядок-джерело
+// (lib/status.ts — .ts-файл без доступу до useT()); переклад — тут, у точці рендера.
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import {
   flaggedVisual,
   itemStatusVisual,
@@ -26,6 +30,7 @@ const OUTLINE_CLASSES: Record<StatusTone, string> = {
 };
 
 function VisualBadge({ visual, className }: { visual: StatusVisual; className?: string }) {
+  const t = useT();
   return (
     <Badge
       variant={visual.tone}
@@ -37,7 +42,7 @@ function VisualBadge({ visual, className }: { visual: StatusVisual; className?: 
           className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-current motion-safe:animate-pulse"
         />
       )}
-      {visual.label}
+      {t(visual.label)}
     </Badge>
   );
 }
