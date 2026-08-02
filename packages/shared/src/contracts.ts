@@ -165,10 +165,21 @@ export type ContentPlanDTO = z.infer<typeof contentPlanDTO>;
 // прогін (не мутує company_settings), окрім saveAsDefault. Порожній об'єкт = запуск за дефолтами.
 export const MAX_POSTS_PER_RUN = 20; // guardrail: сумарно постів на прогін
 
+// Явна тема для прогону (§spec 08, Phase 2). Коли задано список — генеруємо РІВНО ці теми
+// (fan-out: один пост на тему), що дає точну к-сть навіть при недоборі й повний контроль тем.
+export const runTopicInputSchema = z.object({
+  channel: channelSchema,
+  topic: z.string().min(1),
+  keyMessage: z.string().optional(),
+  seoKeywords: z.array(z.string()).optional(),
+});
+export type RunTopicInput = z.infer<typeof runTopicInputSchema>;
+
 export const createRunRequest = z.object({
   planEntryIds: z.array(z.string()).optional(), // scoped (календар) — семантика без змін
   channels: z.array(channelSchema).optional(), // ad-hoc: які канали включити
   counts: z.record(z.number().int().min(1)).optional(), // ad-hoc: скільки постів на канал (channel→N)
+  topics: z.array(runTopicInputSchema).optional(), // явні теми → fan-out рівно на них (Phase 2)
   angle: z.string().max(500).optional(), // акцент/кут кампанії на прогін (шов; проводка — Phase 2)
   agentModels: agentModelsSchema.nullable().optional(), // per-run per-role моделі
   saveAsDefault: z.boolean().optional(), // додатково зберегти лічильники/моделі як дефолт компанії

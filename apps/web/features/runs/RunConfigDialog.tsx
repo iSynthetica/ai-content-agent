@@ -3,6 +3,9 @@
 // Конфігурація ОДНОГО прогону (§spec 08). Головне: генерація НЕ стартує від відкриття — лише після
 // явного «Запустити генерацію» на кроці review. Два кроки: Configure → Review → (confirm). Scoped
 // (з календаря) пропускає вибір каналів/к-сті — їх задають обрані слоти.
+//
+// Теми (Phase 2): «AI обере» (Strategist вигадує, к-сть контрольована) або «вписати вручну» — тоді
+// генеруємо РІВНО введені теми (fan-out: один пост на тему), що дає точну к-сть і повний контроль.
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
@@ -42,15 +45,24 @@ export function RunConfigDialog({
   const [step, setStep] = useState<"configure" | "review">("configure");
   const [included, setIncluded] = useState<Set<Channel>>(new Set(CHANNELS));
   const [counts, setCounts] = useState<Record<Channel, number>>({ ...CHANNEL_DEFAULTS });
+  const [topicMode, setTopicMode] = useState<"ai" | "manual">("ai");
+  const [manualTopics, setManualTopics] = useState<Record<string, string>>({});
   const [angle, setAngle] = useState("");
   const [agentModels, setAgentModels] = useState<AgentModelsValue>({});
 
   const activeChannels = CHANNELS.filter((c) => included.has(c));
-  const effectiveCounts = Object.fromEntries(activeChannels.map((c) => [c, counts[c]])) as Record<
-    string,
-    number
-  >;
-  const total = activeChannels.reduce((s, c) => s + (counts[c] || 0), 0);
+
+  // Ручні теми: по одній на рядок у textarea кожного каналу.
+  const linesFor = (c: Channel) =>
+    (manualTopics[c] ?? "")
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  const manualList = activeChannels.flatMap((c) => linesFor(c).map((topic) => ({ channel: c, topic })));
+
+  // Підсумок для review + валідація.
+  const aiTotal = activeChannels.reduce((s, c) => s + (counts[c] || 0), 0);
+  const total = scoped ? planEntryIds!.length : topicMode === "manual" ? manualList.length : aiTotal;
   const tooMany = total > MAX_POSTS_PER_RUN;
   const canProceed = scoped || (total >= 1 && !tooMany);
 
@@ -61,10 +73,17 @@ export function RunConfigDialog({
   }
 
   function confirm() {
+    const body = scoped
+      ? { planEntryIds }
+      : topicMode === "manual"
+        ? { topics: manualList }
+        : {
+            channels: activeChannels,
+            counts: Object.fromEntries(activeChannels.map((c) => [c, counts[c]])),
+          };
     createRun.mutate(
       {
-        planEntryIds,
-        ...(scoped ? {} : { channels: activeChannels, counts: effectiveCounts }),
+        ...body,
         ...(angle.trim() ? { angle: angle.trim() } : {}),
         ...(Object.keys(agentModels).length ? { agentModels } : {}),
       },
@@ -100,37 +119,84 @@ export function RunConfigDialog({
                   зі слотів.
                 </p>
               ) : (
-                <div className="flex flex-col gap-2">
-                  <Label>Канали та кількість постів</Label>
-                  {CHANNELS.map((c) => (
-                    <div key={c} className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        id={`ch-${c}`}
-                        checked={included.has(c)}
-                        onChange={() => toggle(c)}
-                        className="h-4 w-4 accent-primary"
-                      />
-                      <label htmlFor={`ch-${c}`} className="w-28 text-sm">
-                        {CHANNEL_LABELS[c]}
+                <>
+                  <div className="flex flex-col gap-2">
+                    <Label>Канали</Label>
+                    {CHANNELS.map((c) => (
+                      <div key={c} className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          id={`ch-${c}`}
+                          checked={included.has(c)}
+                          onChange={() => toggle(c)}
+                          className="h-4 w-4 accent-primary"
+                        />
+                        <label htmlFor={`ch-${c}`} className="w-28 text-sm">
+                          {CHANNEL_LABELS[c]}
+                        </label>
+                        {topicMode === "ai" && (
+                          <Input
+                            type="number"
+                            min={1}
+                            max={MAX_POSTS_PER_RUN}
+                            value={counts[c]}
+                            disabled={!included.has(c)}
+                            onChange={(e) =>
+                              setCounts({ ...counts, [c]: Math.max(1, Number(e.target.value) || 1) })
+                            }
+                            className="w-20"
+                            aria-label={`Кількість постів ${CHANNEL_LABELS[c]}`}
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <Label>Теми</Label>
+                    <div className="flex gap-4 text-sm">
+                      <label className="flex items-center gap-1.5">
+                        <input
+                          type="radio"
+                          checked={topicMode === "ai"}
+                          onChange={() => setTopicMode("ai")}
+                          className="accent-primary"
+                        />
+                        AI обере теми
                       </label>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={MAX_POSTS_PER_RUN}
-                        value={counts[c]}
-                        disabled={!included.has(c)}
-                        onChange={(e) =>
-                          setCounts({ ...counts, [c]: Math.max(1, Number(e.target.value) || 1) })
-                        }
-                        className="w-20"
-                      />
+                      <label className="flex items-center gap-1.5">
+                        <input
+                          type="radio"
+                          checked={topicMode === "manual"}
+                          onChange={() => setTopicMode("manual")}
+                          className="accent-primary"
+                        />
+                        Вписати вручну
+                      </label>
                     </div>
-                  ))}
-                  <p className={`text-xs ${tooMany ? "text-destructive" : "text-muted-foreground"}`}>
-                    Разом: {total} постів{tooMany ? ` — максимум ${MAX_POSTS_PER_RUN} на прогін` : ""}
-                  </p>
-                </div>
+                    {topicMode === "manual" && (
+                      <div className="flex flex-col gap-3">
+                        <p className="text-xs text-muted-foreground">
+                          По одній темі на рядок. Скільки тем — стільки постів (точна кількість).
+                        </p>
+                        {activeChannels.map((c) => (
+                          <div key={c} className="flex flex-col gap-1">
+                            <Label htmlFor={`tp-${c}`} className="text-xs">
+                              {CHANNEL_LABELS[c]} ({linesFor(c).length})
+                            </Label>
+                            <Textarea
+                              id={`tp-${c}`}
+                              rows={3}
+                              placeholder={"Тема 1\nТема 2"}
+                              value={manualTopics[c] ?? ""}
+                              onChange={(e) => setManualTopics({ ...manualTopics, [c]: e.target.value })}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
 
               <div className="flex flex-col gap-2">
@@ -148,6 +214,12 @@ export function RunConfigDialog({
                 <Label>Моделі під ролі (необов’язково — інакше за налаштуваннями)</Label>
                 <AgentModelsSection value={agentModels} onChange={setAgentModels} />
               </div>
+
+              {!scoped && (
+                <p className={`text-xs ${tooMany ? "text-destructive" : "text-muted-foreground"}`}>
+                  Разом: {total} постів{tooMany ? ` — максимум ${MAX_POSTS_PER_RUN} на прогін` : ""}
+                </p>
+              )}
             </div>
           ) : (
             <div className="flex flex-col gap-4 text-sm">
@@ -155,11 +227,22 @@ export function RunConfigDialog({
                 <p className="mb-1 font-medium">Що буде згенеровано</p>
                 {scoped ? (
                   <p className="text-muted-foreground">{planEntryIds!.length} слотів із календаря.</p>
+                ) : topicMode === "manual" ? (
+                  <ul className="text-muted-foreground">
+                    {activeChannels
+                      .filter((c) => linesFor(c).length > 0)
+                      .map((c) => (
+                        <li key={c}>
+                          {CHANNEL_LABELS[c]} — {linesFor(c).length} (ваші теми)
+                        </li>
+                      ))}
+                    <li className="mt-1 font-medium text-foreground">Разом: {total} постів</li>
+                  </ul>
                 ) : (
                   <ul className="text-muted-foreground">
                     {activeChannels.map((c) => (
                       <li key={c}>
-                        {CHANNEL_LABELS[c]} — {counts[c]}
+                        {CHANNEL_LABELS[c]} — {counts[c]} (теми обере AI)
                       </li>
                     ))}
                     <li className="mt-1 font-medium text-foreground">Разом: {total} постів</li>

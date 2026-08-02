@@ -32,6 +32,7 @@ export function runsController(root: Composition) {
           planEntryIds: body.planEntryIds,
           channels: body.channels,
           counts: body.counts,
+          topics: body.topics,
           angle: body.angle,
           agentModels: body.agentModels,
           saveAsDefault: body.saveAsDefault,

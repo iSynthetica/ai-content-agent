@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
 import type { Job } from "@forteq/shared";
 import {
@@ -63,7 +64,12 @@ export async function handleStart(job: GenerationStartJob, ctx: HandlerContext):
       .limit(1);
     const [run] = await tx.select().from(generationRuns).where(eq(generationRuns.id, runId));
 
-    // Скоупнутий режим: завантажити обрані слоти → planScope (провенанс id === plan_entries.id, §7.2).
+    // Планскоуп: обрані слоти планера (провенанс id === plan_entries.id, §7.2) АБО явні теми з
+    // run_config (Phase 2 — fan-out рівно на них, синтетичні id; plan_entries не чіпаємо).
+    const providedTopics =
+      (run?.runConfig as {
+        topics?: Array<{ channel: string; topic: string; keyMessage?: string; seoKeywords?: string[] }>;
+      } | undefined)?.topics ?? [];
     let planScope: PlanEntryInput[] | undefined;
     if (scoped) {
       const rows = await tx
@@ -78,7 +84,17 @@ export async function handleStart(job: GenerationStartJob, ctx: HandlerContext):
         seoKeywords: r.seoKeywords ?? [],
         pillar: r.pillar ?? undefined,
       }));
+    } else if (providedTopics.length > 0) {
+      planScope = providedTopics.map((t) => ({
+        id: randomUUID(),
+        channel: t.channel as PlanEntryInput["channel"],
+        topic: t.topic,
+        keyMessage: t.keyMessage,
+        seoKeywords: t.seoKeywords ?? [],
+      }));
     }
+    // useScope: генеруємо ВИЗНАЧЕНІ теми (зі слотів або явні), а не вигадуємо повний план.
+    const useScope = scoped || providedTopics.length > 0;
 
     const companyContext: CompanyContext = {
       name: company.name,
@@ -107,7 +123,7 @@ export async function handleStart(job: GenerationStartJob, ctx: HandlerContext):
 
     const meta: RunMeta = { runId, accountId, companyId };
 
-    if (scoped) {
+    if (useScope) {
       return {
         company: companyContext,
         modelConfig,

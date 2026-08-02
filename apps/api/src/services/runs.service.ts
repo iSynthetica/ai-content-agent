@@ -31,6 +31,7 @@ export interface CreateRunInput {
   planEntryIds?: string[];
   channels?: string[];
   counts?: Record<string, number>;
+  topics?: Array<{ channel: string; topic: string; keyMessage?: string; seoKeywords?: string[] }>;
   angle?: string;
   agentModels?: Record<string, { provider: string; model: string }> | null;
   saveAsDefault?: boolean;
@@ -77,10 +78,21 @@ export class RunsService {
     const effectiveAgentModels =
       input.agentModels !== undefined ? input.agentModels : (settings.agentModels ?? null);
 
-    // Per-run лічильники (лише ad-hoc; для scoped к-сть визначають обрані слоти). Обмежуємо каналами,
-    // якщо задані; кожен канал дістає свій count або дефолт. Guardrail: сумарно ≤ MAX_POSTS_PER_RUN.
+    // Режим явних тем (Phase 2): рівно ці теми → fan-out; лічильники деривуємо з тем.
+    const provided = !scoped && (input.topics?.length ?? 0) > 0;
+
+    // Per-run лічильники (ad-hoc/provided; для scoped к-сть визначають обрані слоти).
+    // Guardrail: сумарно ≤ MAX_POSTS_PER_RUN.
     let counts: Record<string, number> | undefined;
-    if (!scoped) {
+    if (provided) {
+      counts = {};
+      for (const t of input.topics!) counts[t.channel] = (counts[t.channel] ?? 0) + 1;
+      if (input.topics!.length > MAX_POSTS_PER_RUN) {
+        throw AppError.unprocessable(
+          `Забагато тем (${input.topics!.length}); максимум ${MAX_POSTS_PER_RUN} на один прогін`,
+        );
+      }
+    } else if (!scoped) {
       const src = input.counts ?? (plan.channelCounts as Record<string, number>) ?? {};
       const chans = (input.channels ?? CHANNELS.filter((c) => (src[c] ?? 0) > 0)) as string[];
       counts = {};
@@ -120,6 +132,7 @@ export class RunsService {
     const runConfig: Record<string, unknown> = {
       channels: counts ? Object.keys(counts) : [],
       counts: counts ?? {},
+      topics: input.topics ?? null, // явні теми (Phase 2) — воркер робить fan-out рівно на них
       angle: input.angle ?? null,
       provider: settings.provider,
       models: settings.models ?? null,
