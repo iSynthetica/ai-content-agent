@@ -23,6 +23,7 @@ import { qk } from "@/lib/query-keys";
 import { isRunGenerating, type RunStatus } from "@/lib/status";
 import { ExportMenu } from "@/components/runs/ExportMenu";
 import { formatCost, formatDateTime } from "@/lib/format";
+import { useLanguage } from "@/lib/i18n";
 import type { RunDTO } from "@/features/runs/schemas";
 import type { ContentItemDTO } from "@/features/content/schemas";
 
@@ -35,6 +36,7 @@ export function RunDetail({
   initialRun: RunDTO;
   initialItems: ContentItemDTO[];
 }) {
+  const { t, language } = useLanguage();
   const qc = useQueryClient();
   const { data: run, isError } = useRun(runId, initialRun);
   const { data: items } = useItems(runId, initialItems);
@@ -77,16 +79,16 @@ export function RunDetail({
           className="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
-          До компанії
+          {t("До компанії")}
         </Link>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-col gap-1">
             <h1 className="font-mono text-xl font-semibold tracking-tight">
-              Прогін {run.id.slice(0, 8)}
+              {t("Прогін")} {run.id.slice(0, 8)}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {formatDateTime(run.createdAt)} · {formatCost(run.costCents)}
-              {run.counts ? ` · постів: ${run.counts.items}` : ""}
+              {formatDateTime(run.createdAt, language)} · {formatCost(run.costCents)}
+              {run.counts ? ` · ${t("постів")}: ${run.counts.items}` : ""}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -97,15 +99,15 @@ export function RunDetail({
         </div>
         {run.runConfig && (
           <p className="text-xs text-muted-foreground">
-            Конфігурація:{" "}
+            {t("Конфігурація")}:{" "}
             {Object.keys(run.runConfig.counts).length > 0
               ? Object.entries(run.runConfig.counts)
                   .map(([c, n]) => `${c} ×${n}`)
                   .join(", ")
-              : "з календаря (обрані слоти)"}
-            {run.runConfig.angle ? ` · акцент: ${run.runConfig.angle}` : ""}
+              : t("з календаря (обрані слоти)")}
+            {run.runConfig.angle ? ` · ${t("акцент")}: ${run.runConfig.angle}` : ""}
             {run.runConfig.agentModels && Object.keys(run.runConfig.agentModels).length
-              ? ` · моделі: ${Object.entries(run.runConfig.agentModels)
+              ? ` · ${t("моделі")}: ${Object.entries(run.runConfig.agentModels)
                   .map(([r, m]) => `${r}:${m.provider}/${m.model}`)
                   .join(", ")}`
               : ""}
@@ -119,8 +121,8 @@ export function RunDetail({
           <CardContent className="flex items-center gap-3 py-5 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
             {run.status === "queued"
-              ? "У черзі на генерацію…"
-              : "Агенти працюють над контентом. Картки з'являтимуться поступово."}
+              ? t("У черзі на генерацію…")
+              : t("Агенти працюють над контентом. Картки з'являтимуться поступово.")}
           </CardContent>
         </Card>
       )}
@@ -131,10 +133,10 @@ export function RunDetail({
           <CardContent className="flex flex-col gap-3 py-5">
             <div className="flex items-center gap-2 text-sm font-medium text-destructive">
               <AlertTriangle className="h-4 w-4" aria-hidden />
-              Прогін завершився помилкою
+              {t("Прогін завершився помилкою")}
             </div>
             <p className="text-sm text-muted-foreground">
-              Можна повторити генерацію з тими самими налаштуваннями компанії.
+              {t("Можна повторити генерацію з тими самими налаштуваннями компанії.")}
             </p>
             <GenerateButton companyId={companyId} className="w-fit" />
           </CardContent>
@@ -147,12 +149,12 @@ export function RunDetail({
           <CardContent className="flex flex-col gap-3 py-5">
             <div className="flex items-center gap-2 text-sm font-medium text-warning">
               <AlertTriangle className="h-4 w-4" aria-hidden />
-              Прогін очікує на ваше рішення
+              {t("Прогін очікує на ваше рішення")}
             </div>
             <p className="text-sm text-muted-foreground">
               {run.counts
-                ? `Постів: ${run.counts.items}. Потребують уваги: ${run.counts.needsReview}.`
-                : "Перегляньте пости нижче й ухваліть рішення по всьому прогону."}
+                ? `${t("Постів")}: ${run.counts.items}. ${t("Потребують уваги")}: ${run.counts.needsReview}.`
+                : t("Перегляньте пости нижче й ухваліть рішення по всьому прогону.")}
             </p>
             <div className="flex flex-wrap gap-2">
               <Button
@@ -160,7 +162,7 @@ export function RunDetail({
                 onClick={() => runDecision.mutate({ action: "approve" })}
                 disabled={decisionPending}
               >
-                Схвалити прогін
+                {t("Схвалити прогін")}
               </Button>
               <Button
                 size="sm"
@@ -168,7 +170,7 @@ export function RunDetail({
                 onClick={() => runDecision.mutate({ action: "reject" })}
                 disabled={decisionPending}
               >
-                Відхилити прогін
+                {t("Відхилити прогін")}
               </Button>
               <Button
                 size="sm"
@@ -176,7 +178,7 @@ export function RunDetail({
                 onClick={() => setRerunOpen(true)}
                 disabled={decisionPending}
               >
-                Перегенерувати
+                {t("Перегенерувати")}
               </Button>
             </div>
           </CardContent>
@@ -187,7 +189,7 @@ export function RunDetail({
       {isError && (
         <Card>
           <CardContent className="py-6 text-center text-sm text-muted-foreground">
-            Не вдалося оновити статус прогону. Дані можуть бути неактуальними.
+            {t("Не вдалося оновити статус прогону. Дані можуть бути неактуальними.")}
           </CardContent>
         </Card>
       )}
@@ -201,7 +203,7 @@ export function RunDetail({
       ) : !generating ? (
         <Card>
           <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            У цьому прогоні ще немає постів.
+            {t("У цьому прогоні ще немає постів.")}
           </CardContent>
         </Card>
       ) : null}
@@ -210,8 +212,8 @@ export function RunDetail({
         open={rerunOpen}
         onOpenChange={setRerunOpen}
         pending={decisionPending}
-        title="Перегенерувати прогін"
-        description="Прогін піде на нову ітерацію. Можна додати спільну інструкцію для агентів."
+        title={t("Перегенерувати прогін")}
+        description={t("Прогін піде на нову ітерацію. Можна додати спільну інструкцію для агентів.")}
         onConfirm={(feedback) =>
           runDecision.mutate(
             { action: "rerun", feedback },

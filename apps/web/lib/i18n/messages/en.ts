@@ -334,4 +334,30 @@ export const en: Record<string, string> = {
   "Далі": "Next",
   "Запускаємо…": "Starting…",
   "Запустити генерацію": "Start generation",
+
+  // ── Run detail page ───────────────────────────────────────────────────────
+  "До компанії": "Back to company",
+  "Прогін": "Run",
+  "Конфігурація": "Configuration",
+  "з календаря (обрані слоти)": "from the calendar (selected slots)",
+  "акцент": "angle",
+  "моделі": "models",
+  "У черзі на генерацію…": "Queued for generation…",
+  "Агенти працюють над контентом. Картки з'являтимуться поступово.":
+    "The agents are working on the content. Cards will appear as they're ready.",
+  "Прогін завершився помилкою": "The run failed",
+  "Можна повторити генерацію з тими самими налаштуваннями компанії.":
+    "You can retry generation with the same company settings.",
+  "Прогін очікує на ваше рішення": "The run is waiting for your decision",
+  "Потребують уваги": "Need attention",
+  "Перегляньте пости нижче й ухваліть рішення по всьому прогону.":
+    "Review the posts below and make a decision for the whole run.",
+  "Схвалити прогін": "Approve run",
+  "Відхилити прогін": "Reject run",
+  "Не вдалося оновити статус прогону. Дані можуть бути неактуальними.":
+    "Couldn't refresh the run status. Data may be out of date.",
+  "У цьому прогоні ще немає постів.": "No posts in this run yet.",
+  "Перегенерувати прогін": "Regenerate run",
+  "Прогін піде на нову ітерацію. Можна додати спільну інструкцію для агентів.":
+    "The run will go through another iteration. You can add a shared instruction for the agents.",
 };
