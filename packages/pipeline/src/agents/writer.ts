@@ -13,7 +13,7 @@ import { loadPrompt } from "../lib/loadPrompt";
 import { fillTemplate } from "../lib/fillTemplate";
 import { callStructured } from "../lib/llm";
 import { mapPool } from "../lib/mapPool";
-import { ITEM_CONCURRENCY } from "../config";
+import { ITEM_CONCURRENCY, slotModel } from "../config";
 import { addCost } from "../state";
 import type { ContentStateT, RunCost } from "../state";
 import type { GraphDeps } from "../ports";
@@ -52,7 +52,7 @@ async function writeOne(
   plan: ContentPlanItem,
   feedback: FinalItem | undefined,
 ): Promise<{ draft: DraftItem; cost: RunCost }> {
-  const modelId = s.modelConfig.models.writer;
+  const modelId = slotModel(s.modelConfig, "writer").model;
   const base = loadPrompt(CHANNEL_PROMPT[plan.channel]);
 
   let prompt = fillTemplate(base, {

@@ -5,6 +5,7 @@ import { companySettings, contentItems, generationRuns } from "@forteq/db";
 import {
   createPipeline,
   resolveModelConfig,
+  textProvidersUsed,
   DEFAULT_MODELS,
   type HumanDecision,
   type ModelConfig,
@@ -99,7 +100,7 @@ export async function handleResume(job: GenerationResumeJob, ctx: HandlerContext
   // запуску графа; немає ключа → фейлимо прогін із чітким повідомленням (block, no fallback). ──
   let tenantModels: ModelFactoryBuilder;
   try {
-    tenantModels = await tenantModelsBuilder(ctx, accountId, modelConfig.provider);
+    tenantModels = await tenantModelsBuilder(ctx, accountId, textProvidersUsed(modelConfig));
   } catch (e) {
     if (!(e instanceof NoTenantKeyError)) throw e;
     ctx.logger.warn({ runId, provider: e.provider }, "generation.resume blocked: no tenant API key");

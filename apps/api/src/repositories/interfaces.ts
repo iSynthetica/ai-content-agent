@@ -41,6 +41,7 @@ export interface CompanySettings {
   language: string;
   provider: string;
   models: Record<string, string> | null;
+  agentModels: Record<string, { provider: string; model: string }> | null;
 }
 export interface ContentPlan {
   id: string;

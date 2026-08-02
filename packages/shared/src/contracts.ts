@@ -72,6 +72,14 @@ export const updateCompanyRequest = companyDTO.omit({ id: true }).partial();
 // Список компаній акаунта (company switcher). GET /v1/accounts/:accountId/companies.
 export const companiesResponse = z.object({ items: z.array(companyDTO) });
 
+// Per-slot вибір провайдера+моделі (§ADR-0017). Ключ — слот агента (researcher/strategist/…).
+export const slotModelSchema = z.object({
+  provider: z.enum(["openai", "anthropic", "gemini"]),
+  model: z.string().min(1),
+});
+export const agentModelsSchema = z.record(slotModelSchema);
+export type AgentModels = z.infer<typeof agentModelsSchema>;
+
 export const updateSettingsRequest = z.object({
   toneOfVoice: z.string().optional(),
   toneExamples: z.array(z.string()).optional(),
@@ -80,6 +88,8 @@ export const updateSettingsRequest = z.object({
   language: z.string().optional(),
   provider: z.enum(["openai", "anthropic", "gemini"]).optional(),
   models: z.record(z.string()).optional(),
+  // null → повернення до легасі-режиму (один provider); об'єкт → per-slot override.
+  agentModels: agentModelsSchema.nullable().optional(),
 });
 
 // GET /v1/companies/:id/settings — read-форма (дзеркало updateSettingsRequest: усі поля present,
@@ -92,6 +102,7 @@ export const companySettingsDTO = z.object({
   language: z.string(),
   provider: z.enum(["openai", "anthropic", "gemini"]),
   models: z.record(z.string()).nullable(),
+  agentModels: agentModelsSchema.nullable(),
 });
 export type CompanySettingsDTO = z.infer<typeof companySettingsDTO>;
 

@@ -4,6 +4,7 @@ import { companies, companySettings, contentPlans, planEntries } from "@forteq/d
 import {
   suggestTopics,
   resolveModelConfig,
+  slotModel,
   DEFAULT_MODELS,
   type CompanyContext,
   type ModelConfig,
@@ -103,7 +104,9 @@ export async function handleSuggestTopics(
   // лог і вихід, слоти лишаються порожні, людина побачить причину в статусі ключа.
   let builder;
   try {
-    builder = await tenantModelsBuilder(ctx, accountId, input.modelConfig.provider);
+    builder = await tenantModelsBuilder(ctx, accountId, [
+      slotModel(input.modelConfig, "strategist").provider,
+    ]);
   } catch (e) {
     if (!(e instanceof NoTenantKeyError)) throw e;
     ctx.logger.warn({ contentPlanId, provider: e.provider }, "planner.suggest_topics: немає ключа орендаря");

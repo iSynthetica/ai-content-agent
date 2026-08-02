@@ -121,8 +121,11 @@ export const companySettings = pgTable("company_settings", {
   visualStyle: text("visual_style"),
   forbiddenPhrases: jsonb("forbidden_phrases").$type<string[]>().default([]).notNull(),
   language: text("language").default("uk").notNull(),
-  provider: text("provider").default("openai").notNull(),
-  models: jsonb("models").$type<Record<string, string>>(),
+  provider: text("provider").default("openai").notNull(), // фолбек-провайдер (легасі + не-override слоти)
+  models: jsonb("models").$type<Record<string, string>>(), // фолбек per-slot id
+  // Per-slot override provider+model (§ADR-0017). NULL = легасі-режим (один provider на компанію).
+  // Адитивно: наявні рядки лишаються з provider+models, нове поле не потребує backfill.
+  agentModels: jsonb("agent_models").$type<Record<string, { provider: string; model: string }>>(),
 });
 
 export const contentPlans = pgTable(

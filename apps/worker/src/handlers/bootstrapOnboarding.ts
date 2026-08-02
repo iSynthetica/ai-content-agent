@@ -4,6 +4,7 @@ import { companies, companySettings, contentPlans } from "@forteq/db";
 import {
   draftBrandProfile,
   resolveModelConfig,
+  slotModel,
   DEFAULT_MODELS,
   NotEnoughInputError,
   type ModelConfig,
@@ -74,7 +75,9 @@ export async function handleBootstrapOnboarding(
 
     // BYOK (§ADR-0016): чернетка брифу теж генерується ключем ОРЕНДАРЯ. Немає ключа →
     // NoTenantKeyError, який catch нижче кладе у bootstrap_status=failed з повідомленням «додайте ключ».
-    const build = await tenantModelsBuilder(ctx, accountId, input.modelConfig.provider);
+    const build = await tenantModelsBuilder(ctx, accountId, [
+      slotModel(input.modelConfig, "researcher").provider,
+    ]);
     const models = build(input.modelConfig);
     const { draft } = await draftBrandProfile(
       { models },

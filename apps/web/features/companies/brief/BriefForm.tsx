@@ -41,6 +41,7 @@ import type { Company } from "@/features/companies/use-companies";
 import type { CompanySettingsDTO } from "@/lib/dto";
 import { useUpdateCompany } from "@/features/companies/brief/use-update-company";
 import { useUpdateSettings } from "@/features/companies/brief/use-update-settings";
+import { AgentModelsSection, type AgentModelsValue } from "@/features/companies/brief/AgentModelsSection";
 import {
   briefSchema,
   joinList,
@@ -84,6 +85,7 @@ export function BriefForm({
       language: settings?.language ?? "uk",
       provider: initialProvider,
       models: initialModels,
+      agentModels: (settings?.agentModels ?? {}) as Record<string, { provider: Provider; model: string }>,
     },
   });
 
@@ -130,6 +132,11 @@ export function BriefForm({
           language: values.language || undefined,
           provider: values.provider,
           models: values.models,
+          // порожній override → null (легасі-режим), інакше — перевизначені ролі.
+          agentModels:
+            values.agentModels && Object.keys(values.agentModels).length > 0
+              ? values.agentModels
+              : null,
         }),
       ]);
       toast.success("Бренд-профіль збережено");
@@ -447,6 +454,14 @@ export function BriefForm({
                 </FormItem>
               )}
             />
+
+            <div className="space-y-2">
+              <p className="text-sm font-medium leading-none">Модель під кожну роль (розширено)</p>
+              <AgentModelsSection
+                value={(form.watch("agentModels") ?? {}) as AgentModelsValue}
+                onChange={(next) => form.setValue("agentModels", next, { shouldDirty: true })}
+              />
+            </div>
           </CardContent>
         </Card>
 

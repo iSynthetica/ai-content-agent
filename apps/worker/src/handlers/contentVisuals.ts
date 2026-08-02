@@ -47,7 +47,7 @@ export async function handleContentVisuals(
   // НЕ фейлимо job (картинки поза критичним шляхом): лишаємо image_url=null і виходимо.
   let models;
   try {
-    const build = await tenantModelsBuilder(ctx, accountId, "openai");
+    const build = await tenantModelsBuilder(ctx, accountId, ["openai"]);
     models = build(modelConfig);
   } catch (e) {
     if (!(e instanceof NoTenantKeyError)) throw e;

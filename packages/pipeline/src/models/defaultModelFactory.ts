@@ -6,15 +6,16 @@ import { ChatOpenAI } from "@langchain/openai";
 import { ChatAnthropic } from "@langchain/anthropic";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
-import type { AgentName, ModelConfig, ModelSecrets } from "../config";
+import { type AgentName, type ModelConfig, type ModelProvider, type ModelSecrets, slotModel } from "../config";
 import type { ImageModel, ModelFactory } from "../ports";
 
 export function defaultModelFactory(config: ModelConfig, secrets: ModelSecrets): ModelFactory {
-  const buildChat = (modelId: string): BaseChatModel => {
-    if (config.provider === "anthropic") {
+  // Провайдер тепер per-slot (§ADR-0017): buildChat приймає його явно, а не замикає config.provider.
+  const buildChat = (provider: ModelProvider, modelId: string): BaseChatModel => {
+    if (provider === "anthropic") {
       return new ChatAnthropic({ model: modelId, apiKey: secrets.anthropicApiKey, temperature: 0.7 });
     }
-    if (config.provider === "gemini") {
+    if (provider === "gemini") {
       // Gemini structured-output йде через function-calling (не strict-JSON як OpenAI), тож
       // .withStructuredOutput у агентах працює, але поведінка інша — потребує перевірки живим ключем.
       return new ChatGoogleGenerativeAI({ model: modelId, apiKey: secrets.geminiApiKey, temperature: 0.7 });
@@ -37,11 +38,13 @@ export function defaultModelFactory(config: ModelConfig, secrets: ModelSecrets):
 
   return {
     forAgent(agent: AgentName): BaseChatModel {
-      return buildChat(config.models[agent]);
+      const { provider, model } = slotModel(config, agent);
+      return buildChat(provider, model);
     },
     imageModel(): ImageModel {
-      // МВП: OpenAI Images API через fetch (без окремої залежності). Ключ замкнено в секретах.
-      return makeOpenAIImageModel(config.models.visual, secrets.openaiApiKey);
+      // МВП: OpenAI Images API через fetch. Зображення ЗАВЖДИ OpenAI (провайдер слота ігнорується),
+      // тож беремо лише id моделі visual і openai-ключ.
+      return makeOpenAIImageModel(slotModel(config, "visual").model, secrets.openaiApiKey);
     },
   };
 }

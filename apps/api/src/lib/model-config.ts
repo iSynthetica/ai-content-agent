@@ -9,6 +9,8 @@ export function snapshotModelConfig(
   return {
     provider: settings.provider,
     models: settings.models ?? {},
+    // Per-slot override (§ADR-0017): undefined = легасі-режим. Резолвиться разом зі знімком у worker.
+    agentModels: settings.agentModels ?? undefined,
     language: settings.language,
     channelCounts: plan.channelCounts,
     planConfig: plan.config ?? null,

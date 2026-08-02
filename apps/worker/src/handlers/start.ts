@@ -10,6 +10,7 @@ import {
 import {
   createPipeline,
   resolveModelConfig,
+  textProvidersUsed,
   DEFAULT_MODELS,
   type CompanyContext,
   type ModelConfig,
@@ -128,7 +129,7 @@ export async function handleStart(job: GenerationStartJob, ctx: HandlerContext):
   // повідомленням і задачею в Inbox, а не витрачаємо платформенний ключ на генерацію орендаря. ──
   let tenantModels: ModelFactoryBuilder;
   try {
-    tenantModels = await tenantModelsBuilder(ctx, accountId, input.modelConfig.provider);
+    tenantModels = await tenantModelsBuilder(ctx, accountId, textProvidersUsed(input.modelConfig));
   } catch (e) {
     if (!(e instanceof NoTenantKeyError)) throw e;
     ctx.logger.warn({ runId, provider: e.provider }, "generation.start blocked: no tenant API key");

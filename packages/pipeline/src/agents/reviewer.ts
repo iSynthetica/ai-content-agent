@@ -10,7 +10,7 @@ import { loadPrompt } from "../lib/loadPrompt";
 import { fillTemplate } from "../lib/fillTemplate";
 import { callStructured } from "../lib/llm";
 import { mapPool } from "../lib/mapPool";
-import { ITEM_CONCURRENCY } from "../config";
+import { ITEM_CONCURRENCY, slotModel } from "../config";
 import { addCost } from "../state";
 import type { ContentStateT, RunCost } from "../state";
 import type { GraphDeps } from "../ports";
@@ -98,7 +98,7 @@ async function reviewOne(
   s: ContentStateT,
   draft: DraftItem,
 ): Promise<{ final: FinalItem; cost: RunCost }> {
-  const modelId = s.modelConfig.models.reviewer;
+  const modelId = slotModel(s.modelConfig, "reviewer").model;
 
   // Layer 1 rule-based pre-check (Type 3): hedging + forbidden categorical (з @forteq/evaluators,
   // без дублювання логіки). Прапорці підмішуємо у промпт як контекст для LLM-критеріїв.

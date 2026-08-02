@@ -26,6 +26,10 @@ export const briefSchema = z.object({
   // Дефолти LLM для генерації (дзеркало updateSettingsRequest із @forteq/shared):
   provider: z.enum(["openai", "anthropic", "gemini"]).optional(),
   models: z.record(z.string()).optional(), // { <agentKey>: modelId, visual: modelId }
+  // Per-slot override (§ADR-0017): лише перевизначені ролі; решта беруть базовий provider+models.
+  agentModels: z
+    .record(z.object({ provider: z.enum(["openai", "anthropic", "gemini"]), model: z.string() }))
+    .optional(),
 });
 
 export type BriefFormValues = z.infer<typeof briefSchema>;

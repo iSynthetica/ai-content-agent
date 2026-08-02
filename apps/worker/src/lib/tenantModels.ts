@@ -58,23 +58,24 @@ async function touchLastUsed(ctx: HandlerContext, accountId: string, provider: s
 }
 
 /**
- * ModelFactoryBuilder на ключах ОРЕНДАРЯ. У fake-режимі повертає глобальний фейковий білдер
- * (ключі не потрібні). Інакше вимагає ключ `requiredProvider`, інакше кидає NoTenantKeyError.
- * `requiredProvider`: для тексту — modelConfig.provider; для зображень — завжди "openai".
+ * ModelFactoryBuilder на ключах ОРЕНДАРЯ. У fake-режимі повертає глобальний фейковий білдер.
+ * Інакше вимагає ключ КОЖНОГО з `requiredProviders` (union по ролях, §ADR-0017) — перший відсутній
+ * кидає NoTenantKeyError. Для тексту — textProvidersUsed(config); для зображень — ["openai"].
  */
 export async function tenantModelsBuilder(
   ctx: HandlerContext,
   accountId: string,
-  requiredProvider: string,
+  requiredProviders: string[],
 ): Promise<ModelFactoryBuilder> {
   if (ctx.env.FAKE_MODELS === "1") return ctx.pipeline.models;
 
   const secrets = await loadTenantSecrets(ctx, accountId);
-  if (!keyFor(secrets, requiredProvider)) throw new NoTenantKeyError(requiredProvider);
+  const missing = requiredProviders.find((p) => !keyFor(secrets, p));
+  if (missing) throw new NoTenantKeyError(missing);
 
-  // use-mark для UI; збій оновлення не критичний.
+  // use-mark кожного задіяного провайдера для UI; збій оновлення не критичний.
   try {
-    await touchLastUsed(ctx, accountId, requiredProvider);
+    for (const p of requiredProviders) await touchLastUsed(ctx, accountId, p);
   } catch (e) {
     ctx.logger.warn({ err: e instanceof Error ? e.message : String(e) }, "tenantModels: touch last_used_at failed");
   }

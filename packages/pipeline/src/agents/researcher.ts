@@ -5,6 +5,7 @@ import { ResearchResultSchema, type ResearchResult } from "../schemas";
 import { loadPrompt } from "../lib/loadPrompt";
 import { fillTemplate } from "../lib/fillTemplate";
 import { callStructured } from "../lib/llm";
+import { slotModel } from "../config";
 import type { GraphDeps } from "../ports";
 import type { ContentStateT } from "../state";
 import type { CompanyContext } from "../types";
@@ -28,7 +29,7 @@ function isHttpUrl(s: string): boolean {
 export const makeResearcherNode =
   (deps: GraphDeps) =>
   async (s: ContentStateT): Promise<Partial<ContentStateT>> => {
-    const modelId = s.modelConfig.models.researcher;
+    const modelId = slotModel(s.modelConfig, "researcher").model;
     const hits = await deps.webSearch.search(buildQuery(s.company), { maxResults: 8 });
 
     const prompt = fillTemplate(loadPrompt("researcher.md"), {

@@ -12,6 +12,7 @@ import type { ContentPlanItem } from "../schemas";
 import { loadPrompt } from "../lib/loadPrompt";
 import { fillTemplate } from "../lib/fillTemplate";
 import { callStructured } from "../lib/llm";
+import { slotModel } from "../config";
 import type { GraphDeps } from "../ports";
 import type { ContentStateT } from "../state";
 import type { PlanEntryInput } from "../types";
@@ -66,7 +67,7 @@ export function deduplicateTopics<T extends { topic: string }>(items: T[]): T[] 
 }
 
 async function fullPlan(deps: GraphDeps, s: ContentStateT): Promise<Partial<ContentStateT>> {
-  const modelId = s.modelConfig.models.strategist;
+  const modelId = slotModel(s.modelConfig, "strategist").model;
   const prompt = fillTemplate(loadPrompt("strategist.md"), {
     research: JSON.stringify(s.research ?? {}),
     channelConfig: JSON.stringify(s.channelConfig ?? {}),
@@ -121,7 +122,7 @@ async function scopedPlan(deps: GraphDeps, s: ContentStateT): Promise<Partial<Co
   }
 
   // Дозаповнення format/keyMessage лише для відсутніх — один компактний structured-виклик.
-  const modelId = s.modelConfig.models.strategist;
+  const modelId = slotModel(s.modelConfig, "strategist").model;
   const prompt = fillTemplate(loadPrompt("strategist.md"), {
     research: JSON.stringify(s.research ?? {}),
     channelConfig: "{}",

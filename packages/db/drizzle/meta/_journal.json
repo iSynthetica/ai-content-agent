@@ -71,6 +71,13 @@
       "when": 1785664923769,
       "tag": "0009_api_keys_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1785671686525,
+      "tag": "0010_outstanding_gargoyle",
+      "breakpoints": true
     }
   ]
 }

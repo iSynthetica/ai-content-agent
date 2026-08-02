@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Logger } from "pino";
-import type { DecisionRequest, RunDecisionResponse } from "@forteq/shared";
+import { AGENT_MODEL_KEYS, type DecisionRequest, type RunDecisionResponse } from "@forteq/shared";
 import { AppError } from "../http/errors";
 import { serializeRun, type ExportedFile, type ExportFormat } from "../lib/export";
 import { snapshotModelConfig } from "../lib/model-config";
@@ -59,15 +59,20 @@ export class RunsService {
     const threadId = randomUUID();
     const modelConfig = snapshotModelConfig(settings, plan);
 
-    // BYOK (§ADR-0016): без ключа провайдера прогін не стартує. Перевіряємо ТУТ, щоб віддати
-    // миттєвий 422 з чіткою причиною, а не створити прогін, який упаде у воркері за кілька секунд.
+    // BYOK (§ADR-0016/0017): без ключа провайдера прогін не стартує. Перевіряємо ТУТ, щоб віддати
+    // миттєвий 422, а не створити прогін, який упаде у воркері. Union провайдерів по ролях
+    // (agentModels-override або фолбек-provider для кожного текстового слота) — потрібні ключі УСІХ.
     // Воркер усе одно блокує повторно (resume-шлях, видалення ключа між enqueue і виконанням).
-    const hasKey = await this.apiKeys.exists(ctx.accountId, settings.provider);
-    if (!hasKey) {
-      throw AppError.unprocessable(
-        `Додайте API-ключ провайдера '${settings.provider}' у налаштуваннях акаунта, ` +
-          "щоб запускати генерацію",
-      );
+    const requiredProviders = new Set<string>();
+    for (const slot of AGENT_MODEL_KEYS) {
+      requiredProviders.add(settings.agentModels?.[slot]?.provider ?? settings.provider);
+    }
+    for (const provider of requiredProviders) {
+      if (!(await this.apiKeys.exists(ctx.accountId, provider))) {
+        throw AppError.unprocessable(
+          `Додайте API-ключ провайдера '${provider}' у налаштуваннях акаунта, щоб запускати генерацію`,
+        );
+      }
     }
 
     // INSERT run у request-txn (§2.10.3). planEntryIds передаються у job як є.

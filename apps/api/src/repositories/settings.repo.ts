@@ -15,6 +15,7 @@ function toSettings(row: SettingsRow): CompanySettings {
     language: row.language,
     provider: row.provider,
     models: row.models ?? null,
+    agentModels: row.agentModels ?? null,
   };
 }
 
@@ -42,6 +43,8 @@ export class DrizzleSettingsRepo implements SettingsRepo {
     if (patch.language !== undefined) fields.language = patch.language;
     if (patch.provider !== undefined) fields.provider = patch.provider;
     if (patch.models !== undefined) fields.models = patch.models;
+    // null → повернення до легасі-режиму; репо пише його як є.
+    if (patch.agentModels !== undefined) fields.agentModels = patch.agentModels ?? null;
 
     // Порожній патч — окремою гілкою. Drizzle кидає «No values to set» на `set: {}` ще на
     // побудові запиту, тож onboarding, який створює налаштування з самими DB-дефолтами

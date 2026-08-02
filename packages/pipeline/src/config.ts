@@ -19,10 +19,34 @@ export const IMAGE_CONCURRENCY = 2; // картинки дорожчі й жор
 // Провайдери текстових моделей. Зображення — завжди OpenAI (gpt-image-1), незалежно від цього.
 export type ModelProvider = "openai" | "anthropic" | "gemini";
 
-// Резолвлений снапшот моделей на момент запуску (кладеться у стан → персиститься у checkpointer).
-export interface ModelConfig {
+// Per-slot вибір провайдера+моделі (§ADR-0017). Дозволяє researcher на Gemini, writer на Claude тощо.
+export interface SlotModel {
   provider: ModelProvider;
-  models: Record<ModelSlot, string>; // per-agent id
+  model: string;
+}
+
+// Резолвлений снапшот моделей на момент запуску (кладеться у стан → персиститься у checkpointer).
+//
+// Адитивність заради checkpointer-сумісності (§ADR-0017): `provider`+`models` лишаються ФОЛБЕКОМ і
+// формою, яку несуть уже наявні (in-flight) стани; `agentModels` — НЕОБОВʼЯЗКОВЕ per-slot
+// перевизначення. Старий резолвлений конфіг (без agentModels) читається без змін — resume не ламається.
+export interface ModelConfig {
+  provider: ModelProvider; // фолбек-провайдер для слотів без override
+  models: Record<ModelSlot, string>; // фолбек per-slot id
+  agentModels?: Partial<Record<ModelSlot, SlotModel>>; // per-slot override provider+model
+}
+
+// Резолв провайдера/моделі для слота: override виграє, інакше — фолбек.
+export function slotModel(config: ModelConfig, slot: ModelSlot): SlotModel {
+  const o = config.agentModels?.[slot];
+  return { provider: o?.provider ?? config.provider, model: o?.model ?? config.models[slot] };
+}
+
+// Текстові провайдери, задіяні у прогоні (для BYOK-union: прогону потрібні ключі УСІХ них).
+// visual виключено — зображення завжди OpenAI, його ключ вимагається окремо у visuals-джобі.
+export function textProvidersUsed(config: ModelConfig): ModelProvider[] {
+  const slots: ModelSlot[] = ["researcher", "strategist", "writer", "reviewer", "judge"];
+  return [...new Set(slots.map((s) => slotModel(config, s).provider))];
 }
 
 // Дефолти — фолбек, коли company_settings/env нічого не задають.
@@ -52,6 +76,8 @@ export function resolveModelConfig(
   return {
     provider: snapshot?.provider ?? defaults.provider,
     models: { ...defaults.models, ...(snapshot?.models ?? {}) } as Record<ModelSlot, string>,
+    // per-slot override передаємо як є; undefined = легасі-режим (лише фолбек-провайдер).
+    agentModels: snapshot?.agentModels,
   };
 }
 
