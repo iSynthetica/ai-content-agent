@@ -24,9 +24,16 @@ export const envSchema = z.object({
   // LLM-секрети. ОПЦІЙНІ: якщо ключів нема (або FAKE_MODELS=1) — composition інжектить
   // ФЕЙКОВИЙ ModelFactory (детерміновані відповіді), тож end-to-end плумбінг проходить БЕЗ реальних
   // LLM-викликів/ключів (spike-1 §14, барʼєр B2). Реальний прогін вимагає OPENAI/ANTHROPIC ключа.
+  // Платформенні LLM-ключі більше НЕ живлять генерацію орендаря (BYOK, §ADR-0016): ключі
+  // резолвляться per-tenant на момент виконання. Лишаються опційними як шов/легасі; на реальний
+  // прогін орендаря вони не впливають. TAVILY лишається платформенним (пошук — не той ризик).
   OPENAI_API_KEY: optionalSecret,
   ANTHROPIC_API_KEY: optionalSecret,
   TAVILY_API_KEY: optionalSecret,
+
+  // BYOK master-ключ (§ADR-0016): розшифровує ключі провайдерів орендаря. Обовʼязковий у реальному
+  // режимі (перевірка — у composition, fail-fast на старті); у FAKE_MODELS=1 не потрібен.
+  BYOK_ENCRYPTION_KEY: optionalSecret,
 
   // Прапорець фейкових моделей для smoke/CI: "1" → детермінований ModelFactory без мережі.
   // z.string (не enum), щоб несподіване значення не валило старт worker'а — активний лише рівно "1".

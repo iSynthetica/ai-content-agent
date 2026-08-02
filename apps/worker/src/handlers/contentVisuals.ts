@@ -3,6 +3,7 @@ import type { Job } from "@forteq/shared";
 import { contentItems } from "@forteq/db";
 import { renderVisuals, resolveModelConfig, DEFAULT_MODELS, type ModelConfig } from "@forteq/pipeline";
 import { withAccountScope, type HandlerContext } from "../composition.js";
+import { NoTenantKeyError, tenantModelsBuilder } from "../lib/tenantModels.js";
 
 type ContentVisualsJob = Extract<Job, { kind: "content.visuals" }>;
 
@@ -42,7 +43,17 @@ export async function handleContentVisuals(
     job.modelConfig as Partial<ModelConfig>,
     DEFAULT_MODELS,
   );
-  const models = ctx.pipeline.models(modelConfig);
+  // BYOK (§ADR-0016): зображення завжди OpenAI → потрібен openai-ключ ОРЕНДАРЯ. Немає ключа —
+  // НЕ фейлимо job (картинки поза критичним шляхом): лишаємо image_url=null і виходимо.
+  let models;
+  try {
+    const build = await tenantModelsBuilder(ctx, accountId, "openai");
+    models = build(modelConfig);
+  } catch (e) {
+    if (!(e instanceof NoTenantKeyError)) throw e;
+    ctx.logger.warn({ runId }, "content.visuals: немає openai-ключа орендаря — зображення пропущено");
+    return;
+  }
   const { rendered, errors } = await renderVisuals(
     { models, imageStore: ctx.pipeline.imageStore },
     runId,

@@ -6,13 +6,11 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
 import type { BaseCheckpointSaver } from "@langchain/langgraph";
-import { createDb, withAccountContext, type DB, type TenantContext } from "@forteq/db";
+import { createDb, withAccountContext, parseMasterKey, type DB, type TenantContext } from "@forteq/db";
 // РЕАЛЬНІ порти/типи пайплайна (§5) — локальні стаб-декларації прибрано (барʼєр B2).
 import {
-  defaultModelFactory,
   type ImageStore,
   type ModelFactoryBuilder,
-  type ModelSecrets,
   type PipelineDeps,
   type WebSearchHit,
   type WebSearchTool,
@@ -102,6 +100,9 @@ export interface Deps {
   db: DB;
   logger: PinoLogger;
   pipeline: PipelineDeps; // те, що піде у createPipeline(...) з @forteq/pipeline (§13)
+  // BYOK master-ключ (§ADR-0016): розшифровує ключі провайдерів орендаря на момент виконання.
+  // undefined у fake-режимі (ключі там не потрібні). Хендлери беруть його через ctx.masterKey.
+  masterKey?: Buffer;
   // Продюсер follow-up job (§7.4): generation.start ставить content.visuals після персисту.
   // Інжектиться з main.ts (там живе redis-конект), тому опційний — тести його не потребують.
   producer?: JobProducer;
@@ -126,34 +127,39 @@ export function buildDeps(env: Env): Deps {
   const logger = pino({ level: env.LOG_LEVEL });
   const db = createDb(env.DATABASE_URL);
 
-  // Секрети — тільки тут (composition root). У пайплайн заходять як замкнені значення, не як env.
-  const secrets: ModelSecrets = {
-    openaiApiKey: env.OPENAI_API_KEY,
-    anthropicApiKey: env.ANTHROPIC_API_KEY,
-  };
-
   // Фейкові моделі — ЛИШЕ за явним FAKE_MODELS=1 (детермінований плумбінг без LLM-викликів, §14).
   //
-  // Раніше сюди ж падав випадок «немає жодного ключа», і це була міна: без OPENAI_API_KEY воркер
-  // не зупинявся, а тихо генерував фейковий контент. Прогін завершувався звичайним needs_review,
-  // у БД лягали фейкові пости, і в UI вони не відрізнялись від справжніх. Одна загублена змінна
-  // оточення = база сміття без жодного сигналу. Тепер відсутність ключів — фатальна помилка
-  // СТАРТУ: краще не піднятись, ніж мовчки писати неправду.
+  // BYOK (§ADR-0016): реальний прогін бере ключ ОРЕНДАРЯ на момент виконання (tenantModelsBuilder),
+  // тож платформенні LLM-ключі генерацію більше не живлять. У real-режимі потрібен лише master-ключ,
+  // щоб розшифрувати ключ орендаря; його відсутність — фатальна помилка СТАРТУ (fail-fast).
+  //
+  // Історичний контекст (ADR-0014): колись відсутність ключа тихо перемикала на фейки, і в БД
+  // лягало сміття, невідрізниме від справжнього. Тепер фейки — лише за явним прапорцем.
   const useFakeModels = env.FAKE_MODELS === "1";
+  let masterKey: Buffer | undefined;
   if (useFakeModels) {
     logger.warn({}, "using FAKE ModelFactory (FAKE_MODELS=1, no real LLM calls)");
-  } else if (!env.OPENAI_API_KEY && !env.ANTHROPIC_API_KEY) {
-    throw new Error(
-      "Немає жодного LLM-ключа (OPENAI_API_KEY / ANTHROPIC_API_KEY). " +
-        "Задайте ключ або запустіть з FAKE_MODELS=1, якщо фейкові моделі — саме те, що потрібно.",
-    );
+  } else {
+    if (!env.BYOK_ENCRYPTION_KEY) {
+      throw new Error(
+        "BYOK_ENCRYPTION_KEY відсутній. Він потрібен для розшифрування ключів орендарів. " +
+          "Задайте його або запустіть з FAKE_MODELS=1, якщо фейкові моделі — саме те, що потрібно.",
+      );
+    }
+    masterKey = parseMasterKey(env.BYOK_ENCRYPTION_KEY);
   }
 
-  // ModelFactoryBuilder: createPipeline викличе його per-run з input.modelConfig (§5/§6).
-  // Fake: пробрасуємо FAKE_STEP_DELAY_MS, щоб per-node прогрес було видно наживо на демо (§progress).
+  // ModelFactoryBuilder. Fake: детерміновані фейки (+FAKE_STEP_DELAY_MS для видимого прогресу).
+  // Real: глобальне будівництво ЗАБОРОНЕНЕ (кидає) — кожен шлях мусить будувати моделі на ключі
+  // орендаря через tenantModelsBuilder. Так «block, no fallback» тримається навіть якщо якийсь
+  // шлях забуде резолв: він упаде голосно, а не витратить платформенний ключ (§ADR-0016).
   const models: ModelFactoryBuilder = useFakeModels
     ? () => createFakeModelFactory({ stepDelayMs: env.FAKE_STEP_DELAY_MS })
-    : (modelConfig) => defaultModelFactory(modelConfig, secrets);
+    : () => {
+        throw new Error(
+          "BYOK: моделі будуються на ключі орендаря (tenantModelsBuilder), не глобально (§ADR-0016)",
+        );
+      };
 
   // Postgres checkpointer (§10): resume переживає рестарт/інший інстанс worker'а.
   // `.setup()` (створення checkpointer-таблиць) викликається у main.ts ПЕРЕД стартом Worker'а.
@@ -167,7 +173,7 @@ export function buildDeps(env: Env): Deps {
     logger,
   };
 
-  return { env, db, logger, pipeline };
+  return { env, db, logger, pipeline, masterKey };
 }
 
 /**

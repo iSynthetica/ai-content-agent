@@ -93,6 +93,7 @@ export function buildRequestScope(
       repos.settings,
       repos.contentPlans,
       repos.contentItems,
+      repos.apiKeys,
       afterCommit,
       logger,
     ),

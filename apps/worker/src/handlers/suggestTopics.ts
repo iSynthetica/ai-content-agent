@@ -10,6 +10,7 @@ import {
   type TopicSlot,
 } from "@forteq/pipeline";
 import { withAccountScope, type HandlerContext } from "../composition.js";
+import { NoTenantKeyError, tenantModelsBuilder } from "../lib/tenantModels.js";
 
 type SuggestTopicsJob = Extract<Job, { kind: "planner.suggest_topics" }>;
 
@@ -98,7 +99,17 @@ export async function handleSuggestTopics(
   }
 
   // ── 2) ПОЗА txn: LLM ──
-  const models = ctx.pipeline.models(input.modelConfig);
+  // BYOK (§ADR-0016): теми пропонує ключ ОРЕНДАРЯ. Немає ключа — не фейлимо (планер вторинний):
+  // лог і вихід, слоти лишаються порожні, людина побачить причину в статусі ключа.
+  let builder;
+  try {
+    builder = await tenantModelsBuilder(ctx, accountId, input.modelConfig.provider);
+  } catch (e) {
+    if (!(e instanceof NoTenantKeyError)) throw e;
+    ctx.logger.warn({ contentPlanId, provider: e.provider }, "planner.suggest_topics: немає ключа орендаря");
+    return;
+  }
+  const models = builder(input.modelConfig);
   const { suggestions, stats } = await suggestTopics(
     { models },
     {

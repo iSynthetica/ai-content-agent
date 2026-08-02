@@ -6,6 +6,7 @@ import { serializeRun, type ExportedFile, type ExportFormat } from "../lib/expor
 import { snapshotModelConfig } from "../lib/model-config";
 import type { AfterCommit, AuthCtx, Paged } from "../di/types";
 import type {
+  ApiKeysRepo,
   CompaniesRepo,
   ContentItem,
   ContentItemsRepo,
@@ -37,6 +38,7 @@ export class RunsService {
     private readonly settings: SettingsRepo,
     private readonly plans: ContentPlansRepo,
     private readonly contentItems: ContentItemsRepo,
+    private readonly apiKeys: ApiKeysRepo,
     private readonly afterCommit: AfterCommit,
     private readonly logger: Logger,
   ) {}
@@ -56,6 +58,17 @@ export class RunsService {
 
     const threadId = randomUUID();
     const modelConfig = snapshotModelConfig(settings, plan);
+
+    // BYOK (§ADR-0016): без ключа провайдера прогін не стартує. Перевіряємо ТУТ, щоб віддати
+    // миттєвий 422 з чіткою причиною, а не створити прогін, який упаде у воркері за кілька секунд.
+    // Воркер усе одно блокує повторно (resume-шлях, видалення ключа між enqueue і виконанням).
+    const hasKey = await this.apiKeys.exists(ctx.accountId, settings.provider);
+    if (!hasKey) {
+      throw AppError.unprocessable(
+        `Додайте API-ключ провайдера '${settings.provider}' у налаштуваннях акаунта, ` +
+          "щоб запускати генерацію",
+      );
+    }
 
     // INSERT run у request-txn (§2.10.3). planEntryIds передаються у job як є.
     // TODO(Фаза 3/4, планувальник): валідувати належність слотів компанії + статус 'approved'

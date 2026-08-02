@@ -15,11 +15,13 @@ import {
   runFailedInbox,
   runNeedsReviewInbox,
 } from "@forteq/shared";
+import type { ModelFactoryBuilder } from "@forteq/pipeline";
 import { withAccountScope, type HandlerContext } from "../composition.js";
 import { openInbox, resolveInboxForEntity, writeNotification } from "../lib/notify.js";
 import { upsertContentItems } from "../lib/persist.js";
 import { makeProgressReporter } from "../lib/progress.js";
 import { enqueueVisuals } from "../lib/enqueueVisuals.js";
+import { NoTenantKeyError, tenantModelsBuilder } from "../lib/tenantModels.js";
 
 type GenerationResumeJob = Extract<Job, { kind: "generation.resume" }>;
 type Decision = GenerationResumeJob["decision"];
@@ -93,6 +95,22 @@ export async function handleResume(job: GenerationResumeJob, ctx: HandlerContext
   const { companyId, itemIds, modelConfig, visualStyle } = prep;
   const decision = toHumanDecision(job.decision, itemIds);
 
+  // ── BYOK (§ADR-0016): ключ орендаря міг бути видалений між прогоном і resume. Резолвимо ДО
+  // запуску графа; немає ключа → фейлимо прогін із чітким повідомленням (block, no fallback). ──
+  let tenantModels: ModelFactoryBuilder;
+  try {
+    tenantModels = await tenantModelsBuilder(ctx, accountId, modelConfig.provider);
+  } catch (e) {
+    if (!(e instanceof NoTenantKeyError)) throw e;
+    ctx.logger.warn({ runId, provider: e.provider }, "generation.resume blocked: no tenant API key");
+    await withAccountScope(ctx, accountId, async (tx) => {
+      await tx.update(generationRuns).set({ status: "failed" }).where(eq(generationRuns.id, runId));
+      await writeNotification(tx, accountId, runFailedEvent({ runId, error: e.message }));
+      await openInbox(tx, accountId, runFailedInbox({ runId, companyId, error: e.message }));
+    });
+    return;
+  }
+
   // ── 1) КОРОТКА txn: status=running. ──
   await withAccountScope(ctx, accountId, async (tx) => {
     await tx.update(generationRuns).set({ status: "running" }).where(eq(generationRuns.id, runId));
@@ -101,7 +119,8 @@ export async function handleResume(job: GenerationResumeJob, ctx: HandlerContext
   // ── 2) ПОЗА txn: Command({ resume }) → END (approve/reject) АБО петля revision → знову interrupt. ──
   // Per-node прогрес (§progress): onProgress персиститься окремими короткими txn під час стріму графа.
   const progress = makeProgressReporter(ctx, accountId, runId);
-  const res = await createPipeline(ctx.pipeline).resume(threadId, decision, {
+  // models — на ключі орендаря (§ADR-0016); решта deps без змін.
+  const res = await createPipeline({ ...ctx.pipeline, models: tenantModels }).resume(threadId, decision, {
     onProgress: progress.onProgress,
   });
   await progress.flush(); // дочекатися всіх відкладених записів прогресу перед фінальним персистом

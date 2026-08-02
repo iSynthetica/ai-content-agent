@@ -23,11 +23,13 @@ import {
   runFailedInbox,
   runNeedsReviewInbox,
 } from "@forteq/shared";
+import type { ModelFactoryBuilder } from "@forteq/pipeline";
 import { withAccountScope, type HandlerContext } from "../composition.js";
 import { openInbox, writeNotification } from "../lib/notify.js";
 import { upsertContentItems } from "../lib/persist.js";
 import { makeProgressReporter } from "../lib/progress.js";
 import { enqueueVisuals } from "../lib/enqueueVisuals.js";
+import { NoTenantKeyError, tenantModelsBuilder } from "../lib/tenantModels.js";
 
 type GenerationStartJob = Extract<Job, { kind: "generation.start" }>;
 
@@ -121,6 +123,29 @@ export async function handleStart(job: GenerationStartJob, ctx: HandlerContext):
     } as PipelineInput;
   });
 
+  // ── 1.5) BYOK (§ADR-0016): резолвити ModelFactoryBuilder на ключі ОРЕНДАРЯ ДО запуску графа.
+  // Немає ключа потрібного провайдера → прогін НЕ стартує (block, no fallback): фейлимо з чітким
+  // повідомленням і задачею в Inbox, а не витрачаємо платформенний ключ на генерацію орендаря. ──
+  let tenantModels: ModelFactoryBuilder;
+  try {
+    tenantModels = await tenantModelsBuilder(ctx, accountId, input.modelConfig.provider);
+  } catch (e) {
+    if (!(e instanceof NoTenantKeyError)) throw e;
+    ctx.logger.warn({ runId, provider: e.provider }, "generation.start blocked: no tenant API key");
+    await withAccountScope(ctx, accountId, async (tx) => {
+      await tx.update(generationRuns).set({ status: "failed" }).where(eq(generationRuns.id, runId));
+      await writeNotification(tx, accountId, runFailedEvent({ runId, error: e.message }));
+      await openInbox(tx, accountId, runFailedInbox({ runId, companyId, error: e.message }));
+      if (scoped) {
+        await tx
+          .update(planEntries)
+          .set({ status: "proposed" })
+          .where(and(eq(planEntries.companyId, companyId), inArray(planEntries.id, planEntryIds)));
+      }
+    });
+    return;
+  }
+
   // ── 2) КОРОТКА txn: status=running (+ скоуп: слоти → generating). Закрити txn. ──
   await withAccountScope(ctx, accountId, async (tx) => {
     await tx.update(generationRuns).set({ status: "running" }).where(eq(generationRuns.id, runId));
@@ -135,7 +160,10 @@ export async function handleStart(job: GenerationStartJob, ctx: HandlerContext):
   // ── 3) ПОЗА txn: виконати граф (worker — єдиний виконавець; LLM хвилинами). threadId === runId. ──
   // Per-node прогрес (§progress): onProgress персиститься окремими короткими txn під час стріму графа.
   const progress = makeProgressReporter(ctx, accountId, runId);
-  const res = await createPipeline(ctx.pipeline).start(input, runId, { onProgress: progress.onProgress });
+  // Пайплайн сам кличе deps.models(modelConfig) — тож підміняємо саме models на tenant-білдер (§ADR-0016).
+  const res = await createPipeline({ ...ctx.pipeline, models: tenantModels }).start(input, runId, {
+    onProgress: progress.onProgress,
+  });
   await progress.flush(); // дочекатися всіх відкладених записів прогресу перед фінальним персистом
 
   // ── 4) НОВА scoped-txn: персист результату. ──

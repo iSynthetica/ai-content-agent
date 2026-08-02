@@ -10,6 +10,7 @@ import {
 } from "@forteq/pipeline";
 import { withAccountScope, type HandlerContext } from "../composition.js";
 import { fetchSiteText } from "../lib/fetchSiteText.js";
+import { tenantModelsBuilder } from "../lib/tenantModels.js";
 
 type OnboardingBootstrapJob = Extract<Job, { kind: "onboarding.bootstrap" }>;
 
@@ -71,7 +72,10 @@ export async function handleBootstrapOnboarding(
       ctx.logger.warn({ companyId, url: input.websiteUrl }, "bootstrap: сайт недоступний");
     }
 
-    const models = ctx.pipeline.models(input.modelConfig);
+    // BYOK (§ADR-0016): чернетка брифу теж генерується ключем ОРЕНДАРЯ. Немає ключа →
+    // NoTenantKeyError, який catch нижче кладе у bootstrap_status=failed з повідомленням «додайте ключ».
+    const build = await tenantModelsBuilder(ctx, accountId, input.modelConfig.provider);
+    const models = build(input.modelConfig);
     const { draft } = await draftBrandProfile(
       { models },
       {
