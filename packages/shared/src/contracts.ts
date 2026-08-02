@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   CHANNELS, ROLES, RUN_STATUSES, ITEM_STATUSES, PLAN_ENTRY_STATUSES, WEEKDAYS,
+  CONTENT_VERSION_SOURCES,
 } from "./config";
 
 // ── базові ──────────────────────────────────────────────────────────────────
@@ -207,6 +208,9 @@ export const contentItemDTO = z.object({
   runId: z.string(),
   channel: channelSchema,
   topic: z.string().nullable(),
+  // title — людський заголовок (§content-editing). Nullable: пайплайн його не пише, з'являється
+  // лише через PATCH; UI фолбечить на topic, коли title відсутній.
+  title: z.string().nullable(),
   text: z.string().nullable(),
   scores: z.record(criterionScore).nullable(),
   // Порушення з ПРИВ'ЯЗКОЮ до тексту: quote — дослівний фрагмент поста, issue — суть проблеми.
@@ -258,6 +262,35 @@ export const runDecisionResponse = z.object({
 });
 export type RunDecisionResponse = z.infer<typeof runDecisionResponse>;
 export type ContentItemDTO = z.infer<typeof contentItemDTO>;
+
+// ── людське редагування постів + версії (§content-editing) ───────────────────
+// PATCH /v1/content-items/:id — правка тексту/заголовка людиною. text — обов'язковий (порожній
+// пост після редагування — це не валідний стан); title — опційний (не всі канали його ведуть).
+export const editContentItemRequest = z.object({
+  text: z.string().min(1),
+  title: z.string().optional(),
+});
+export type EditContentItemRequest = z.infer<typeof editContentItemRequest>;
+
+export const contentVersionSourceSchema = z.enum(CONTENT_VERSION_SOURCES);
+export type ContentVersionSource = z.infer<typeof contentVersionSourceSchema>;
+
+// GET /v1/content-items/:id/versions — історія версій, найновіша перша.
+export const contentItemVersionDTO = z.object({
+  id: z.string(),
+  source: contentVersionSourceSchema,
+  text: z.string(),
+  title: z.string().nullable(),
+  editorUserId: z.string().nullable(),
+  createdAt: z.string(),
+});
+export type ContentItemVersionDTO = z.infer<typeof contentItemVersionDTO>;
+export const contentItemVersionsResponse = z.object({ items: z.array(contentItemVersionDTO) });
+
+// POST /v1/content-items/:id/revert — { versionId } повертає айтем до вмісту цієї версії. Append-only:
+// revert сам пише НОВУ source:'human' версію, а не видаляє історію (forward action, не rollback БД).
+export const revertContentItemRequest = z.object({ versionId: z.string() });
+export type RevertContentItemRequest = z.infer<typeof revertContentItemRequest>;
 
 // ── планувальник (plan entries) ───────────────────────────────────────────────
 export const planEntryDTO = z.object({

@@ -15,6 +15,8 @@ export const RUN_STATUSES = [
   "queued", "running", "needs_review", "approved", "rejected", "failed",
 ] as const;
 export const ITEM_STATUSES = ["draft", "approved", "rejected", "needs_revision"] as const;
+// Джерело версії тексту поста (content_item_versions.source, §content-editing).
+export const CONTENT_VERSION_SOURCES = ["generated", "human"] as const;
 export const PLAN_ENTRY_STATUSES = [
   "proposed", "approved", "scheduled", "generating", "generated", "skipped",
 ] as const;

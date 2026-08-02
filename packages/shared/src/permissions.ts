@@ -16,6 +16,10 @@ export const PERMISSIONS = [
   "run:start", // запуск генерації (enqueue прогону)
   "decision:make", // HITL: approve/reject/rerun на рівні прогону і поста
   "apikey:manage", // BYOK: додати/ротувати/видалити ключ орендаря (шов треку BYOK)
+  // Людське редагування тексту/заголовка поста + revert до попередньої версії (§content-editing).
+  // Окремо від decision:make: рішення (approve/reject/rerun) — це workflow-статус, а edit —
+  // авторська правка вмісту; reviewer вирішує долю поста, але не переписує його за автора.
+  "content:edit",
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -36,6 +40,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "run:start",
     "decision:make",
     "apikey:manage",
+    "content:edit",
   ],
   admin: [
     "company:write",
@@ -45,8 +50,16 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "run:start",
     "decision:make",
     "apikey:manage",
+    "content:edit",
   ],
-  editor: ["company:write", "settings:write", "plan:write", "run:start", "decision:make"],
+  editor: [
+    "company:write",
+    "settings:write",
+    "plan:write",
+    "run:start",
+    "decision:make",
+    "content:edit",
+  ],
   reviewer: ["decision:make"],
   viewer: [],
 };
