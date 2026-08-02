@@ -42,12 +42,17 @@ export async function handleSuggestRunTopics(
   ctx.logger.info({ draftId, companyId }, "runtopics.suggest");
 
   // ── 1) КОРОТКА txn: чернетка + контекст компанії + синтетичні слоти ──
+  // Ідемпотентність (§background-job skill): jobId детермінований (`runtopics-${draftId}`) — BullMQ
+  // дедуплікує ЧЕСНИЙ повторний enqueue. Але redelivery/retry ПІСЛЯ того, як draft уже 'ready'/'failed',
+  // дедуп не ловить (той самий jobId уже completed) — без guard'а такий retry тихо оплатив би ДРУГИЙ
+  // LLM-виклик і затер би те, що вже показане людині. `null` = уже оброблено, вихід без роботи.
   const input = await withAccountScope(ctx, accountId, async (tx) => {
     const [draft] = await tx
       .select()
       .from(runTopicDrafts)
       .where(and(eq(runTopicDrafts.accountId, accountId), eq(runTopicDrafts.id, draftId)));
     if (!draft) throw new Error(`runtopics.suggest: draft ${draftId} не знайдено`);
+    if (draft.status !== "pending") return null;
 
     const [company] = await tx.select().from(companies).where(eq(companies.id, companyId));
     if (!company) throw new Error(`runtopics.suggest: company ${companyId} не знайдено`);
@@ -92,6 +97,11 @@ export async function handleSuggestRunTopics(
       modelConfig: resolveModelConfig(snapshot, DEFAULT_MODELS),
     };
   });
+
+  if (input === null) {
+    ctx.logger.info({ draftId }, "runtopics.suggest: чернетка вже оброблена, retry-guard");
+    return;
+  }
 
   if (input.slots.length === 0) {
     // Порожній запит (0 каналів/лічильників) — це помилка вхідних даних, а не тиха відсутність
