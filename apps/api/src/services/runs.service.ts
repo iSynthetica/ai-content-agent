@@ -1,6 +1,15 @@
 import { randomUUID } from "node:crypto";
 import type { Logger } from "pino";
-import { AGENT_MODEL_KEYS, type DecisionRequest, type RunDecisionResponse } from "@forteq/shared";
+import {
+  AGENT_MODEL_KEYS,
+  CHANNELS,
+  CHANNEL_DEFAULTS,
+  MAX_POSTS_PER_RUN,
+  type AgentModels,
+  type Channel,
+  type DecisionRequest,
+  type RunDecisionResponse,
+} from "@forteq/shared";
 import { AppError } from "../http/errors";
 import { serializeRun, type ExportedFile, type ExportFormat } from "../lib/export";
 import { snapshotModelConfig } from "../lib/model-config";
@@ -20,6 +29,11 @@ import type {
 
 export interface CreateRunInput {
   planEntryIds?: string[];
+  channels?: string[];
+  counts?: Record<string, number>;
+  angle?: string;
+  agentModels?: Record<string, { provider: string; model: string }> | null;
+  saveAsDefault?: boolean;
 }
 // Результат створення: runId + мутабельний outcome, який after-commit-хук виставляє на pending,
 // якщо enqueue впав ПІСЛЯ COMMIT (контролер тоді віддає 202 замість 201, §2.7.1).
@@ -57,16 +71,43 @@ export class RunsService {
     }
 
     const threadId = randomUUID();
-    const modelConfig = snapshotModelConfig(settings, plan);
+    const scoped = (input.planEntryIds?.length ?? 0) > 0;
 
-    // BYOK (§ADR-0016/0017): без ключа провайдера прогін не стартує. Перевіряємо ТУТ, щоб віддати
-    // миттєвий 422, а не створити прогін, який упаде у воркері. Union провайдерів по ролях
-    // (agentModels-override або фолбек-provider для кожного текстового слота) — потрібні ключі УСІХ.
-    // Воркер усе одно блокує повторно (resume-шлях, видалення ключа між enqueue і виконанням).
+    // Per-run моделі: override виграє над збереженими (null явно скидає у легасі); undefined = «як є».
+    const effectiveAgentModels =
+      input.agentModels !== undefined ? input.agentModels : (settings.agentModels ?? null);
+
+    // Per-run лічильники (лише ad-hoc; для scoped к-сть визначають обрані слоти). Обмежуємо каналами,
+    // якщо задані; кожен канал дістає свій count або дефолт. Guardrail: сумарно ≤ MAX_POSTS_PER_RUN.
+    let counts: Record<string, number> | undefined;
+    if (!scoped) {
+      const src = input.counts ?? (plan.channelCounts as Record<string, number>) ?? {};
+      const chans = (input.channels ?? CHANNELS.filter((c) => (src[c] ?? 0) > 0)) as string[];
+      counts = {};
+      for (const ch of chans) counts[ch] = src[ch] ?? CHANNEL_DEFAULTS[ch as Channel] ?? 1;
+      const total = Object.values(counts).reduce((a, b) => a + b, 0);
+      if (total === 0) throw AppError.unprocessable("Оберіть хоча б один канал із постами");
+      if (total > MAX_POSTS_PER_RUN) {
+        throw AppError.unprocessable(
+          `Забагато постів (${total}); максимум ${MAX_POSTS_PER_RUN} на один прогін`,
+        );
+      }
+    }
+
+    const modelConfig = snapshotModelConfig(settings, plan, {
+      channelCounts: counts,
+      agentModels: effectiveAgentModels,
+    });
+
+    // BYOK (§ADR-0016/0017): union провайдерів ПО ФАКТИЧНІЙ конфігурації цього прогону (per-run
+    // override або фолбек-provider для кожного текстового слота), плюс OpenAI для зображень, якщо в
+    // прогоні є Instagram. Без ключа будь-якого з них — миттєвий 422 (воркер блокує повторно).
     const requiredProviders = new Set<string>();
     for (const slot of AGENT_MODEL_KEYS) {
-      requiredProviders.add(settings.agentModels?.[slot]?.provider ?? settings.provider);
+      requiredProviders.add(effectiveAgentModels?.[slot]?.provider ?? settings.provider);
     }
+    const hasInstagram = scoped || (counts?.instagram ?? 0) > 0;
+    if (hasInstagram) requiredProviders.add("openai"); // зображення завжди OpenAI (gpt-image-1)
     for (const provider of requiredProviders) {
       if (!(await this.apiKeys.exists(ctx.accountId, provider))) {
         throw AppError.unprocessable(
@@ -75,9 +116,27 @@ export class RunsService {
       }
     }
 
+    // Знімок конфігурації для показу на сторінці прогону (§spec 08).
+    const runConfig: Record<string, unknown> = {
+      channels: counts ? Object.keys(counts) : [],
+      counts: counts ?? {},
+      angle: input.angle ?? null,
+      provider: settings.provider,
+      models: settings.models ?? null,
+      agentModels: effectiveAgentModels ?? null,
+      scoped,
+    };
+
+    // Опційно: зберегти обране як дефолт компанії (лише ad-hoc — counts мають сенс поза scoped).
+    if (input.saveAsDefault && !scoped) {
+      if (counts) await this.plans.updateById(ctx.accountId, plan.id, { channelCounts: counts });
+      // Провайдери валідовано enum'ом у контракті/збережені з валідних; звужуємо до типу патча.
+      await this.settings.upsert(ctx.accountId, companyId, {
+        agentModels: effectiveAgentModels as AgentModels | null,
+      });
+    }
+
     // INSERT run у request-txn (§2.10.3). planEntryIds передаються у job як є.
-    // TODO(Фаза 3/4, планувальник): валідувати належність слотів компанії + статус 'approved'
-    //   і перевести їх scheduled→generating (потребує PlanEntriesRepo — поза скоупом Фази 1).
     const run = await this.runs.create({
       accountId: ctx.accountId,
       companyId,
@@ -85,6 +144,7 @@ export class RunsService {
       trigger: "manual",
       scheduledFor: null,
       modelConfig,
+      runConfig,
       threadId,
       createdBy: ctx.userId,
     });

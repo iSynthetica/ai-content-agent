@@ -12,17 +12,19 @@ import { qk } from "@/lib/query-keys";
 
 export interface CreateRunInput {
   planEntryIds?: string[];
+  channels?: string[];
+  counts?: Record<string, number>;
+  angle?: string;
+  agentModels?: Record<string, { provider: string; model: string }> | null;
+  saveAsDefault?: boolean;
 }
 
 export function useCreateRun(companyId: string) {
   const qc = useQueryClient();
   return useMutation({
+    // Тіло — повна per-run конфігурація (§spec 08); zod на сервері відсіює зайве, undefined не йдуть.
     mutationFn: (input: CreateRunInput = {}) =>
-      http.post(
-        endpoints.runs(companyId),
-        input.planEntryIds?.length ? { planEntryIds: input.planEntryIds } : {},
-        createRunResponse,
-      ),
+      http.post(endpoints.runs(companyId), input, createRunResponse),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.runs(companyId) });
     },

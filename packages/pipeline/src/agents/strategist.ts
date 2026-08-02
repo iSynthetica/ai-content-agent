@@ -52,6 +52,31 @@ function normTopic(t: string): string {
   return t.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+// §spec 08: точне дотримання лічильників — обрізаємо по КОЖНОМУ каналу до запитаної к-сті
+// (channelConfig). LLM може дати більше — тут кап; менше (shortfall) поки лишається (Phase 2 fan-out).
+// Код, не LLM. Експортується для unit-тесту.
+export function capPerChannel<T extends { channel: string }>(
+  items: T[],
+  counts: Record<string, number> | undefined,
+): T[] {
+  if (!counts) return items;
+  const kept: Record<string, number> = {};
+  const out: T[] = [];
+  for (const it of items) {
+    const limit = counts[it.channel];
+    if (limit === undefined) {
+      out.push(it);
+      continue;
+    }
+    const n = kept[it.channel] ?? 0;
+    if (n < limit) {
+      kept[it.channel] = n + 1;
+      out.push(it);
+    }
+  }
+  return out;
+}
+
 // FR-3.3: унікальність тем across channels — лишаємо ПЕРШЕ входження, решту дублів прибираємо.
 // Post-processing КОДОМ (не LLM). Експортується для unit-тесту.
 export function deduplicateTopics<T extends { topic: string }>(items: T[]): T[] {
@@ -98,7 +123,7 @@ async function fullPlan(deps: GraphDeps, s: ContentStateT): Promise<Partial<Cont
     seoKeywords: it.seoKeywords ?? [],
   }));
 
-  const contentPlan = deduplicateTopics(withIds);
+  const contentPlan = capPerChannel(deduplicateTopics(withIds), s.channelConfig);
   deps.logger?.info({ node: "strategist", mode: "full", count: contentPlan.length }, "plan built");
   return { contentPlan, cost };
 }

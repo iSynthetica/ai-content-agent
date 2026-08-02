@@ -1,11 +1,31 @@
 // Unit — Strategist: dedup (pure) + повний/скоупнутий режими на фейковій моделі (§14, S8/S17).
 import { describe, expect, it } from "vitest";
-import { deduplicateTopics, makeStrategistNode } from "../../src/agents/strategist";
+import { capPerChannel, deduplicateTopics, makeStrategistNode } from "../../src/agents/strategist";
 import type { GraphDeps } from "../../src/ports";
 import type { ContentStateT } from "../../src/state";
 import { DEFAULT_MODELS } from "../../src/config";
 import { FakeModelFactory } from "../fixtures/fakeModel";
 import { company, meta } from "../fixtures/brief";
+
+describe("capPerChannel (§spec 08 — exact counts)", () => {
+  const items = [
+    { channel: "linkedin", topic: "a" },
+    { channel: "linkedin", topic: "b" },
+    { channel: "linkedin", topic: "c" },
+    { channel: "blog", topic: "d" },
+  ];
+  it("обрізає кожен канал до запитаної к-сті", () => {
+    const out = capPerChannel(items, { linkedin: 2, blog: 1 });
+    expect(out.filter((i) => i.channel === "linkedin")).toHaveLength(2);
+    expect(out.filter((i) => i.channel === "blog")).toHaveLength(1);
+  });
+  it("канал без ліміту в counts лишається як є", () => {
+    expect(capPerChannel(items, { blog: 1 })).toHaveLength(4); // 3 linkedin (без ліміту) + 1 blog→1
+  });
+  it("undefined counts → без змін", () => {
+    expect(capPerChannel(items, undefined)).toHaveLength(4);
+  });
+});
 
 function baseState(overrides: Partial<ContentStateT>): ContentStateT {
   return {

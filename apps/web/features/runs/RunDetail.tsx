@@ -95,6 +95,22 @@ export function RunDetail({
             <StatusBadge domain="run" status={run.status} />
           </div>
         </div>
+        {run.runConfig && (
+          <p className="text-xs text-muted-foreground">
+            Конфігурація:{" "}
+            {Object.keys(run.runConfig.counts).length > 0
+              ? Object.entries(run.runConfig.counts)
+                  .map(([c, n]) => `${c} ×${n}`)
+                  .join(", ")
+              : "з календаря (обрані слоти)"}
+            {run.runConfig.angle ? ` · акцент: ${run.runConfig.angle}` : ""}
+            {run.runConfig.agentModels && Object.keys(run.runConfig.agentModels).length
+              ? ` · моделі: ${Object.entries(run.runConfig.agentModels)
+                  .map(([r, m]) => `${r}:${m.provider}/${m.model}`)
+                  .join(", ")}`
+              : ""}
+          </p>
+        )}
       </header>
 
       {/* ── Стан: генерується ── */}

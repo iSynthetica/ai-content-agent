@@ -1,13 +1,13 @@
 "use client";
 
-// Generate-кнопка (spike-3 §9): POST створити run → на успіх навігуємо на /runs/:id.
-// Помилки (напр. 422 «не сконфігуровано») показує глобальний mutationCache.onError (toast).
-import { useRouter } from "next/navigation";
+// Generate-кнопка (§spec 08): натискання БІЛЬШЕ НЕ запускає прогін — воно відкриває конфігуратор
+// (RunConfigDialog). Прогін стартує лише після явного підтвердження в діалозі. Помилки (напр. 422
+// «немає ключа») показує сам діалог + глобальний mutationCache.onError (toast).
+import { useState } from "react";
 import { Sparkles } from "lucide-react";
-import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { useCreateRun } from "@/features/runs/use-create-run";
+import { RunConfigDialog } from "@/features/runs/RunConfigDialog";
 
 export function GenerateButton({
   companyId,
@@ -18,25 +18,21 @@ export function GenerateButton({
   planEntryIds?: string[];
   className?: string;
 }) {
-  const router = useRouter();
-  const createRun = useCreateRun(companyId);
-
-  function onGenerate() {
-    createRun.mutate(
-      { planEntryIds },
-      {
-        onSuccess: ({ runId }) => {
-          toast.success("Прогін запущено");
-          router.push(`/runs/${runId}`);
-        },
-      },
-    );
-  }
+  const [open, setOpen] = useState(false);
 
   return (
-    <Button onClick={onGenerate} disabled={createRun.isPending} className={className}>
-      <Sparkles />
-      {createRun.isPending ? "Запускаємо…" : "Згенерувати"}
-    </Button>
+    <>
+      <Button onClick={() => setOpen(true)} className={className}>
+        <Sparkles />
+        Згенерувати
+      </Button>
+      {open && (
+        <RunConfigDialog
+          companyId={companyId}
+          planEntryIds={planEntryIds}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </>
   );
 }

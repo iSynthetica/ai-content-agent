@@ -81,6 +81,7 @@ export interface NewRun {
   trigger: "manual" | "scheduled";
   scheduledFor: Date | null;
   modelConfig: Record<string, unknown>;
+  runConfig?: Record<string, unknown> | null;
   threadId: string;
   createdBy: string | null;
 }

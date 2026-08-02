@@ -116,11 +116,15 @@ export async function handleStart(job: GenerationStartJob, ctx: HandlerContext):
       } as PipelineInput;
     }
     if (!plan) throw new Error(`generation.start: content_plan для company ${companyId} не знайдено`);
+    // Per-run лічильники (§spec 08): беремо зі ЗНІМКА прогону (він виграє над живим планом), фолбек —
+    // план. Так конфігурація одного прогону керує к-стю постів, не зачіпаючи дефолти компанії.
+    const snapCounts = (run?.modelConfig as { channelCounts?: Record<string, number> } | undefined)
+      ?.channelCounts;
     return {
       company: companyContext,
       modelConfig,
       meta,
-      channelConfig: plan.channelCounts,
+      channelConfig: snapCounts ?? plan.channelCounts,
     } as PipelineInput;
   });
 

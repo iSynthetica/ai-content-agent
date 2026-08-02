@@ -25,6 +25,7 @@ function toSummary(row: RunRow, counts?: RunSummary["counts"]): RunSummary {
     // Per-node прогрес пайплайна (§progress) — проєкція з рядка run (get віддає завжди; для list — теж
     // безкоштовно, колонка вже в select). null, поки прогону ще не торкнувся жоден крок.
     progress: row.progress ?? null,
+    runConfig: (row.runConfig ?? null) as RunSummary["runConfig"],
     ...(counts ? { counts } : {}),
   };
 }
@@ -44,6 +45,7 @@ export class DrizzleRunsRepo implements RunsRepo {
         trigger: data.trigger,
         scheduledFor: data.scheduledFor,
         modelConfig: data.modelConfig,
+        runConfig: data.runConfig ?? null,
         threadId: data.threadId,
         createdBy: data.createdBy,
       })

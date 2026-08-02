@@ -161,8 +161,31 @@ export const contentPlanDTO = z.object({
 export type ContentPlanDTO = z.infer<typeof contentPlanDTO>;
 
 // ── прогони + айтеми ──────────────────────────────────────────────────────────
-export const createRunRequest = z.object({ planEntryIds: z.array(z.string()).optional() });
+// Конфігурація ОДНОГО прогону (§spec 08). Усе тут — override поверх збережених дефолтів ЛИШЕ на цей
+// прогін (не мутує company_settings), окрім saveAsDefault. Порожній об'єкт = запуск за дефолтами.
+export const MAX_POSTS_PER_RUN = 20; // guardrail: сумарно постів на прогін
+
+export const createRunRequest = z.object({
+  planEntryIds: z.array(z.string()).optional(), // scoped (календар) — семантика без змін
+  channels: z.array(channelSchema).optional(), // ad-hoc: які канали включити
+  counts: z.record(z.number().int().min(1)).optional(), // ad-hoc: скільки постів на канал (channel→N)
+  angle: z.string().max(500).optional(), // акцент/кут кампанії на прогін (шов; проводка — Phase 2)
+  agentModels: agentModelsSchema.nullable().optional(), // per-run per-role моделі
+  saveAsDefault: z.boolean().optional(), // додатково зберегти лічильники/моделі як дефолт компанії
+});
+export type CreateRunRequest = z.infer<typeof createRunRequest>;
 export const createRunResponse = z.object({ runId: z.string() });
+
+// Знімок конфігурації прогону для показу на сторінці прогону (що саме його породило).
+export const runConfigDTO = z.object({
+  channels: z.array(channelSchema),
+  counts: z.record(z.number()),
+  angle: z.string().nullable(),
+  provider: z.enum(["openai", "anthropic", "gemini"]),
+  models: z.record(z.string()).nullable(),
+  agentModels: agentModelsSchema.nullable(),
+});
+export type RunConfigDTO = z.infer<typeof runConfigDTO>;
 
 export const criterionScore = z.object({
   score: z.number().int().min(1).max(5),
@@ -211,6 +234,8 @@ export const runDTO = z.object({
   // Прогрес пайплайна (per-node). nullable — до першого кроку/для старих прогонів; optional — list
   // може його не проєктувати (get віддає завжди).
   progress: runProgress.nullable().optional(),
+  // Конфігурація, що породила прогін (§spec 08). nullable — старі прогони; optional — list не проєктує.
+  runConfig: runConfigDTO.nullable().optional(),
 });
 
 // Відповідь на HITL-рішення по прогону (POST /v1/runs/:id/decision, §7). Тверда межа: api лише

@@ -178,6 +178,9 @@ export const generationRuns = pgTable(
     trigger: runTriggerEnum("trigger").default("manual").notNull(),
     scheduledFor: timestamp("scheduled_for", { withTimezone: true }),
     modelConfig: jsonb("model_config").$type<Record<string, unknown>>(),
+    // Повна конфігурація прогону для показу на сторінці (§spec 08): канали/лічильники/кут/моделі.
+    // Nullable: null для старих прогонів і для запусків до цієї фічі. Адитивно, без backfill.
+    runConfig: jsonb("run_config").$type<Record<string, unknown>>(),
     costCents: integer("cost_cents").default(0).notNull(),
     threadId: text("langgraph_thread_id"),
     // Per-node прогрес пайплайна (§progress). Nullable: null до першого кроку / для старих прогонів.

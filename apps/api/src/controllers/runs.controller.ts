@@ -28,7 +28,14 @@ export function runsController(root: Composition) {
       const companyId = companyIdParam.parse(req.params.companyId);
       const body = createRunRequest.parse(req.body);
       const { runId, outcome } = await root.openScope(auth, (s) =>
-        s.services.runs.createRun(auth, companyId, { planEntryIds: body.planEntryIds }),
+        s.services.runs.createRun(auth, companyId, {
+          planEntryIds: body.planEntryIds,
+          channels: body.channels,
+          counts: body.counts,
+          angle: body.angle,
+          agentModels: body.agentModels,
+          saveAsDefault: body.saveAsDefault,
+        }),
       );
       // 202, якщо enqueue впав ПІСЛЯ COMMIT (run збережено, доставку довершить sweep — §2.7.1).
       res.status(outcome.enqueue === "pending" ? 202 : 201).json({ runId });
