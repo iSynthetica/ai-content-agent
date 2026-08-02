@@ -223,4 +223,28 @@ export const en: Record<string, string> = {
   "Відповідність каналу": "Channel fit",
   "Чому": "Why",
   "Порушень не виявлено": "No violations found",
+
+  // ── Run card / content item card / post body / rerun dialog ─────────────
+  "Постів": "Posts",
+  "Не вдалося скопіювати": "Couldn't copy",
+  "Скопіювати текст": "Copy text",
+  "Скопійовано": "Copied",
+  "Копіювати": "Copy",
+  "Згенероване зображення": "Generated image",
+  "Зображення генерується…": "Generating image…",
+  "Текст ще генерується…": "Text is still generating…",
+  "Оцінки Reviewer’а": "Reviewer scores",
+  "Схвалити": "Approve",
+  "Відхилити": "Reject",
+  "Перегенерувати": "Regenerate",
+  "Перегенерувати пост": "Regenerate post",
+  "Пост піде на нову ітерацію (needs_revision). Можна додати інструкцію для Writer'а.":
+    "The post will go through another iteration (needs_revision). You can add instructions for the Writer.",
+  "Згорнути": "Collapse",
+  "Читати повністю": "Read in full",
+  "символів": "characters",
+  "Інструкція (необовʼязково)": "Instructions (optional)",
+  "Що саме змінити у наступній ітерації? Напр.: «прибрати заклики до дії, додати конкретику».":
+    "What exactly should change in the next iteration? E.g. \"remove calls to action, add more specifics.\"",
+  "Відправляємо…": "Sending…",
 };

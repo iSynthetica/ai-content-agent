@@ -18,6 +18,7 @@ import { ScoreMeter } from "@/components/common/score-meter";
 import { StatusBadge, FlaggedBadge } from "@/components/common/status-badge";
 import { ViolationsPanel } from "@/components/common/violations-panel";
 import { useItemDecision } from "@/features/content/use-item-decision";
+import { useT } from "@/lib/i18n";
 import type { ContentItemDTO } from "@/features/content/schemas";
 
 export function ContentItemCard({
@@ -29,6 +30,7 @@ export function ContentItemCard({
   runId: string;
   companyId: string;
 }) {
+  const t = useT();
   const decision = useItemDecision(runId, companyId);
   const [rerunOpen, setRerunOpen] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
@@ -42,7 +44,7 @@ export function ContentItemCard({
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      toast.error("Не вдалося скопіювати");
+      toast.error(t("Не вдалося скопіювати"));
     }
   }
 
@@ -60,10 +62,10 @@ export function ContentItemCard({
           size="sm"
           onClick={onCopy}
           disabled={!item.text}
-          aria-label="Скопіювати текст"
+          aria-label={t("Скопіювати текст")}
         >
           {copied ? <Check className="text-success" /> : <Copy />}
-          {copied ? "Скопійовано" : "Копіювати"}
+          {copied ? t("Скопійовано") : t("Копіювати")}
         </Button>
       </CardHeader>
 
@@ -76,7 +78,7 @@ export function ContentItemCard({
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={item.imageUrl}
-              alt={item.topic ?? "Згенероване зображення"}
+              alt={item.topic ?? t("Згенероване зображення")}
               loading="lazy"
               className="max-h-96 w-full rounded-md border border-border object-cover"
             />
@@ -87,7 +89,7 @@ export function ContentItemCard({
             <div className="flex h-40 w-full items-center justify-center rounded-md border border-dashed border-border bg-muted/30">
               <p className="flex items-center gap-2 text-sm text-muted-foreground">
                 <ImageIcon className="size-4 animate-pulse" />
-                Зображення генерується…
+                {t("Зображення генерується…")}
               </p>
             </div>
           ))}
@@ -95,18 +97,18 @@ export function ContentItemCard({
         {item.text ? (
           <PostBody text={item.text} channel={item.channel} />
         ) : (
-          <p className="text-sm italic text-muted-foreground">Текст ще генерується…</p>
+          <p className="text-sm italic text-muted-foreground">{t("Текст ще генерується…")}</p>
         )}
 
         <Separator />
 
         <div className="flex flex-col gap-3">
-          <h4 className="text-sm font-medium">Оцінки Reviewer’а</h4>
+          <h4 className="text-sm font-medium">{t("Оцінки Reviewer’а")}</h4>
           <ScoreMeter scores={item.scores} />
         </div>
 
         <div className="flex flex-col gap-2">
-          <h4 className="text-sm font-medium">Порушення</h4>
+          <h4 className="text-sm font-medium">{t("Порушення")}</h4>
           <ViolationsPanel violations={item.violations} />
         </div>
       </CardContent>
@@ -117,7 +119,7 @@ export function ContentItemCard({
           onClick={() => decision.mutate({ itemId: item.id, action: "approve" })}
           disabled={decision.isPending || item.status === "approved"}
         >
-          Схвалити
+          {t("Схвалити")}
         </Button>
         <Button
           size="sm"
@@ -125,7 +127,7 @@ export function ContentItemCard({
           onClick={() => decision.mutate({ itemId: item.id, action: "reject" })}
           disabled={decision.isPending || item.status === "rejected"}
         >
-          Відхилити
+          {t("Відхилити")}
         </Button>
         <Button
           size="sm"
@@ -133,7 +135,7 @@ export function ContentItemCard({
           onClick={() => setRerunOpen(true)}
           disabled={decision.isPending}
         >
-          Перегенерувати
+          {t("Перегенерувати")}
         </Button>
       </div>
 
@@ -141,8 +143,8 @@ export function ContentItemCard({
         open={rerunOpen}
         onOpenChange={setRerunOpen}
         pending={decision.isPending}
-        title="Перегенерувати пост"
-        description="Пост піде на нову ітерацію (needs_revision). Можна додати інструкцію для Writer'а."
+        title={t("Перегенерувати пост")}
+        description={t("Пост піде на нову ітерацію (needs_revision). Можна додати інструкцію для Writer'а.")}
         onConfirm={(feedback) =>
           decision.mutate(
             { itemId: item.id, action: "rerun", feedback },

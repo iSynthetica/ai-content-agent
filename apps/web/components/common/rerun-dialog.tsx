@@ -7,13 +7,14 @@ import * as React from "react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useT } from "@/lib/i18n";
 
 export function RerunDialog({
   open,
   onOpenChange,
   onConfirm,
   pending = false,
-  title = "Перегенерувати",
+  title,
   description,
 }: {
   open: boolean;
@@ -23,6 +24,8 @@ export function RerunDialog({
   title?: string;
   description?: string;
 }) {
+  const t = useT();
+  const resolvedTitle = title ?? t("Перегенерувати");
   const [feedback, setFeedback] = React.useState("");
 
   // Скидаємо поле при кожному відкритті.
@@ -52,21 +55,21 @@ export function RerunDialog({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={title}
+        aria-label={resolvedTitle}
         className="relative z-10 w-full max-w-md rounded-lg border border-border bg-card p-6 text-card-foreground shadow-lg"
       >
-        <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+        <h2 className="text-lg font-semibold tracking-tight">{resolvedTitle}</h2>
         {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
 
         <div className="mt-4 space-y-2">
           <label htmlFor="rerun-feedback" className="text-sm font-medium">
-            Інструкція (необовʼязково)
+            {t("Інструкція (необовʼязково)")}
           </label>
           <Textarea
             id="rerun-feedback"
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
-            placeholder="Що саме змінити у наступній ітерації? Напр.: «прибрати заклики до дії, додати конкретику»."
+            placeholder={t("Що саме змінити у наступній ітерації? Напр.: «прибрати заклики до дії, додати конкретику».")}
             autoFocus
             disabled={pending}
           />
@@ -74,10 +77,10 @@ export function RerunDialog({
 
         <div className="mt-6 flex justify-end gap-3">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={pending}>
-            Скасувати
+            {t("Скасувати")}
           </Button>
           <Button onClick={() => onConfirm(feedback.trim() || undefined)} disabled={pending}>
-            {pending ? "Відправляємо…" : "Перегенерувати"}
+            {pending ? t("Відправляємо…") : t("Перегенерувати")}
           </Button>
         </div>
       </div>

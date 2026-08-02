@@ -18,6 +18,7 @@ import remarkGfm from "remark-gfm";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import type { ContentItemDTO } from "@/features/content/schemas";
 
 // Понад цю довжину текст згортаємо. ~900 символів ≈ повний LinkedIn-пост, тобто соцмережі
@@ -63,6 +64,7 @@ const MD_COMPONENTS = {
 };
 
 export function PostBody({ text, channel }: { text: string; channel: ContentItemDTO["channel"] }) {
+  const t = useT();
   const collapsible = text.length > COLLAPSE_OVER;
   const [expanded, setExpanded] = React.useState(false);
   const collapsed = collapsible && !expanded;
@@ -104,7 +106,7 @@ export function PostBody({ text, channel }: { text: string; channel: ContentItem
           onClick={() => setExpanded((v) => !v)}
         >
           {expanded ? <ChevronUp /> : <ChevronDown />}
-          {expanded ? "Згорнути" : `Читати повністю (${text.length} символів)`}
+          {expanded ? t("Згорнути") : `${t("Читати повністю")} (${text.length} ${t("символів")})`}
         </Button>
       )}
     </div>
