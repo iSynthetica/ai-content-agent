@@ -7,6 +7,7 @@ import { apiClient } from "@/server/api-client";
 import { getSession } from "@/server/auth";
 import { endpoints } from "@/lib/endpoints";
 import { BriefForm } from "@/features/companies/brief/BriefForm";
+import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,7 @@ export default async function BriefPage({
   params: Promise<{ companyId: string }>;
 }) {
   const { companyId } = await params;
+  const t = await getT();
   const session = await getSession();
   const company = await apiClient.get(endpoints.company(companyId), companyDTO);
   const settings = await apiClient
@@ -27,9 +29,9 @@ export default async function BriefPage({
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Бренд-профіль</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t("Бренд-профіль")}</h1>
         <p className="text-muted-foreground">
-          Ці дані визначають, як агенти пишуть контент. Заповнюйте докладно — це впливає на якість.
+          {t("Ці дані визначають, як агенти пишуть контент. Заповнюйте докладно — це впливає на якість.")}
         </p>
       </header>
       <BriefForm company={company} settings={settings} canManageKeys={canManageKeys} />

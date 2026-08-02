@@ -20,6 +20,7 @@ import {
 
 import { Select } from "@/components/ui/select";
 import { useApiKeys } from "@/features/api-keys/use-api-keys";
+import { useT } from "@/lib/i18n";
 
 type Override = { provider: Provider; model: string };
 export type AgentModelsValue = Record<string, Override>;
@@ -31,6 +32,7 @@ export function AgentModelsSection({
   value: AgentModelsValue;
   onChange: (next: AgentModelsValue) => void;
 }) {
+  const t = useT();
   // Спільний кеш із менеджером ключів вище: ввів ключ → тут одразу видно.
   const { data: keys = [] } = useApiKeys();
   const configured = new Set(keys.map((k) => k.provider));
@@ -55,8 +57,7 @@ export function AgentModelsSection({
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm text-muted-foreground">
-        За замовчуванням усі ролі працюють на базовому провайдері вище. Тут можна перевизначити
-        провайдера й модель окремо для кожної ролі (напр. дослідник на Gemini, автор на Claude).
+        {t("За замовчуванням усі ролі працюють на базовому провайдері вище. Тут можна перевизначити провайдера й модель окремо для кожної ролі (напр. дослідник на Gemini, автор на Claude).")}
       </p>
       <div className="flex flex-col gap-2">
         {AGENT_MODEL_KEYS.map((agent) => {
@@ -66,17 +67,17 @@ export function AgentModelsSection({
           return (
             <div key={agent} className="flex flex-col gap-1">
               <div className="grid grid-cols-[9rem_1fr_1fr] items-center gap-2">
-                <span className="text-sm font-medium">{AGENT_MODEL_LABELS[agent]}</span>
+                <span className="text-sm font-medium">{t(AGENT_MODEL_LABELS[agent])}</span>
                 <Select
                   value={provider ?? ""}
                   onChange={(e) => setProvider(agent, e.target.value as Provider | "")}
                   aria-invalid={needsKey}
                 >
-                  <option value="">За замовчуванням</option>
+                  <option value="">{t("За замовчуванням")}</option>
                   {PROVIDERS.map((p) => (
                     <option key={p} value={p}>
                       {PROVIDER_LABELS[p]}
-                      {configured.has(p) ? "" : " — немає ключа"}
+                      {configured.has(p) ? "" : t(" — немає ключа")}
                     </option>
                   ))}
                 </Select>
@@ -95,7 +96,7 @@ export function AgentModelsSection({
               {needsKey && (
                 <p className="col-start-2 flex items-center gap-1 text-xs text-warning">
                   <AlertTriangle className="h-3 w-3" />
-                  Додайте ключ {PROVIDER_LABELS[provider!]} вище, інакше прогін не запуститься.
+                  {t("Додайте ключ")} {PROVIDER_LABELS[provider!]} {t("вище, інакше прогін не запуститься.")}
                 </p>
               )}
             </div>

@@ -3,6 +3,7 @@
 // Brief-форма (S-7, FR-1.1..1.5; DS §7). rhf + zod (дзеркало UpdateCompanyRequest +
 // UpdateSettingsRequest). Поля з інтуїтивними прикладами (PR-3), inline-валідація, disabled-submit
 // поки не «брудна»/валідна. На submit — дві мутації (company core + settings) паралельно.
+import { useMemo } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, type FieldPath } from "react-hook-form";
 import { toast } from "sonner";
@@ -45,8 +46,10 @@ import { useUpdateCompany } from "@/features/companies/brief/use-update-company"
 import { useUpdateSettings } from "@/features/companies/brief/use-update-settings";
 import { AgentModelsSection, type AgentModelsValue } from "@/features/companies/brief/AgentModelsSection";
 import { ApiKeysManager } from "@/features/api-keys/ApiKeysManager";
+import { LanguageSwitcher } from "@/features/companies/brief/LanguageSwitcher";
+import { useT } from "@/lib/i18n";
 import {
-  briefSchema,
+  makeBriefSchema,
   joinList,
   splitList,
   type BriefFormValues,
@@ -61,6 +64,7 @@ export function BriefForm({
   settings?: CompanySettingsDTO | null;
   canManageKeys?: boolean;
 }) {
+  const t = useT();
   const updateCompany = useUpdateCompany(company.id);
   const updateSettings = useUpdateSettings(company.id);
 
@@ -72,6 +76,8 @@ export function BriefForm({
     ...DEFAULT_MODELS_BY_PROVIDER[initialProvider],
     ...(settings?.models ?? {}),
   };
+
+  const briefSchema = useMemo(() => makeBriefSchema(t), [t]);
 
   const form = useForm<BriefFormValues>({
     resolver: zodResolver(briefSchema),
@@ -144,7 +150,7 @@ export function BriefForm({
               : null,
         }),
       ]);
-      toast.success("Бренд-профіль збережено");
+      toast.success(t("Бренд-профіль збережено"));
       form.reset(values);
     } catch {
       // Помилки показує глобальний обробник (mutationCache.onError) — toast з ApiError.message.
@@ -154,14 +160,16 @@ export function BriefForm({
   const pending = updateCompany.isPending || updateSettings.isPending;
 
   return (
-    <Form {...form}>
+    <div className="space-y-6">
+      <LanguageSwitcher />
+      <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         {/* ── Компанія ── */}
         <Card>
           <CardHeader>
-            <CardTitle>Компанія</CardTitle>
+            <CardTitle>{t("Компанія")}</CardTitle>
             <CardDescription>
-              Базові дані про бізнес — саме на них спираються агенти при генерації.
+              {t("Базові дані про бізнес — саме на них спираються агенти при генерації.")}
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-5">
@@ -170,7 +178,7 @@ export function BriefForm({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Назва*</FormLabel>
+                  <FormLabel>{t("Назва*")}</FormLabel>
                   <FormControl>
                     <Input placeholder="Forteq Systems" {...field} />
                   </FormControl>
@@ -184,7 +192,7 @@ export function BriefForm({
                 name="websiteUrl"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Сайт</FormLabel>
+                    <FormLabel>{t("Сайт")}</FormLabel>
                     <FormControl>
                       <Input placeholder="https://forteq.systems" {...field} />
                     </FormControl>
@@ -197,9 +205,9 @@ export function BriefForm({
                 name="audience"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Аудиторія</FormLabel>
+                    <FormLabel>{t("Аудиторія")}</FormLabel>
                     <FormControl>
-                      <Input placeholder="CTO та продуктові команди B2B SaaS" {...field} />
+                      <Input placeholder={t("CTO та продуктові команди B2B SaaS")} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -211,14 +219,14 @@ export function BriefForm({
               name="positioning"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Позиціонування</FormLabel>
+                  <FormLabel>{t("Позиціонування")}</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Одним-двома реченнями: чим ви корисні й для кого."
+                      placeholder={t("Одним-двома реченнями: чим ви корисні й для кого.")}
                       {...field}
                     />
                   </FormControl>
-                  <FormDescription>Приклад: «Будуємо надійні AI-продукти під ключ для B2B».</FormDescription>
+                  <FormDescription>{t("Приклад: «Будуємо надійні AI-продукти під ключ для B2B».")}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -228,9 +236,9 @@ export function BriefForm({
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Короткий опис</FormLabel>
+                  <FormLabel>{t("Короткий опис")}</FormLabel>
                   <FormControl>
-                    <Input placeholder="Команда, що будує продукти й AI-агентів." {...field} />
+                    <Input placeholder={t("Команда, що будує продукти й AI-агентів.")} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -242,11 +250,11 @@ export function BriefForm({
                 name="stack"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Стек</FormLabel>
+                    <FormLabel>{t("Стек")}</FormLabel>
                     <FormControl>
                       <Input placeholder="TypeScript, Next.js, PostgreSQL" {...field} />
                     </FormControl>
-                    <FormDescription>Через кому.</FormDescription>
+                    <FormDescription>{t("Через кому.")}</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -256,11 +264,11 @@ export function BriefForm({
                 name="services"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Послуги</FormLabel>
+                    <FormLabel>{t("Послуги")}</FormLabel>
                     <FormControl>
-                      <Input placeholder="Розробка MVP, AI-інтеграції, аудит" {...field} />
+                      <Input placeholder={t("Розробка MVP, AI-інтеграції, аудит")} {...field} />
                     </FormControl>
-                    <FormDescription>Через кому.</FormDescription>
+                    <FormDescription>{t("Через кому.")}</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -272,10 +280,9 @@ export function BriefForm({
         {/* ── Провайдери та ключі (account-level BYOK) ── */}
         <Card>
           <CardHeader>
-            <CardTitle>Провайдери та ключі</CardTitle>
+            <CardTitle>{t("Провайдери та ключі")}</CardTitle>
             <CardDescription>
-              Введіть API-ключ будь-якого або кількох провайдерів. Генерація йде на ваш ключ; роль без
-              ключа обраного провайдера блокує прогін. Ключі спільні для всіх компаній акаунта.
+              {t("Введіть API-ключ будь-якого або кількох провайдерів. Генерація йде на ваш ключ; роль без ключа обраного провайдера блокує прогін. Ключі спільні для всіх компаній акаунта.")}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -286,8 +293,8 @@ export function BriefForm({
         {/* ── Бренд і генерація ── */}
         <Card>
           <CardHeader>
-            <CardTitle>Бренд і генерація</CardTitle>
-            <CardDescription>Тон, стиль і дефолти LLM для генерації контенту.</CardDescription>
+            <CardTitle>{t("Бренд і генерація")}</CardTitle>
+            <CardDescription>{t("Тон, стиль і дефолти LLM для генерації контенту.")}</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-5">
             <FormField
@@ -295,9 +302,9 @@ export function BriefForm({
               name="toneOfVoice"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Тон голосу</FormLabel>
+                  <FormLabel>{t("Тон голосу")}</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Експертно-дружній, без жаргону та маркетингового шуму." {...field} />
+                    <Textarea placeholder={t("Експертно-дружній, без жаргону та маркетингового шуму.")} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -308,11 +315,11 @@ export function BriefForm({
               name="toneExamples"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Приклади тону</FormLabel>
+                  <FormLabel>{t("Приклади тону")}</FormLabel>
                   <FormControl>
-                    <Textarea placeholder={"Ми будуємо, а не обіцяємо.\nСкладне — простими словами."} {...field} />
+                    <Textarea placeholder={t("Ми будуємо, а не обіцяємо.\nСкладне — простими словами.")} {...field} />
                   </FormControl>
-                  <FormDescription>По одному прикладу на рядок.</FormDescription>
+                  <FormDescription>{t("По одному прикладу на рядок.")}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -322,9 +329,9 @@ export function BriefForm({
               name="visualStyle"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Візуальний стиль</FormLabel>
+                  <FormLabel>{t("Візуальний стиль")}</FormLabel>
                   <FormControl>
-                    <Input placeholder="Мінімалізм, синій акцент, багато повітря" {...field} />
+                    <Input placeholder={t("Мінімалізм, синій акцент, багато повітря")} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -335,11 +342,11 @@ export function BriefForm({
               name="forbiddenPhrases"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Заборонені фрази</FormLabel>
+                  <FormLabel>{t("Заборонені фрази")}</FormLabel>
                   <FormControl>
-                    <Input placeholder="революційний, унікальна пропозиція" {...field} />
+                    <Input placeholder={t("революційний, унікальна пропозиція")} {...field} />
                   </FormControl>
-                  <FormDescription>Через кому — їх агенти уникатимуть.</FormDescription>
+                  <FormDescription>{t("Через кому — їх агенти уникатимуть.")}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -350,7 +357,7 @@ export function BriefForm({
                 name="language"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Мова контенту</FormLabel>
+                    <FormLabel>{t("Мова контенту")}</FormLabel>
                     <FormControl>
                       <Select
                         value={(field.value as string | undefined) ?? DEFAULT_GENERATION_LANGUAGE}
@@ -379,10 +386,9 @@ export function BriefForm({
           <CardHeader>
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-1.5">
-                <CardTitle>Моделі AI</CardTitle>
+                <CardTitle>{t("Моделі AI")}</CardTitle>
                 <CardDescription>
-                  Провайдер і моделі per-agent для пайплайна генерації. Зображення завжди генерує
-                  OpenAI.
+                  {t("Провайдер і моделі per-agent для пайплайна генерації. Зображення завжди генерує OpenAI.")}
                 </CardDescription>
               </div>
               <Button
@@ -392,7 +398,7 @@ export function BriefForm({
                 className="h-auto shrink-0 p-0"
                 onClick={resetModelsToDefaults}
               >
-                Скинути до дефолтів
+                {t("Скинути до дефолтів")}
               </Button>
             </div>
           </CardHeader>
@@ -402,7 +408,7 @@ export function BriefForm({
               name="provider"
               render={({ field }) => (
                 <FormItem className="sm:max-w-xs">
-                  <FormLabel>Провайдер</FormLabel>
+                  <FormLabel>{t("Провайдер")}</FormLabel>
                   <FormControl>
                     <Select
                       value={field.value ?? "openai"}
@@ -419,7 +425,7 @@ export function BriefForm({
                     </Select>
                   </FormControl>
                   <FormDescription>
-                    Зміна провайдера скидає текстові моделі на його розумні дефолти.
+                    {t("Зміна провайдера скидає текстові моделі на його розумні дефолти.")}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -427,7 +433,7 @@ export function BriefForm({
             />
 
             <div className="space-y-2">
-              <p className="text-sm font-medium leading-none">Текстові моделі (per-agent)</p>
+              <p className="text-sm font-medium leading-none">{t("Текстові моделі (per-agent)")}</p>
               <div className="grid gap-4 sm:grid-cols-2">
                 {AGENT_MODEL_KEYS.map((agentKey) => (
                   <FormField
@@ -436,7 +442,7 @@ export function BriefForm({
                     name={`models.${agentKey}` as FieldPath<BriefFormValues>}
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{AGENT_MODEL_LABELS[agentKey]}</FormLabel>
+                        <FormLabel>{t(AGENT_MODEL_LABELS[agentKey])}</FormLabel>
                         <FormControl>
                           <Select
                             value={(field.value as string | undefined) ?? ""}
@@ -465,7 +471,7 @@ export function BriefForm({
               name="models.visual"
               render={({ field }) => (
                 <FormItem className="sm:max-w-xs">
-                  <FormLabel>Візуал (зображення)</FormLabel>
+                  <FormLabel>{t("Візуал (зображення)")}</FormLabel>
                   <FormControl>
                     <Select
                       value={(field.value as string | undefined) ?? IMAGE_MODELS[0].id}
@@ -487,7 +493,7 @@ export function BriefForm({
             />
 
             <div className="space-y-2">
-              <p className="text-sm font-medium leading-none">Модель під кожну роль (розширено)</p>
+              <p className="text-sm font-medium leading-none">{t("Модель під кожну роль (розширено)")}</p>
               <AgentModelsSection
                 value={(form.watch("agentModels") ?? {}) as AgentModelsValue}
                 onChange={(next) => form.setValue("agentModels", next, { shouldDirty: true })}
@@ -498,13 +504,14 @@ export function BriefForm({
 
         <div className="flex items-center gap-3">
           <Button type="submit" disabled={pending || !form.formState.isDirty}>
-            {pending ? "Зберігаємо…" : "Зберегти"}
+            {pending ? t("Зберігаємо…") : t("Зберегти")}
           </Button>
           {form.formState.isDirty && (
-            <span className="text-sm text-muted-foreground">Є незбережені зміни</span>
+            <span className="text-sm text-muted-foreground">{t("Є незбережені зміни")}</span>
           )}
         </div>
       </form>
-    </Form>
+      </Form>
+    </div>
   );
 }
