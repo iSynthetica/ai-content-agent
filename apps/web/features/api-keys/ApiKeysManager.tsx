@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ApiKeyDTO, ApiKeyProvider } from "@/lib/dto";
 import { useApiKeys, useDeleteApiKey, useSetApiKey } from "@/features/api-keys/use-api-keys";
+import { useT } from "@/lib/i18n";
 
 const PROVIDERS: Array<{ id: ApiKeyProvider; label: string; hint: string }> = [
   { id: "openai", label: "OpenAI", hint: "Потрібен для генерації тексту й зображень (gpt-image-1)." },
@@ -58,6 +59,7 @@ function ProviderCard({
   current: ApiKeyDTO | null;
   canManage: boolean;
 }) {
+  const t = useT();
   const [value, setValue] = useState("");
   const setKey = useSetApiKey();
   const delKey = useDeleteApiKey();
@@ -65,14 +67,14 @@ function ProviderCard({
   function onSave() {
     const key = value.trim();
     if (key.length < 16) {
-      toast.error("Ключ виглядає надто коротким");
+      toast.error(t("Ключ виглядає надто коротким"));
       return;
     }
     setKey.mutate(
       { provider, key },
       {
         onSuccess: () => {
-          toast.success(`${label}: ключ збережено`);
+          toast.success(`${label}: ${t("ключ збережено")}`);
           setValue("");
         },
       },
@@ -81,7 +83,7 @@ function ProviderCard({
 
   function onDelete() {
     delKey.mutate(provider, {
-      onSuccess: () => toast.success(`${label}: ключ видалено`),
+      onSuccess: () => toast.success(`${label}: ${t("ключ видалено")}`),
     });
   }
 
@@ -94,21 +96,21 @@ function ProviderCard({
             {label}
           </CardTitle>
           {current ? (
-            <Badge variant="secondary">Налаштовано ····{current.last4}</Badge>
+            <Badge variant="secondary">{t("Налаштовано")} ····{current.last4}</Badge>
           ) : (
             <Badge variant="outline" className="text-muted-foreground">
-              Не налаштовано
+              {t("Не налаштовано")}
             </Badge>
           )}
         </div>
-        <CardDescription>{hint}</CardDescription>
+        <CardDescription>{t(hint)}</CardDescription>
       </CardHeader>
 
       {canManage && (
         <CardContent className="flex flex-col gap-3">
           <div className="flex flex-col gap-2">
             <Label htmlFor={`key-${provider}`}>
-              {current ? "Замінити ключ" : "Додати ключ"}
+              {current ? t("Замінити ключ") : t("Додати ключ")}
             </Label>
             <div className="flex gap-2">
               <Input
@@ -120,7 +122,7 @@ function ProviderCard({
                 onChange={(e) => setValue(e.target.value)}
               />
               <Button onClick={onSave} disabled={setKey.isPending || value.trim().length === 0}>
-                {setKey.isPending ? "Зберігаємо…" : "Зберегти"}
+                {setKey.isPending ? t("Зберігаємо…") : t("Зберегти")}
               </Button>
             </div>
           </div>
@@ -133,7 +135,7 @@ function ProviderCard({
               disabled={delKey.isPending}
             >
               <Trash2 className="h-4 w-4" />
-              Видалити ключ
+              {t("Видалити ключ")}
             </Button>
           )}
         </CardContent>

@@ -264,4 +264,17 @@ export const en: Record<string, string> = {
   "є порушення": "has violations",
   "Для цього каналу ще немає постів.": "No posts for this channel yet.",
   "Експорт": "Export",
+
+  // ── API keys manager ──────────────────────────────────────────────────────
+  "Потрібен для генерації тексту й зображень (gpt-image-1).": "Required for generating text and images (gpt-image-1).",
+  "Потрібен, лише якщо в налаштуваннях обрано Claude.": "Required only if Claude is selected in settings.",
+  "Потрібен, лише якщо в налаштуваннях обрано Gemini.": "Required only if Gemini is selected in settings.",
+  "Ключ виглядає надто коротким": "The key looks too short",
+  "ключ збережено": "key saved",
+  "ключ видалено": "key deleted",
+  "Налаштовано": "Configured",
+  "Не налаштовано": "Not configured",
+  "Замінити ключ": "Replace key",
+  "Додати ключ": "Add key",
+  "Видалити ключ": "Delete key",
 };
