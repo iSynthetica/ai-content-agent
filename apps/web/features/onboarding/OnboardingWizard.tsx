@@ -20,24 +20,26 @@ import {
   useCreateCompany,
   useStartBootstrap,
 } from "@/features/onboarding/use-onboarding";
+import { useT } from "@/lib/i18n";
 
 function ProfilePreview({ profile }: { profile: Record<string, unknown> }) {
+  const t = useT();
   const rows: Array<[string, string]> = [];
   const push = (label: string, v: unknown) => {
     if (Array.isArray(v) && v.length > 0) rows.push([label, v.join(", ")]);
     else if (typeof v === "string" && v.trim()) rows.push([label, v]);
   };
-  push("Позиціювання", profile.positioning);
-  push("Стек", profile.stack);
-  push("Послуги", profile.services);
-  push("Аудиторія", profile.audience);
+  push(t("Позиціювання"), profile.positioning);
+  push(t("Стек"), profile.stack);
+  push(t("Послуги"), profile.services);
+  push(t("Аудиторія"), profile.audience);
 
   if (rows.length === 0) {
     // Bootstrap завершився, але нічого не витяг. Кажемо прямо: інакше порожній екран читався б
     // як помилка завантаження, і людина чекала б далі.
     return (
       <p className="text-sm text-muted-foreground">
-        З наявних джерел нічого певного витягти не вдалося — заповніть бриф вручну, це швидко.
+        {t("З наявних джерел нічого певного витягти не вдалося — заповніть бриф вручну, це швидко.")}
       </p>
     );
   }
@@ -55,6 +57,7 @@ function ProfilePreview({ profile }: { profile: Record<string, unknown> }) {
 }
 
 export function OnboardingWizard() {
+  const t = useT();
   const router = useRouter();
   const create = useCreateCompany();
   const start = useStartBootstrap();
@@ -83,10 +86,10 @@ export function OnboardingWizard() {
           // кроком — користувач уже дав джерело саме для цього.
           start.mutate(id, {
             onError: () =>
-              toast.error("Компанію створено, але аналіз не запустився — заповніть бриф вручну"),
+              toast.error(t("Компанію створено, але аналіз не запустився — заповніть бриф вручну")),
           });
         },
-        onError: () => toast.error("Не вдалося створити компанію"),
+        onError: () => toast.error(t("Не вдалося створити компанію")),
       },
     );
   }
@@ -99,12 +102,12 @@ export function OnboardingWizard() {
       <Card>
         <CardHeader>
           <CardTitle>
-            {busy ? "Вивчаємо компанію…" : state === "failed" ? "Не вдалося проаналізувати" : "Готово"}
+            {busy ? t("Вивчаємо компанію…") : state === "failed" ? t("Не вдалося проаналізувати") : t("Готово")}
           </CardTitle>
           <CardDescription>
             {busy
-              ? "Читаємо джерела й чернетимо бриф. Це займає близько хвилини."
-              : "Це чернетка — перевірте й виправте її у брифі. Саме бриф стає джерелом правди для перевірки фактів."}
+              ? t("Читаємо джерела й чернетимо бриф. Це займає близько хвилини.")
+              : t("Це чернетка — перевірте й виправте її у брифі. Саме бриф стає джерелом правди для перевірки фактів.")}
           </CardDescription>
         </CardHeader>
 
@@ -112,7 +115,7 @@ export function OnboardingWizard() {
           {busy && (
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
-              Аналізуємо…
+              {t("Аналізуємо…")}
             </p>
           )}
 
@@ -121,7 +124,7 @@ export function OnboardingWizard() {
             // чи це проблема з її URL, чи з нашого боку.
             <p className="flex items-start gap-2 rounded-md border border-warning bg-background p-3 text-sm">
               <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" />
-              <span>{status.data?.error ?? "Аналіз не вдався. Заповніть бриф вручну."}</span>
+              <span>{status.data?.error ?? t("Аналіз не вдався. Заповніть бриф вручну.")}</span>
             </p>
           )}
 
@@ -131,13 +134,13 @@ export function OnboardingWizard() {
 
           <div className="flex flex-wrap gap-2">
             <Button onClick={() => router.push(`/companies/${companyId}/brief`)} disabled={busy}>
-              До брифу
+              {t("До брифу")}
               <ArrowRight />
             </Button>
             {/* Аналіз може зависнути або впасти — вихід має бути завжди, а не лише в успішній гілці. */}
             {busy && (
               <Button variant="ghost" onClick={() => router.push(`/companies/${companyId}/brief`)}>
-                Пропустити й заповнити вручну
+                {t("Пропустити й заповнити вручну")}
               </Button>
             )}
           </div>
@@ -150,14 +153,14 @@ export function OnboardingWizard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Розкажіть про компанію</CardTitle>
+        <CardTitle>{t("Розкажіть про компанію")}</CardTitle>
         <CardDescription>
-          Потрібні лише назва та сайт (або опис одним рядком). Решту брифу ми зчернетимо самі.
+          {t("Потрібні лише назва та сайт (або опис одним рядком). Решту брифу ми зчернетимо самі.")}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
         <div className="flex flex-col gap-2">
-          <Label htmlFor="name">Назва компанії</Label>
+          <Label htmlFor="name">{t("Назва компанії")}</Label>
           <Input
             id="name"
             value={name}
@@ -168,7 +171,7 @@ export function OnboardingWizard() {
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="site">Сайт</Label>
+          <Label htmlFor="site">{t("Сайт")}</Label>
           <Input
             id="site"
             value={websiteUrl}
@@ -178,23 +181,23 @@ export function OnboardingWizard() {
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="desc">Або опишіть одним рядком</Label>
+          <Label htmlFor="desc">{t("Або опишіть одним рядком")}</Label>
           <Textarea
             id="desc"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Робимо інтеграційні сервіси на TypeScript для середнього бізнесу"
+            placeholder={t("Робимо інтеграційні сервіси на TypeScript для середнього бізнесу")}
             rows={2}
           />
           <p className="text-xs text-muted-foreground">
-            Досить чогось одного — сайту або опису.
+            {t("Досить чогось одного — сайту або опису.")}
           </p>
         </div>
 
         <div className="flex justify-end">
           <Button onClick={onCreate} disabled={!canSubmit || create.isPending}>
             {create.isPending ? <Loader2 className="animate-spin" /> : <Sparkles />}
-            Створити й проаналізувати
+            {t("Створити й проаналізувати")}
           </Button>
         </div>
       </CardContent>

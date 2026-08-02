@@ -15,10 +15,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { safeNext } from "@/lib/safe-next";
 import { SESSION_COOKIE } from "@/lib/auth-constants";
+import { useT } from "@/lib/i18n";
 
 const MOCK = process.env.NEXT_PUBLIC_MOCK_API === "1";
 
 function LoginForm() {
+  const t = useT();
   const router = useRouter();
   const searchParams = useSearchParams();
   const dest = safeNext(searchParams.get("next"));
@@ -44,7 +46,7 @@ function LoginForm() {
         });
         if (!res.ok) {
           // BFF нормалізує помилку api у envelope { error: { code, message } }.
-          let message = "Не вдалося увійти. Перевірте дані.";
+          let message = t("Не вдалося увійти. Перевірте дані.");
           try {
             const data = (await res.json()) as { error?: { message?: string } };
             if (data?.error?.message) message = data.error.message;
@@ -59,7 +61,7 @@ function LoginForm() {
       router.push(dest);
       router.refresh();
     } catch {
-      setError("Сервіс входу тимчасово недоступний. Спробуйте ще раз.");
+      setError(t("Сервіс входу тимчасово недоступний. Спробуйте ще раз."));
       setPending(false);
     }
   }
@@ -68,8 +70,8 @@ function LoginForm() {
     <Card className="w-full max-w-sm">
       <CardHeader className="items-center text-center">
         <Sparkles className="h-6 w-6 text-primary" />
-        <CardTitle className="text-xl">Вхід у Forteq</CardTitle>
-        <CardDescription>AI Content Agent — адмінка</CardDescription>
+        <CardTitle className="text-xl">{t("Вхід у Forteq")}</CardTitle>
+        <CardDescription>{t("AI Content Agent — адмінка")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} className="grid gap-4">
@@ -86,7 +88,7 @@ function LoginForm() {
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="password">Пароль</Label>
+            <Label htmlFor="password">{t("Пароль")}</Label>
             <Input
               id="password"
               type="password"
@@ -98,11 +100,11 @@ function LoginForm() {
           </div>
           {error && <p className="text-sm font-medium text-destructive">{error}</p>}
           <Button type="submit" disabled={pending} className="w-full">
-            {pending ? "Входимо…" : "Увійти"}
+            {pending ? t("Входимо…") : t("Увійти")}
           </Button>
           {MOCK && (
             <p className="text-center text-xs text-muted-foreground">
-              Dev-режим (моки): будь-які дані — вхід локальний, без api.
+              {t("Dev-режим (моки): будь-які дані — вхід локальний, без api.")}
             </p>
           )}
         </form>
