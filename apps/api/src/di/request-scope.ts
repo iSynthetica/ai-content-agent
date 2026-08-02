@@ -14,6 +14,7 @@ import { DrizzleRunsRepo } from "../repositories/runs.repo";
 import { DrizzleContentItemsRepo } from "../repositories/content-items.repo";
 import { DrizzleContentItemVersionsRepo } from "../repositories/content-item-versions.repo";
 import { DrizzleInboxRepo, DrizzleNotificationsRepo } from "../repositories/notifications.repo";
+import { DrizzleTopicDraftsRepo } from "../repositories/topic-drafts.repo";
 
 import { AccountsService } from "../services/accounts.service";
 import { CompaniesService } from "../services/companies.service";
@@ -25,6 +26,7 @@ import { ContentItemsService } from "../services/content-items.service";
 import { NotificationsFeedService } from "../services/notifications-feed.service";
 import { PlannerService } from "../services/planner.service";
 import { ApiKeysService } from "../services/api-keys.service";
+import { RunTopicDraftsService } from "../services/run-topic-drafts.service";
 import {
   NotificationServiceImpl,
   type NotificationService,
@@ -42,6 +44,7 @@ export interface Services {
   feed: NotificationsFeedService;
   planner: PlannerService;
   apiKeys: ApiKeysService;
+  runTopicDrafts: RunTopicDraftsService;
 }
 
 export interface RequestScope {
@@ -65,6 +68,7 @@ export function buildRepos(tx: DbExecutor): Repos {
     contentItemVersions: new DrizzleContentItemVersionsRepo(tx),
     notifications: new DrizzleNotificationsRepo(tx),
     inbox: new DrizzleInboxRepo(tx),
+    topicDrafts: new DrizzleTopicDraftsRepo(tx),
   };
 }
 
@@ -113,6 +117,16 @@ export function buildRequestScope(
     notifications,
     // BYOK: шифрування ключів орендаря master-ключем застосунку (§ADR-0016).
     apiKeys: new ApiKeysService(repos.apiKeys, masterKey),
+    // Topic preview (§runtopics): AI-підбір тем ДО генерації — окремий сервіс від planner
+    // (немає content_plan/plan_entries) і від RunsService (не запускає прогін, лише пропонує теми).
+    runTopicDrafts: new RunTopicDraftsService(
+      repos.topicDrafts,
+      repos.companies,
+      repos.settings,
+      repos.apiKeys,
+      afterCommit,
+      logger,
+    ),
   };
 
   return { auth, afterCommit, repos, services };

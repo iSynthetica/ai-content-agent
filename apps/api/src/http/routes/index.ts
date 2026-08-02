@@ -12,6 +12,7 @@ import { contentItemsController } from "../../controllers/content-items.controll
 import { notificationsController } from "../../controllers/notifications.controller";
 import { plannerController } from "../../controllers/planner.controller";
 import { apiKeysController } from "../../controllers/api-keys.controller";
+import { runTopicsController } from "../../controllers/run-topics.controller";
 
 // Бізнес-роути під /v1 (за auth-middleware). Кожен контролер сам відкриває request-scope (openScope):
 // BEGIN + SET LOCAL app.current_* → репо/сервіси на tx → COMMIT/ROLLBACK + after-commit-хуки (§2.10.3).
@@ -28,6 +29,7 @@ export function businessRoutes(root: Composition): Router {
   const notifications = notificationsController(root);
   const planner = plannerController(root);
   const apiKeys = apiKeysController(root);
+  const runTopics = runTopicsController(root);
 
   // Акаунти користувача + компанії акаунта (switcher-и shell)
   r.get("/accounts", accounts.list);
@@ -65,6 +67,15 @@ export function businessRoutes(root: Composition): Router {
   r.get("/runs/:id", runs.get);
   r.get("/runs/:id/items", runs.items);
   r.get("/runs/:id/export", runs.export);
+
+  // Topic preview (§runtopics): AI пропонує теми для ad-hoc прогону ще ДО генерації (LLM-виклик →
+  // run:start, як і сам запуск). getDraft — поллінг, читає будь-який член акаунта (RLS ізолює).
+  r.post(
+    "/companies/:companyId/runs/suggest-topics",
+    requirePermission("run:start"),
+    runTopics.suggest,
+  );
+  r.get("/companies/:companyId/topic-drafts/:draftId", runTopics.getDraft);
 
   // HITL-рішення (§7): єдиний ендпоінт рішення на кожному рівні (approve|reject|rerun).
   // Тверда межа: api лише enqueue resume-job — граф ганяє worker.

@@ -25,6 +25,14 @@ export interface EnqueueSuggestTopicsPayload {
   planEntryIds?: string[];
 }
 
+// topic preview (ad-hoc прогін, §runtopics): draftId — id вже вставленого run_topic_drafts,
+// worker пише результат туди ж (без planEntry/contentPlan — це не планувальник).
+export interface EnqueueSuggestRunTopicsPayload {
+  accountId: string;
+  companyId: string;
+  draftId: string;
+}
+
 export interface QueuePort {
   // generate → generation.start; resume → generation.resume (jobs.ts).
   enqueueRun(payload: EnqueueRunPayload): Promise<{ jobId: string }>;
@@ -32,4 +40,6 @@ export interface QueuePort {
   enqueueBootstrap(payload: EnqueueBootstrapPayload): Promise<{ jobId: string }>;
   // §2.11 підбір тем → planner.suggest_topics.
   enqueueSuggestTopics(payload: EnqueueSuggestTopicsPayload): Promise<{ jobId: string }>;
+  // topic preview → runtopics.suggest.
+  enqueueSuggestRunTopics(payload: EnqueueSuggestRunTopicsPayload): Promise<{ jobId: string }>;
 }

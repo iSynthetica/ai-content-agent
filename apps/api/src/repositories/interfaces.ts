@@ -265,6 +265,30 @@ export interface ContentItemVersionsRepo {
   findById(accountId: string, id: string): Promise<ContentItemVersion | null>;
 }
 
+// ── AI-підбір тем для ad-hoc прогону (topic preview, §runtopics) ──────────────
+export type TopicDraftStatus = "pending" | "ready" | "failed";
+export interface TopicDraftTopic {
+  channel: Channel;
+  topic: string;
+  keyMessage?: string;
+  seoKeywords?: string[];
+}
+export interface TopicDraft {
+  id: string;
+  status: TopicDraftStatus;
+  topics: TopicDraftTopic[] | null;
+  error: string | null;
+}
+export interface NewTopicDraft {
+  companyId: string;
+  input: { channels: Channel[]; counts: Record<string, number>; angle?: string };
+}
+export interface TopicDraftsRepo {
+  create(accountId: string, data: NewTopicDraft): Promise<{ id: string }>;
+  // companyId у запиті — додаткова перевірка приналежності поверх RLS (шлях несе обидва id).
+  findByCompanyAndId(accountId: string, companyId: string, id: string): Promise<TopicDraft | null>;
+}
+
 // ── Нотифікації та inbox (§2.13) ─────────────────────────────────────────────
 export interface NotificationRow {
   id: string;
@@ -336,4 +360,5 @@ export interface Repos {
   contentItemVersions: ContentItemVersionsRepo;
   notifications: NotificationsRepo;
   inbox: InboxItemsRepo;
+  topicDrafts: TopicDraftsRepo;
 }

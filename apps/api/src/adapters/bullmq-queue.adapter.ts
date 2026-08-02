@@ -7,12 +7,14 @@ import {
   generationResumeJob,
   onboardingBootstrapJob,
   suggestTopicsJob,
+  suggestRunTopicsJob,
 } from "@forteq/shared";
 import type {
   QueuePort,
   EnqueueRunPayload,
   EnqueueBootstrapPayload,
   EnqueueSuggestTopicsPayload,
+  EnqueueSuggestRunTopicsPayload,
 } from "../ports/queue.port";
 
 // Назва черги — ЄДИНЕ джерело правди, узгоджене з consumer'ом (apps/worker QUEUE_NAMES.jobs).
@@ -89,6 +91,21 @@ export class BullMqQueueAdapter implements QueuePort {
     });
     await this.queue.add(data.kind, data, { jobId, ...JOB_OPTS });
     this.logger.info({ jobId, kind: data.kind }, "enqueued suggest-topics job");
+    return { jobId };
+  }
+
+  async enqueueSuggestRunTopics(p: EnqueueSuggestRunTopicsPayload): Promise<{ jobId: string }> {
+    // Один draft — рівно одна спроба підбору (без nonce): retry enqueue того ж draftId дедуплікує.
+    const jobId = `runtopics-${p.draftId}`;
+    const data = suggestRunTopicsJob.parse({
+      kind: "runtopics.suggest",
+      jobId,
+      accountId: p.accountId,
+      companyId: p.companyId,
+      draftId: p.draftId,
+    });
+    await this.queue.add(data.kind, data, { jobId, ...JOB_OPTS });
+    this.logger.info({ jobId, kind: data.kind }, "enqueued runtopics.suggest job");
     return { jobId };
   }
 
