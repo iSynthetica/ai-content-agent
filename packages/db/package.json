@@ -13,6 +13,7 @@
     "migrate": "drizzle-kit migrate",
     "studio": "drizzle-kit studio",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run --config vitest.offline.config.ts",
     "test:rls": "vitest run"
   },
   "dependencies": {

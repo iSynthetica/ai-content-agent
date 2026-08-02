@@ -4,6 +4,7 @@ import * as schema from "./schema";
 
 export * from "./schema";
 export * from "./rls";
+export * from "./crypto";
 
 export type DB = ReturnType<typeof createDb>;
 

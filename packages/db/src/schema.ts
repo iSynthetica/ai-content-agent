@@ -91,6 +91,28 @@ export const companies = pgTable(
   (t) => ({ accountIdx: index("companies_account_idx").on(t.accountId) }),
 );
 
+// BYOK — ключі провайдерів на рівні АКАУНТА (не компанії): один ключ на (account, provider)
+// оплачує генерацію всього акаунта. Зберігаємо лише шифротекст (AES-256-GCM, iv|tag|ct у base64) —
+// plaintext ключа не лежить у БД ніколи; last4 — тільки для маскованого показу в UI. Розшифровує
+// воркер на момент виконання за accountId (ключ НЕ їде у снапшот прогону — ADR-0016).
+export const apiKeys = pgTable(
+  "api_keys",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    accountId: uuid("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(), // openai | anthropic | tavily
+    ciphertext: text("ciphertext").notNull(), // base64(iv | authTag | ciphertext)
+    last4: text("last4").notNull(),
+    label: text("label"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+  },
+  (t) => ({
+    accountProviderUq: uniqueIndex("api_keys_account_provider_uq").on(t.accountId, t.provider),
+  }),
+);
+
 export const companySettings = pgTable("company_settings", {
   companyId: uuid("company_id").primaryKey().references(() => companies.id, { onDelete: "cascade" }),
   accountId: uuid("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),

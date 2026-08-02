@@ -57,6 +57,20 @@
       "when": 1784478842561,
       "tag": "0007_chief_invaders",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1785664922769,
+      "tag": "0008_damp_raider",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1785664923769,
+      "tag": "0009_api_keys_rls",
+      "breakpoints": true
     }
   ]
 }
