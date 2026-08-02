@@ -38,6 +38,12 @@ beforeAll(async () => {
     INSERT INTO companies (account_id, name) VALUES
       (${ACCOUNT_A}, 'Company A'),
       (${ACCOUNT_B}, 'Company B')`;
+  // BYOK: ключі орендарів — секрети, ізоляція тут критичніша за все (ADR-0016). Прибираються
+  // каскадом при видаленні акаунтів в afterAll (FK on delete cascade).
+  await owner`
+    INSERT INTO api_keys (account_id, provider, ciphertext, last4) VALUES
+      (${ACCOUNT_A}, 'openai', 'ct-A', 'aaaa'),
+      (${ACCOUNT_B}, 'openai', 'ct-B', 'bbbb')`;
 });
 
 afterAll(async () => {
@@ -109,6 +115,38 @@ describe("RLS: ізоляція орендарів", () => {
       await tx`SELECT set_config('app.current_account_id', '', true)`;
       return tx`SELECT name FROM companies`;
     });
+    expect(rows).toHaveLength(0);
+  });
+});
+
+describe("RLS: ізоляція ключів api_keys (секрети орендаря)", () => {
+  it("акаунт бачить ЛИШЕ свій шифротекст, не чужий", async () => {
+    const rows = await asAccount(ACCOUNT_A, (tx) => tx`SELECT ciphertext FROM api_keys`);
+    const cts = rows.map((r) => r.ciphertext);
+    expect(cts).toContain("ct-A");
+    expect(cts).not.toContain("ct-B");
+  });
+
+  it("прямий запит за чужим account_id не повертає ключа", async () => {
+    const rows = await asAccount(
+      ACCOUNT_A,
+      (tx) => tx`SELECT ciphertext FROM api_keys WHERE account_id = ${ACCOUNT_B}`,
+    );
+    expect(rows).toHaveLength(0);
+  });
+
+  it("запис ключа у чужий акаунт відхиляється WITH CHECK", async () => {
+    await expect(
+      asAccount(
+        ACCOUNT_A,
+        (tx) =>
+          tx`INSERT INTO api_keys (account_id, provider, ciphertext, last4) VALUES (${ACCOUNT_B}, 'anthropic', 'ct-x', 'xxxx')`,
+      ),
+    ).rejects.toThrow();
+  });
+
+  it("БЕЗ виставленого скоупу ключів не видно", async () => {
+    const rows = await app`SELECT ciphertext FROM api_keys`;
     expect(rows).toHaveLength(0);
   });
 });
