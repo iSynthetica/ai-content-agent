@@ -36,3 +36,4 @@ and becomes `Accepted` once the change is merged.
 | [0013](0013-violations-must-be-grounded-in-a-quote.md) | Violations must be grounded in a quote | Accepted |
 | [0014](0014-fake-models-require-an-explicit-flag.md) | Fake models require an explicit flag | Accepted |
 | [0015](0015-rbac-enforced-at-the-application-layer.md) | RBAC is enforced at the application layer | Accepted |
+| [0016](0016-tenant-keys-resolved-at-execution-not-snapshotted.md) | Tenant keys resolved at execution, never snapshotted | Accepted |
