@@ -9,20 +9,30 @@ import { ThemeProvider } from "next-themes";
 import { useState, type ReactNode } from "react";
 
 import { makeQueryClient } from "@/lib/query-client";
+import { LanguageProvider } from "@/lib/i18n";
+import type { Language } from "@/lib/i18n";
 
-export function Providers({ children }: { children: ReactNode }) {
+export function Providers({
+  children,
+  initialLanguage,
+}: {
+  children: ReactNode;
+  initialLanguage: Language;
+}) {
   const [queryClient] = useState(makeQueryClient);
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider
-        attribute="class"
-        defaultTheme="system"
-        enableSystem
-        disableTransitionOnChange
-      >
-        {children}
-      </ThemeProvider>
+      <LanguageProvider initialLanguage={initialLanguage}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+        </ThemeProvider>
+      </LanguageProvider>
     </QueryClientProvider>
   );
 }
