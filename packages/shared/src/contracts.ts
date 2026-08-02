@@ -188,6 +188,30 @@ export const createRunRequest = z.object({
 export type CreateRunRequest = z.infer<typeof createRunRequest>;
 export const createRunResponse = z.object({ runId: z.string() });
 
+// ── AI-підбір тем для ad-hoc прогону (topic preview) ──────────────────────────
+// Окремий флоу ВІД createRun: тут лише просимо AI запропонувати теми (LLM-виклик), людина їх
+// редагує, і вже ЗАТВЕРДЖЕНИЙ список іде у createRun.topics (fan-out, існуючий шлях, без дублю).
+// channels — які канали пропонувати; counts — скільки тем на канал (симетрично до ad-hoc counts
+// у createRunRequest, але тут ОБОВ'ЯЗКОВО для кожного каналу — інакше нема що синтезувати слотами).
+export const suggestRunTopicsRequest = z.object({
+  channels: z.array(channelSchema).min(1),
+  counts: z.record(z.number().int().min(1)),
+  angle: z.string().max(500).optional(),
+});
+export type SuggestRunTopicsRequest = z.infer<typeof suggestRunTopicsRequest>;
+export const suggestRunTopicsResponse = z.object({ draftId: z.string() });
+
+// Стан чернетки підбору тем (GET /v1/companies/:id/topic-drafts/:draftId, для поллінгу з UI).
+// pending → LLM ще працює; ready → topics заповнено; failed → error пояснює причину (напр. нема
+// ключа провайдера) і UI пропонує впасти назад на ручний ввід/«AI обере на льоту».
+export const topicDraftStatusSchema = z.enum(["pending", "ready", "failed"]);
+export const topicDraftDTO = z.object({
+  status: topicDraftStatusSchema,
+  topics: z.array(runTopicInputSchema).nullable(),
+  error: z.string().nullable(),
+});
+export type TopicDraftDTO = z.infer<typeof topicDraftDTO>;
+
 // Знімок конфігурації прогону для показу на сторінці прогону (що саме його породило).
 export const runConfigDTO = z.object({
   channels: z.array(channelSchema),

@@ -40,6 +40,17 @@ export const suggestTopicsJob = z.object({
   planEntryIds: z.array(z.string()).optional(),
 });
 
+// AI-підбір тем для ad-hoc прогону (topic preview, §runtopics): окремий job від planner.suggest_topics
+// — тут немає плану/слотів БД, лише синтетичні TopicSlot'и, побудовані worker'ом із draft.input
+// (channels+counts). draftId — єдиний вказівник на рядок run_topic_drafts, куди пишеться результат.
+export const suggestRunTopicsJob = z.object({
+  kind: z.literal("runtopics.suggest"),
+  jobId: z.string(),
+  accountId: z.string(),
+  companyId: z.string(),
+  draftId: z.string(),
+});
+
 // Картинки ПОЗА критичним шляхом прогону (§7.4): генерація одного зображення ~40с, що було
 // 60%+ часу до needs_review. Текст показуємо людині одразу, картинки домальовуються фоном
 // і доїжджають у content_items.image_url. targets несе ГОТОВИЙ промпт — хендлеру не треба
@@ -64,6 +75,7 @@ export const job = z.discriminatedUnion("kind", [
   generationResumeJob,
   onboardingBootstrapJob,
   suggestTopicsJob,
+  suggestRunTopicsJob,
   contentVisualsJob,
 ]);
 export type Job = z.infer<typeof job>;
