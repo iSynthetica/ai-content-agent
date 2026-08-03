@@ -65,6 +65,7 @@ export function businessRoutes(root: Composition): Router {
 
   // Прогони (create=enqueue, list=календар, detail, items)
   r.post("/companies/:companyId/runs", requirePermission("run:start"), runs.create);
+  r.post("/companies/:companyId/runs/estimate", requirePermission("run:start"), runs.estimate);
   r.get("/companies/:companyId/runs", runs.list);
   r.get("/runs/:id", runs.get);
   r.get("/runs/:id/items", runs.items);

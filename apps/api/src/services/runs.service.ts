@@ -5,9 +5,11 @@ import {
   CHANNELS,
   CHANNEL_DEFAULTS,
   MAX_POSTS_PER_RUN,
+  estimateRunCost,
   type AgentModels,
   type Channel,
   type DecisionRequest,
+  type RunCostEstimateResponse,
   type RunDecisionResponse,
 } from "@forteq/shared";
 import { AppError } from "../http/errors";
@@ -21,11 +23,17 @@ import type {
   ContentItemsRepo,
   ContentPlansRepo,
   ItemsQuery,
+  PlanEntriesRepo,
   RunListFilter,
   RunsRepo,
   RunSummary,
   SettingsRepo,
 } from "../repositories/interfaces";
+
+// Дефолт текстової моделі, коли settings/override нічого не задають (дзеркалить DEFAULT_MODELS
+// у packages/pipeline/config.ts — api не залежить від pipeline, тож тримаємо копію тут).
+const DEFAULT_TEXT_MODEL = "gpt-5-nano";
+const DEFAULT_IMAGE_MODEL = "gpt-image-1";
 
 export interface CreateRunInput {
   planEntryIds?: string[];
@@ -52,6 +60,7 @@ export class RunsService {
     private readonly companies: CompaniesRepo,
     private readonly settings: SettingsRepo,
     private readonly plans: ContentPlansRepo,
+    private readonly planEntries: PlanEntriesRepo,
     private readonly contentItems: ContentItemsRepo,
     private readonly apiKeys: ApiKeysRepo,
     private readonly afterCommit: AfterCommit,
@@ -186,6 +195,75 @@ export class RunsService {
     });
 
     return { runId: run.id, outcome };
+  }
+
+  // Пре-ран оцінка вартості (Phase 4, §spec 08). ТІ САМІ вхідні дані й той САМИЙ резолв
+  // лічильників/моделей, що createRun, але нічого не запускає — лише прикидка (@forteq/shared).
+  // Резолв моделі на роль дзеркалить slotModel у pipeline: override → settings.models[role] →
+  // дефолт. Ціна кодується id моделі (не провайдером), тож провайдер тут не потрібен.
+  async estimateRun(
+    ctx: AuthCtx,
+    companyId: string,
+    input: CreateRunInput,
+  ): Promise<RunCostEstimateResponse> {
+    const company = await this.companies.findById(ctx.accountId, companyId);
+    if (!company) throw AppError.notFound("company");
+    const settings = await this.settings.getByCompany(ctx.accountId, companyId);
+    const plan = await this.plans.getByCompany(ctx.accountId, companyId);
+    if (!settings || !plan) {
+      throw AppError.unprocessable(
+        "company is not configured: settings and content-plan are required before a run",
+      );
+    }
+
+    const scoped = (input.planEntryIds?.length ?? 0) > 0;
+    const provided = !scoped && (input.topics?.length ?? 0) > 0;
+
+    // Розподіл постів за каналами (для к-сті картинок = instagram). Дзеркалить createRun:
+    // теми → рахуємо з тем; scoped → з обраних слотів плану; ad-hoc → counts/plan/дефолти.
+    let byChannel: Record<string, number> = {};
+    if (provided) {
+      for (const t of input.topics!) byChannel[t.channel] = (byChannel[t.channel] ?? 0) + 1;
+    } else if (scoped) {
+      for (const id of input.planEntryIds!) {
+        const entry = await this.planEntries.findById(ctx.accountId, id);
+        if (entry) byChannel[entry.channel] = (byChannel[entry.channel] ?? 0) + 1;
+      }
+    } else {
+      const src = input.counts ?? (plan.channelCounts as Record<string, number>) ?? {};
+      const chans = (input.channels ?? CHANNELS.filter((c) => (src[c] ?? 0) > 0)) as string[];
+      for (const ch of chans) byChannel[ch] = src[ch] ?? CHANNEL_DEFAULTS[ch as Channel] ?? 1;
+    }
+
+    const totalPosts = Object.values(byChannel).reduce((a, b) => a + b, 0);
+    const imageCount = byChannel.instagram ?? 0;
+
+    // Резолв моделі на роль: override виграє, далі settings.models, далі дефолт.
+    const effectiveAgentModels =
+      input.agentModels !== undefined ? input.agentModels : (settings.agentModels ?? null);
+    const savedModels = (settings.models ?? {}) as Record<string, string>;
+    const resolve = (role: string): string =>
+      effectiveAgentModels?.[role]?.model ?? savedModels[role] ?? DEFAULT_TEXT_MODEL;
+    const roleModels = {
+      researcher: resolve("researcher"),
+      strategist: resolve("strategist"),
+      writer: resolve("writer"),
+      reviewer: resolve("reviewer"),
+    };
+    // judge — офлайн-евалюація (не у графі генерації) → у вартість прогону свідомо НЕ входить.
+    const imageModel =
+      effectiveAgentModels?.visual?.model ?? savedModels.visual ?? DEFAULT_IMAGE_MODEL;
+
+    const est = estimateRunCost({ totalPosts, imageCount, roleModels, imageModel });
+    // Округлюємо до цілих центів на межі (контракт — int).
+    return {
+      cents: Math.round(est.cents),
+      textCents: Math.round(est.textCents),
+      imageCents: Math.round(est.imageCents),
+      posts: est.posts,
+      images: est.images,
+      expensive: est.expensive,
+    };
   }
 
   async list(

@@ -24,8 +24,10 @@ import {
   type AgentModelsValue,
 } from "@/features/companies/brief/AgentModelsSection";
 import { useCreateRun } from "@/features/runs/use-create-run";
+import { useEstimateRun } from "@/features/runs/use-estimate-run";
 import { useSuggestRunTopics, useTopicDraft } from "@/features/runs/use-suggest-topics";
 import { useT } from "@/lib/i18n";
+import { formatCost } from "@/lib/format";
 
 const CHANNEL_LABELS: Record<Channel, string> = {
   linkedin: "LinkedIn",
@@ -56,6 +58,8 @@ export function RunConfigDialog({
   const [manualTopics, setManualTopics] = useState<Record<string, string>>({});
   const [angle, setAngle] = useState("");
   const [agentModels, setAgentModels] = useState<AgentModelsValue>({});
+  // Друге підтвердження на дорогий прогін (Phase 4): чекбокс мусить бути ввімкнений, щоб запустити.
+  const [ackExpensive, setAckExpensive] = useState(false);
 
   // Topic preview (§runtopics): draftId — активний запит на пропозицію; previewTopics — РЕДАГОВАНА
   // копія результату (не сам draft — draft лишається read-only знімком того, що повернув AI).
@@ -134,14 +138,24 @@ export function RunConfigDialog({
   const tooMany = total > MAX_POSTS_PER_RUN;
   const canProceed = scoped || (total >= 1 && !tooMany);
 
+  // Пре-ран оцінка вартості (Phase 4): рахуємо ЛИШЕ на кроці review й лише коли конфіг валідний
+  // (інакше — зайві виклики й оцінка недопасованого стану). Тіло = те саме, що піде у createRun.
+  const estimateBody = step === "review" && canProceed ? buildRunBody() : null;
+  const estimateQuery = useEstimateRun(companyId, estimateBody);
+  const estimate = estimateQuery.data;
+  // Дорогий прогін блокує кнопку, доки людина не підтвердить чекбоксом.
+  const blockedByCost = Boolean(estimate?.expensive) && !ackExpensive;
+
   function toggle(c: Channel) {
     const next = new Set(included);
     next.has(c) ? next.delete(c) : next.add(c);
     setIncluded(next);
   }
 
-  function confirm() {
-    const body = scoped
+  // Тіло createRun/estimate — ЄДИНЕ джерело (обидва шляхи мусять слати те саме, інакше оцінка
+  // рахувала б не той прогін, що запуститься). scoped/manual/preview/ai → різна форма тем/лічильників.
+  function buildRunBody(): Record<string, unknown> {
+    const base = scoped
       ? { planEntryIds }
       : topicMode === "manual"
         ? { topics: manualList }
@@ -151,12 +165,16 @@ export function RunConfigDialog({
               channels: activeChannels,
               counts: Object.fromEntries(activeChannels.map((c) => [c, counts[c]])),
             };
+    return {
+      ...base,
+      ...(angle.trim() ? { angle: angle.trim() } : {}),
+      ...(Object.keys(agentModels).length ? { agentModels } : {}),
+    };
+  }
+
+  function confirm() {
     createRun.mutate(
-      {
-        ...body,
-        ...(angle.trim() ? { angle: angle.trim() } : {}),
-        ...(Object.keys(agentModels).length ? { agentModels } : {}),
-      },
+      buildRunBody(),
       {
         onSuccess: ({ runId }) => {
           toast.success(t("Прогін запущено"));
@@ -440,9 +458,42 @@ export function RunConfigDialog({
                     : t("за збереженими налаштуваннями компанії")}
                 </p>
               </div>
-              <p className="text-xs text-muted-foreground">
-                {t("Орієнтовна вартість — типово ≈ $0.07 на gpt-5-nano; сильніші моделі дорожчі. Точна вартість зʼявиться після прогону. Генерація йде на ваш API-ключ (BYOK).")}
-              </p>
+              <div className="rounded-md border border-border bg-muted/40 p-3 text-xs">
+                <div className="flex items-baseline justify-between">
+                  <span className="font-medium text-foreground">{t("Орієнтовна вартість")}</span>
+                  <span className="text-sm font-semibold text-foreground">
+                    {estimateQuery.isPending
+                      ? "…"
+                      : estimate
+                        ? `≈ ${formatCost(estimate.cents)}`
+                        : "—"}
+                  </span>
+                </div>
+                {estimate && (
+                  <p className="mt-1 text-muted-foreground">
+                    {t("текст")}: {formatCost(estimate.textCents)}
+                    {estimate.images > 0
+                      ? ` · ${t("зображення")}: ${formatCost(estimate.imageCents)} (${estimate.images})`
+                      : ""}
+                  </p>
+                )}
+                <p className="mt-1 text-muted-foreground">
+                  {t("Це оцінка — точна вартість зʼявиться після прогону. Генерація йде на ваш API-ключ (BYOK).")}
+                </p>
+                {estimate?.expensive && (
+                  <label className="mt-2 flex items-start gap-2 text-destructive">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5"
+                      checked={ackExpensive}
+                      onChange={(e) => setAckExpensive(e.target.checked)}
+                    />
+                    <span>
+                      {t("Дорогий прогін")} (≈ {formatCost(estimate.cents)}) — {t("підтверджую запуск")}
+                    </span>
+                  </label>
+                )}
+              </div>
               {createRun.isError && (
                 <p className="text-sm text-destructive">
                   {(createRun.error as Error)?.message ?? t("Не вдалося запустити прогін")}
@@ -454,7 +505,13 @@ export function RunConfigDialog({
 
         <div className="flex items-center justify-between gap-2 border-t border-border px-5 py-3">
           {step === "review" ? (
-            <Button variant="ghost" onClick={() => setStep("configure")}>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setAckExpensive(false); // повернення до конфігу скидає підтвердження дорогого прогону
+                setStep("configure");
+              }}
+            >
               {t("Назад")}
             </Button>
           ) : (
@@ -465,7 +522,7 @@ export function RunConfigDialog({
               {t("Далі")}
             </Button>
           ) : (
-            <Button disabled={createRun.isPending} onClick={confirm}>
+            <Button disabled={createRun.isPending || blockedByCost} onClick={confirm}>
               {createRun.isPending ? t("Запускаємо…") : t("Запустити генерацію")}
             </Button>
           )}

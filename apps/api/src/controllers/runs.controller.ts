@@ -42,6 +42,25 @@ export function runsController(root: Composition) {
       res.status(outcome.enqueue === "pending" ? 202 : 201).json({ runId });
     }),
 
+    // Пре-ран оцінка вартості (Phase 4): ті самі вхідні дані, що create, але без запуску.
+    estimate: asyncHandler(async (req: Request, res: Response) => {
+      const auth = requireAuth(req);
+      const companyId = companyIdParam.parse(req.params.companyId);
+      const body = createRunRequest.parse(req.body);
+      const est = await root.openScope(auth, (s) =>
+        s.services.runs.estimateRun(auth, companyId, {
+          planEntryIds: body.planEntryIds,
+          channels: body.channels,
+          counts: body.counts,
+          topics: body.topics,
+          angle: body.angle,
+          agentModels: body.agentModels,
+          saveAsDefault: body.saveAsDefault,
+        }),
+      );
+      res.status(200).json(est);
+    }),
+
     list: asyncHandler(async (req: Request, res: Response) => {
       const auth = requireAuth(req);
       const companyId = companyIdParam.parse(req.params.companyId);

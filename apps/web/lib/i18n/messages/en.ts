@@ -327,8 +327,13 @@ export const en: Record<string, string> = {
   "Акцент": "Angle",
   "Моделі": "Models",
   "за збереженими налаштуваннями компанії": "using the company's saved settings",
-  "Орієнтовна вартість — типово ≈ $0.07 на gpt-5-nano; сильніші моделі дорожчі. Точна вартість зʼявиться після прогону. Генерація йде на ваш API-ключ (BYOK).":
-    "Estimated cost — typically ≈ $0.07 on gpt-5-nano; stronger models cost more. The exact cost appears after the run. Generation runs on your API key (BYOK).",
+  "Орієнтовна вартість": "Estimated cost",
+  "текст": "text",
+  "зображення": "images",
+  "Це оцінка — точна вартість зʼявиться після прогону. Генерація йде на ваш API-ключ (BYOK).":
+    "This is an estimate — the exact cost appears after the run. Generation runs on your API key (BYOK).",
+  "Дорогий прогін": "Expensive run",
+  "підтверджую запуск": "I confirm the launch",
   "Не вдалося запустити прогін": "Couldn't start the run",
   "Назад": "Back",
   "Далі": "Next",

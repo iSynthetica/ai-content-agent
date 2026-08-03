@@ -98,6 +98,7 @@ export function buildRequestScope(
       repos.companies,
       repos.settings,
       repos.contentPlans,
+      repos.planEntries,
       repos.contentItems,
       repos.apiKeys,
       afterCommit,

@@ -188,6 +188,18 @@ export const createRunRequest = z.object({
 export type CreateRunRequest = z.infer<typeof createRunRequest>;
 export const createRunResponse = z.object({ runId: z.string() });
 
+// Пре-ран оцінка вартості (Phase 4). Приймає ТІ САМІ вхідні дані, що й createRun (той самий резолв
+// лічильників/моделей), але нічого не запускає — лише повертає прикидку. cents — цілі центи (округлені).
+export const runCostEstimateResponse = z.object({
+  cents: z.number().int().nonnegative(),
+  textCents: z.number().int().nonnegative(),
+  imageCents: z.number().int().nonnegative(),
+  posts: z.number().int().nonnegative(),
+  images: z.number().int().nonnegative(),
+  expensive: z.boolean(),
+});
+export type RunCostEstimateResponse = z.infer<typeof runCostEstimateResponse>;
+
 // ── AI-підбір тем для ad-hoc прогону (topic preview) ──────────────────────────
 // Окремий флоу ВІД createRun: тут лише просимо AI запропонувати теми (LLM-виклик), людина їх
 // редагує, і вже ЗАТВЕРДЖЕНИЙ список іде у createRun.topics (fan-out, існуючий шлях, без дублю).

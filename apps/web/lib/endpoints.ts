@@ -26,6 +26,7 @@ export const ALLOW: ReadonlyArray<{ method: string; pattern: RegExp }> = [
 
   { method: "GET", pattern: /^\/companies\/[^/]+\/runs$/ },
   { method: "POST", pattern: /^\/companies\/[^/]+\/runs$/ }, // створити run — companyId у шляху
+  { method: "POST", pattern: /^\/companies\/[^/]+\/runs\/estimate$/ }, // пре-ран оцінка вартості (Phase 4)
   { method: "GET", pattern: /^\/runs\/[^/]+$/ },
   { method: "GET", pattern: /^\/runs\/[^/]+\/items$/ },
   { method: "POST", pattern: /^\/runs\/[^/]+\/decision$/ }, // { action, feedback } по всьому run
@@ -84,6 +85,7 @@ export const endpoints = {
   company: (cid: string) => `/api/companies/${cid}`, // GET деталі + PATCH company core
   settings: (cid: string) => `/api/companies/${cid}/settings`, // PUT бренд + дефолти
   runs: (cid: string) => `/api/companies/${cid}/runs`, // GET список + POST створити
+  runEstimate: (cid: string) => `/api/companies/${cid}/runs/estimate`, // POST пре-ран оцінка вартості
   run: (id: string) => `/api/runs/${id}`,
   items: (id: string) => `/api/runs/${id}/items`,
   runStream: (id: string) => `/api/runs/${id}/stream`,
