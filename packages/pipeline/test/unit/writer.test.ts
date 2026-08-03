@@ -54,6 +54,28 @@ describe("Writer — initial", () => {
     expect(patch.errors).toEqual([]);
   });
 
+  // Проводка angle (Phase 2): акцент кампанії (per-run) мусить дійти до промпту writer'а —
+  // раніше зберігався й показувався, але генерацію не чіпав (shim).
+  it("акцент кампанії (campaignAngle) доходить до промпту writer'а", async () => {
+    const fake = new FakeModelFactory({ writer: writerResponder });
+    await makeWriterNode(depsWith(fake), "initial")(
+      baseState({
+        company: { ...company, campaignAngle: "Запуск тарифу Enterprise" },
+        contentPlan: [plan("li", "linkedin")],
+      }),
+    );
+    expect(fake.calls.writer[0]).toContain("АКЦЕНТ КАМПАНІЇ");
+    expect(fake.calls.writer[0]).toContain("Запуск тарифу Enterprise");
+  });
+
+  it("без campaignAngle — жодної директиви акценту в промпті (без шуму)", async () => {
+    const fake = new FakeModelFactory({ writer: writerResponder });
+    await makeWriterNode(depsWith(fake), "initial")(
+      baseState({ contentPlan: [plan("li", "linkedin")] }),
+    );
+    expect(fake.calls.writer[0]).not.toContain("АКЦЕНТ КАМПАНІЇ");
+  });
+
   it("ізоляція помилок per-item → errors[] (впалий пост не валить прогін)", async () => {
     const responder = (input: string) => {
       if (input.includes("Topic bad")) throw new Error("boom");

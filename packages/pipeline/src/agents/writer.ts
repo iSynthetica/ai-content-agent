@@ -11,6 +11,7 @@ import { z } from "zod";
 import type { Channel } from "@forteq/shared";
 import { loadPrompt } from "../lib/loadPrompt";
 import { fillTemplate } from "../lib/fillTemplate";
+import { campaignAngleDirective } from "../lib/campaignAngle";
 import { callStructured } from "../lib/llm";
 import { mapPool } from "../lib/mapPool";
 import { ITEM_CONCURRENCY, slotModel } from "../config";
@@ -68,6 +69,9 @@ async function writeOne(
     language: s.company.language,
     forbiddenPhrases: JSON.stringify(s.company.forbiddenPhrases ?? []),
   });
+
+  // Акцент кампанії (per-run) — дописуємо ПІСЛЯ базового шаблону, ПЕРЕД дельтою ревізії.
+  prompt += campaignAngleDirective(s.company);
 
   // Ревізія: конкатенуємо дельта-інструкцію (writer-revision.md) з фідбеком Reviewer'а/людини.
   if (feedback) {

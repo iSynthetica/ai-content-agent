@@ -16,6 +16,10 @@ export interface CompanyContext {
   visualStyle?: string;
   forbiddenPhrases: string[];
   language: string;
+  // Акцент/кут кампанії НА ЦЕЙ ПРОГІН (per-run, з run_config.angle). CompanyContext будується
+  // заново на кожен generation.start, тож per-run поле тут коректне (не кешується між прогонами).
+  // Впливає на вибір тем (strategist) і на текст поста (writer); фактів бренду не змінює.
+  campaignAngle?: string;
 }
 
 export interface RunMeta {

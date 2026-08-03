@@ -66,10 +66,15 @@ export async function handleStart(job: GenerationStartJob, ctx: HandlerContext):
 
     // Планскоуп: обрані слоти планера (провенанс id === plan_entries.id, §7.2) АБО явні теми з
     // run_config (Phase 2 — fan-out рівно на них, синтетичні id; plan_entries не чіпаємо).
-    const providedTopics =
-      (run?.runConfig as {
-        topics?: Array<{ channel: string; topic: string; keyMessage?: string; seoKeywords?: string[] }>;
-      } | undefined)?.topics ?? [];
+    const runConfig = run?.runConfig as
+      | {
+          topics?: Array<{ channel: string; topic: string; keyMessage?: string; seoKeywords?: string[] }>;
+          angle?: string | null;
+        }
+      | undefined;
+    const providedTopics = runConfig?.topics ?? [];
+    // Акцент кампанії (per-run) — проводимо у CompanyContext, далі strategist/writer (Phase 2).
+    const campaignAngle = runConfig?.angle?.trim() || undefined;
     let planScope: PlanEntryInput[] | undefined;
     if (scoped) {
       const rows = await tx
@@ -107,6 +112,7 @@ export async function handleStart(job: GenerationStartJob, ctx: HandlerContext):
       visualStyle: settings?.visualStyle ?? undefined,
       forbiddenPhrases: settings?.forbiddenPhrases ?? [],
       language: settings?.language ?? "en",
+      campaignAngle,
     };
 
     // ModelConfig — снапшот прогону (generation_runs.model_config) поверх company_settings, fallback DEFAULT_MODELS.

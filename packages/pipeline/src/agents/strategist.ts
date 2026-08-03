@@ -11,6 +11,7 @@ import { channelSchema, type Channel } from "@forteq/shared";
 import type { ContentPlanItem } from "../schemas";
 import { loadPrompt } from "../lib/loadPrompt";
 import { fillTemplate } from "../lib/fillTemplate";
+import { campaignAngleDirective } from "../lib/campaignAngle";
 import { callStructured } from "../lib/llm";
 import { slotModel } from "../config";
 import type { GraphDeps } from "../ports";
@@ -105,11 +106,13 @@ async function fullPlan(deps: GraphDeps, s: ContentStateT): Promise<Partial<Cont
       audience: s.company.audience,
     }),
   });
+  // Акцент кампанії (per-run) — впливає на ВИБІР тем повного плану (не scoped, де теми фіксовані).
+  const promptWithAngle = prompt + campaignAngleDirective(s.company);
 
   const { parsed, cost } = await callStructured(
     deps.models.forAgent("strategist"),
     PlanGenSchema,
-    prompt,
+    promptWithAngle,
     modelId,
   );
 
