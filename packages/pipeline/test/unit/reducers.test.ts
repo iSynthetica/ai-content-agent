@@ -64,6 +64,29 @@ describe("addCost / costFromUsage / imageCost", () => {
     expect(costFromUsage(undefined, "gpt-4.1")).toEqual({ cents: 0, tokens: 0 });
   });
 
+  // Регрес: реальні прогони йдуть на gpt-5.x/claude-opus-4-8/gemini — раніше їх не було у
+  // PRICE_TABLE, і всі падали у DEFAULT_PRICE (1$/3$), косячи вартість. Тепер ціна точна.
+  it("costFromUsage знає поточні моделі (не фолбек DEFAULT_PRICE)", () => {
+    // gpt-5-nano: $0.05 in / $0.40 out за 1M. 1M input+1M output = $0.45 = 45 центів.
+    const nano = costFromUsage(
+      { input_tokens: 1_000_000, output_tokens: 1_000_000, total_tokens: 2_000_000 },
+      "gpt-5-nano",
+    );
+    expect(nano.cents).toBeCloseTo(45, 5);
+    // claude-opus-4-8: $5 in / $25 out. 1M+1M = $30 = 3000 центів (а не DEFAULT 400).
+    const opus = costFromUsage(
+      { input_tokens: 1_000_000, output_tokens: 1_000_000, total_tokens: 2_000_000 },
+      "claude-opus-4-8",
+    );
+    expect(opus.cents).toBeCloseTo(3000, 5);
+    // gemini-2.5-pro: $1.25 in / $10 out. 1M+1M = $11.25 = 1125 центів.
+    const gemini = costFromUsage(
+      { input_tokens: 1_000_000, output_tokens: 1_000_000, total_tokens: 2_000_000 },
+      "gemini-2.5-pro",
+    );
+    expect(gemini.cents).toBeCloseTo(1125, 5);
+  });
+
   it("imageCost повертає фіксовану ненульову ціну, tokens=0", () => {
     const c = imageCost("gpt-image-1");
     expect(c.cents).toBeGreaterThan(0);
