@@ -40,6 +40,11 @@ export const ALLOW: ReadonlyArray<{ method: string; pattern: RegExp }> = [
   { method: "POST", pattern: /^\/companies\/[^/]+\/runs\/suggest-topics$/ },
   { method: "GET", pattern: /^\/companies\/[^/]+\/topic-drafts\/[^/]+$/ },
 
+  // Run-config пресети (§Phase 5): named-конфіг прогону
+  { method: "GET", pattern: /^\/companies\/[^/]+\/presets$/ },
+  { method: "POST", pattern: /^\/companies\/[^/]+\/presets$/ },
+  { method: "DELETE", pattern: /^\/presets\/[^/]+$/ },
+
   // §content-editing: людське редагування поста + версії
   { method: "PATCH", pattern: /^\/content-items\/[^/]+$/ }, // { text, title? }
   { method: "GET", pattern: /^\/content-items\/[^/]+\/versions$/ },
@@ -96,6 +101,10 @@ export const endpoints = {
   // Topic preview (§runtopics)
   suggestRunTopics: (cid: string) => `/api/companies/${cid}/runs/suggest-topics`,
   topicDraft: (cid: string, draftId: string) => `/api/companies/${cid}/topic-drafts/${draftId}`,
+
+  // Run-config пресети (§Phase 5)
+  presets: (cid: string) => `/api/companies/${cid}/presets`, // GET список + POST створити
+  preset: (id: string) => `/api/presets/${id}`, // DELETE
 
   // §content-editing: людське редагування поста + версії
   itemEdit: (id: string) => `/api/content-items/${id}`,

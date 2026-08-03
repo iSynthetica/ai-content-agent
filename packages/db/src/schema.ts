@@ -269,6 +269,26 @@ export const runTopicDrafts = pgTable(
   (t) => ({ accountIdx: index("run_topic_drafts_account_idx").on(t.accountId) }),
 );
 
+// ── run-config пресети (§Phase 5): названа конфігурація прогону для переюзу ────
+// Зберігає підмножину run-config (канали/лічильники/моделі/акцент), яку людина застосовує в
+// діалозі замість ручного налаштування щоразу. Per-company, тенант-ізоляція за account_id (RLS).
+export const runConfigPresets = pgTable(
+  "run_config_presets",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    accountId: uuid("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
+    companyId: uuid("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    // { channels?: Channel[]; counts?: Record<Channel,number>; agentModels?: ...; angle?: string }.
+    config: jsonb("config").$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    // Ім'я унікальне в межах компанії — без двох пресетів з однаковою назвою.
+    companyNameIdx: uniqueIndex("run_config_presets_company_name_idx").on(t.companyId, t.name),
+  }),
+);
+
 // ── нотифікації + інбокс (§8 контексту) ──────────────────────────────────────
 export const notifications = pgTable(
   "notifications",

@@ -14,6 +14,7 @@ import { plannerController } from "../../controllers/planner.controller";
 import { apiKeysController } from "../../controllers/api-keys.controller";
 import { runTopicsController } from "../../controllers/run-topics.controller";
 import { mediaController } from "../../controllers/media.controller";
+import { runConfigPresetsController } from "../../controllers/run-config-presets.controller";
 
 // Бізнес-роути під /v1 (за auth-middleware). Кожен контролер сам відкриває request-scope (openScope):
 // BEGIN + SET LOCAL app.current_* → репо/сервіси на tx → COMMIT/ROLLBACK + after-commit-хуки (§2.10.3).
@@ -32,6 +33,7 @@ export function businessRoutes(root: Composition): Router {
   const apiKeys = apiKeysController(root);
   const runTopics = runTopicsController(root);
   const media = mediaController(root);
+  const presets = runConfigPresetsController(root);
 
   // Акаунти користувача + компанії акаунта (switcher-и shell)
   r.get("/accounts", accounts.list);
@@ -83,6 +85,12 @@ export function businessRoutes(root: Composition): Router {
     runTopics.suggest,
   );
   r.get("/companies/:companyId/topic-drafts/:draftId", runTopics.getDraft);
+
+  // Run-config пресети (§Phase 5): named-конфіг прогону. list — read (будь-який член); create/delete
+  // — run:start (хто може запускати прогін, той керує його пресетами).
+  r.get("/companies/:companyId/presets", presets.list);
+  r.post("/companies/:companyId/presets", requirePermission("run:start"), presets.create);
+  r.delete("/presets/:id", requirePermission("run:start"), presets.remove);
 
   // HITL-рішення (§7): єдиний ендпоінт рішення на кожному рівні (approve|reject|rerun).
   // Тверда межа: api лише enqueue resume-job — граф ганяє worker.

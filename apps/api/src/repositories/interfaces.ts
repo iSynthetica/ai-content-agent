@@ -293,6 +293,24 @@ export interface TopicDraftsRepo {
   findByCompanyAndId(accountId: string, companyId: string, id: string): Promise<TopicDraft | null>;
 }
 
+// ── Run-config пресети (§Phase 5) ─────────────────────────────────────────────
+export interface RunConfigPreset {
+  id: string;
+  name: string;
+  config: Record<string, unknown>;
+  createdAt: string;
+}
+export interface NewRunConfigPreset {
+  companyId: string;
+  name: string;
+  config: Record<string, unknown>;
+}
+export interface RunConfigPresetsRepo {
+  listByCompany(accountId: string, companyId: string): Promise<RunConfigPreset[]>;
+  create(accountId: string, data: NewRunConfigPreset): Promise<RunConfigPreset>;
+  deleteById(accountId: string, id: string): Promise<boolean>;
+}
+
 // ── Нотифікації та inbox (§2.13) ─────────────────────────────────────────────
 export interface NotificationRow {
   id: string;
@@ -365,4 +383,5 @@ export interface Repos {
   notifications: NotificationsRepo;
   inbox: InboxItemsRepo;
   topicDrafts: TopicDraftsRepo;
+  runConfigPresets: RunConfigPresetsRepo;
 }

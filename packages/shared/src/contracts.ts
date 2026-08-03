@@ -200,6 +200,32 @@ export const runCostEstimateResponse = z.object({
 });
 export type RunCostEstimateResponse = z.infer<typeof runCostEstimateResponse>;
 
+// ── Run-config пресети (§Phase 5): названа конфігурація прогону для переюзу ────
+// config — підмножина run-config (канали/лічильники/моделі/акцент), яку діалог застосовує замість
+// ручного налаштування. Теми свідомо НЕ зберігаємо (вони специфічні для конкретного запуску).
+export const runPresetConfig = z.object({
+  channels: z.array(channelSchema).optional(),
+  counts: z.record(z.number().int().min(1)).optional(),
+  agentModels: agentModelsSchema.nullable().optional(),
+  angle: z.string().max(500).optional(),
+});
+export type RunPresetConfig = z.infer<typeof runPresetConfig>;
+
+export const createRunPresetRequest = z.object({
+  name: z.string().min(1).max(80),
+  config: runPresetConfig,
+});
+export type CreateRunPresetRequest = z.infer<typeof createRunPresetRequest>;
+
+export const runPresetDTO = z.object({
+  id: z.string(),
+  name: z.string(),
+  config: runPresetConfig,
+  createdAt: z.string(),
+});
+export type RunPresetDTO = z.infer<typeof runPresetDTO>;
+export const runPresetsResponse = z.object({ items: z.array(runPresetDTO) });
+
 // ── AI-підбір тем для ad-hoc прогону (topic preview) ──────────────────────────
 // Окремий флоу ВІД createRun: тут лише просимо AI запропонувати теми (LLM-виклик), людина їх
 // редагує, і вже ЗАТВЕРДЖЕНИЙ список іде у createRun.topics (fan-out, існуючий шлях, без дублю).

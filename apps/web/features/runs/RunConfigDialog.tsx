@@ -13,7 +13,14 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { toast } from "sonner";
-import { CHANNELS, CHANNEL_DEFAULTS, MAX_POSTS_PER_RUN, type Channel, type RunTopicInput } from "@forteq/shared";
+import {
+  CHANNELS,
+  CHANNEL_DEFAULTS,
+  MAX_POSTS_PER_RUN,
+  type Channel,
+  type RunPresetConfig,
+  type RunTopicInput,
+} from "@forteq/shared";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +32,7 @@ import {
 } from "@/features/companies/brief/AgentModelsSection";
 import { useCreateRun } from "@/features/runs/use-create-run";
 import { useEstimateRun } from "@/features/runs/use-estimate-run";
+import { useCreatePreset, useDeletePreset, usePresets } from "@/features/runs/use-presets";
 import { useSuggestRunTopics, useTopicDraft } from "@/features/runs/use-suggest-topics";
 import { useT } from "@/lib/i18n";
 import { formatCost } from "@/lib/format";
@@ -60,6 +68,10 @@ export function RunConfigDialog({
   const [agentModels, setAgentModels] = useState<AgentModelsValue>({});
   // Друге підтвердження на дорогий прогін (Phase 4): чекбокс мусить бути ввімкнений, щоб запустити.
   const [ackExpensive, setAckExpensive] = useState(false);
+  // Run-config пресети (§Phase 5): застосувати збережену конфігурацію / зберегти поточну.
+  const presetsQuery = usePresets(companyId);
+  const createPreset = useCreatePreset(companyId);
+  const deletePreset = useDeletePreset(companyId);
 
   // Topic preview (§runtopics): draftId — активний запит на пропозицію; previewTopics — РЕДАГОВАНА
   // копія результату (не сам draft — draft лишається read-only знімком того, що повернув AI).
@@ -172,6 +184,35 @@ export function RunConfigDialog({
     };
   }
 
+  // §Phase 5: застосувати збережений пресет до полів діалогу (лише ad-hoc — scoped не має каналів/к-сті).
+  function applyPreset(cfg: RunPresetConfig) {
+    if (cfg.channels?.length) setIncluded(new Set(cfg.channels as Channel[]));
+    if (cfg.counts) setCounts({ ...CHANNEL_DEFAULTS, ...(cfg.counts as Record<Channel, number>) });
+    setAgentModels((cfg.agentModels ?? {}) as AgentModelsValue);
+    setAngle(cfg.angle ?? "");
+    setTopicMode("ai"); // пресети НЕ несуть тем → режим «AI обере»
+    toast.success(t("Пресет застосовано"));
+  }
+
+  // §Phase 5: зберегти поточну ad-hoc конфігурацію як named-пресет (теми свідомо не зберігаємо).
+  function saveCurrentAsPreset() {
+    const name = window.prompt(t("Назва пресету"))?.trim();
+    if (!name) return;
+    const config: RunPresetConfig = {
+      channels: activeChannels,
+      counts: Object.fromEntries(activeChannels.map((c) => [c, counts[c]])),
+      ...(Object.keys(agentModels).length ? { agentModels } : {}),
+      ...(angle.trim() ? { angle: angle.trim() } : {}),
+    };
+    createPreset.mutate(
+      { name, config },
+      {
+        onSuccess: () => toast.success(t("Пресет збережено")),
+        onError: (e) => toast.error((e as Error)?.message ?? t("Не вдалося зберегти пресет")),
+      },
+    );
+  }
+
   function confirm() {
     createRun.mutate(
       buildRunBody(),
@@ -207,6 +248,53 @@ export function RunConfigDialog({
                 </p>
               ) : (
                 <>
+                  {/* §Phase 5: пресети — застосувати збережену конфігурацію або зберегти поточну */}
+                  <div className="flex flex-col gap-2 rounded-md border border-border bg-muted/30 p-3">
+                    <Label>{t("Пресети конфігурації")}</Label>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <select
+                        aria-label={t("Застосувати пресет")}
+                        className="h-9 flex-1 rounded-md border border-border bg-background px-2 text-sm"
+                        value=""
+                        onChange={(e) => {
+                          const p = presetsQuery.data?.find((x) => x.id === e.target.value);
+                          if (p) applyPreset(p.config);
+                        }}
+                      >
+                        <option value="">
+                          {presetsQuery.data?.length
+                            ? t("Застосувати пресет…")
+                            : t("Немає збережених пресетів")}
+                        </option>
+                        {presetsQuery.data?.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name}
+                          </option>
+                        ))}
+                      </select>
+                      <Button
+                        variant="ghost"
+                        onClick={saveCurrentAsPreset}
+                        disabled={createPreset.isPending || activeChannels.length === 0}
+                      >
+                        {t("Зберегти поточне")}
+                      </Button>
+                    </div>
+                    {(presetsQuery.data?.length ?? 0) > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {presetsQuery.data!.map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            className="text-xs text-muted-foreground underline decoration-dotted hover:text-destructive"
+                            onClick={() => deletePreset.mutate(p.id)}
+                          >
+                            ✕ {p.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <div className="flex flex-col gap-2">
                     <Label>{t("Канали")}</Label>
                     {CHANNELS.map((c) => (

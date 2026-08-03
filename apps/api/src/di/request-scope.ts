@@ -15,6 +15,7 @@ import { DrizzleContentItemsRepo } from "../repositories/content-items.repo";
 import { DrizzleContentItemVersionsRepo } from "../repositories/content-item-versions.repo";
 import { DrizzleInboxRepo, DrizzleNotificationsRepo } from "../repositories/notifications.repo";
 import { DrizzleTopicDraftsRepo } from "../repositories/topic-drafts.repo";
+import { DrizzleRunConfigPresetsRepo } from "../repositories/run-config-presets.repo";
 
 import { AccountsService } from "../services/accounts.service";
 import { CompaniesService } from "../services/companies.service";
@@ -27,6 +28,7 @@ import { NotificationsFeedService } from "../services/notifications-feed.service
 import { PlannerService } from "../services/planner.service";
 import { ApiKeysService } from "../services/api-keys.service";
 import { RunTopicDraftsService } from "../services/run-topic-drafts.service";
+import { RunConfigPresetsService } from "../services/run-config-presets.service";
 import {
   NotificationServiceImpl,
   type NotificationService,
@@ -45,6 +47,7 @@ export interface Services {
   planner: PlannerService;
   apiKeys: ApiKeysService;
   runTopicDrafts: RunTopicDraftsService;
+  runConfigPresets: RunConfigPresetsService;
 }
 
 export interface RequestScope {
@@ -69,6 +72,7 @@ export function buildRepos(tx: DbExecutor): Repos {
     notifications: new DrizzleNotificationsRepo(tx),
     inbox: new DrizzleInboxRepo(tx),
     topicDrafts: new DrizzleTopicDraftsRepo(tx),
+    runConfigPresets: new DrizzleRunConfigPresetsRepo(tx),
   };
 }
 
@@ -128,6 +132,8 @@ export function buildRequestScope(
       afterCommit,
       logger,
     ),
+    // Named-конфіги прогону (§Phase 5): тонкий CRUD поверх run_config_presets (RLS-ізольовано).
+    runConfigPresets: new RunConfigPresetsService(repos.runConfigPresets, repos.companies),
   };
 
   return { auth, afterCommit, repos, services };
