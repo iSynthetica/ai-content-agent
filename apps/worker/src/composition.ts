@@ -7,6 +7,7 @@ import { dirname, join, resolve } from "node:path";
 import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
 import type { BaseCheckpointSaver } from "@langchain/langgraph";
 import { createDb, withAccountContext, parseMasterKey, type DB, type TenantContext } from "@forteq/db";
+import { mediaUrl } from "@forteq/shared";
 // РЕАЛЬНІ порти/типи пайплайна (§5) — локальні стаб-декларації прибрано (барʼєр B2).
 import {
   type ImageStore,
@@ -22,7 +23,12 @@ import type { Env } from "./config/env.js";
 // ── АДАПТЕРИ ПОРТІВ (РЕАЛЬНІ) ─────────────────────────────────────────────────
 
 // ImageStore → локальний том (МВП, §5). Пише байти згенерованого зображення у IMAGE_DIR/runId/draftId.ext
-// і повертає { url (file://abs), key (runId/draftId.ext) }. Байти НЕ кладуться у стан/checkpointer (§7.4).
+// і повертає { url, key (runId/draftId.ext) }. Байти НЕ кладуться у стан/checkpointer (§7.4).
+//
+// url — це ПУБЛІЧНИЙ шлях mediaUrl(key) = /api/media/<key>, а НЕ file://abs. file:// раніше лягав
+// у content_items.image_url і браузер його не міг завантажити (баг зі звіту покупця): картинку
+// віддає api-роут GET /v1/media/:runId/:file через той самий том. Конвенція шляху — у @forteq/shared,
+// щоб worker (пише) і api (парсить ключ) не розійшлися.
 class LocalImageStore implements ImageStore {
   constructor(private readonly dir: string) {}
 
@@ -35,7 +41,7 @@ class LocalImageStore implements ImageStore {
     const abs = resolve(join(this.dir, key));
     await mkdir(dirname(abs), { recursive: true });
     await writeFile(abs, bytes);
-    return { url: `file://${abs}`, key };
+    return { url: mediaUrl(key), key };
   }
 }
 

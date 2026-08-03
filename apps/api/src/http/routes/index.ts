@@ -13,6 +13,7 @@ import { notificationsController } from "../../controllers/notifications.control
 import { plannerController } from "../../controllers/planner.controller";
 import { apiKeysController } from "../../controllers/api-keys.controller";
 import { runTopicsController } from "../../controllers/run-topics.controller";
+import { mediaController } from "../../controllers/media.controller";
 
 // Бізнес-роути під /v1 (за auth-middleware). Кожен контролер сам відкриває request-scope (openScope):
 // BEGIN + SET LOCAL app.current_* → репо/сервіси на tx → COMMIT/ROLLBACK + after-commit-хуки (§2.10.3).
@@ -30,6 +31,7 @@ export function businessRoutes(root: Composition): Router {
   const planner = plannerController(root);
   const apiKeys = apiKeysController(root);
   const runTopics = runTopicsController(root);
+  const media = mediaController(root);
 
   // Акаунти користувача + компанії акаунта (switcher-и shell)
   r.get("/accounts", accounts.list);
@@ -67,6 +69,10 @@ export function businessRoutes(root: Composition): Router {
   r.get("/runs/:id", runs.get);
   r.get("/runs/:id/items", runs.items);
   r.get("/runs/:id/export", runs.export);
+
+  // Роздача згенерованих зображень (§4.3): байти картинки поста через спільний том. GET, без
+  // RBAC-гварда — читає будь-який член акаунта; крос-тенант відсікає ownership-перевірка + RLS.
+  r.get("/media/:runId/:file", media.serve);
 
   // Topic preview (§runtopics): AI пропонує теми для ad-hoc прогону ще ДО генерації (LLM-виклик →
   // run:start, як і сам запуск). getDraft — поллінг, читає будь-який член акаунта (RLS ізолює).

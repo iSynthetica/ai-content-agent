@@ -80,4 +80,15 @@ export class DrizzleContentItemsRepo implements ContentItemsRepo {
       .returning();
     return row ? toItem(row) : null;
   }
+
+  // Роздача медіа (GET /media): належність ключа орендарю. RLS ізолює за accountId, тож достатньо
+  // збігу image_url. select id LIMIT 1 — лише факт існування, байти читає ImageStoragePort окремо.
+  async existsByImageUrl(accountId: string, imageUrl: string): Promise<boolean> {
+    const [row] = await this.tx
+      .select({ id: contentItems.id })
+      .from(contentItems)
+      .where(and(eq(contentItems.accountId, accountId), eq(contentItems.imageUrl, imageUrl)))
+      .limit(1);
+    return Boolean(row);
+  }
 }

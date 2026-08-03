@@ -11,6 +11,16 @@ export const CHANNEL_DEFAULTS: Record<Channel, number> = {
 
 export const MAX_REVISIONS = 3;
 
+// Медіа (зображення постів). ЄДИНЕ джерело URL-конвенції для двох апок, які інакше розійшлися б:
+// worker пише content_items.image_url цим шляхом, а api парсить із нього ключ. Шлях свідомо
+// через web-BFF (/api) → api (/v1/media): api назовні не публікується, браузер б'є same-origin
+// у web, а той проксує (див. web/lib/endpoints.ts ALLOW + web/server/proxy.ts).
+// Ключ = `${runId}/${draftId}.${ext}` — рівно два сегменти (див. ImageStore у worker composition).
+export const MEDIA_PATH_PREFIX = "/api/media";
+export function mediaUrl(key: string): string {
+  return `${MEDIA_PATH_PREFIX}/${key}`;
+}
+
 export const RUN_STATUSES = [
   "queued", "running", "needs_review", "approved", "rejected", "failed",
 ] as const;

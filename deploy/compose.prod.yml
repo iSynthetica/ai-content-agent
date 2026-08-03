@@ -55,6 +55,9 @@ services:
       # worker'а, інакше worker не розшифрує те, що зашифрував api. api без нього не стартує.
       BYOK_ENCRYPTION_KEY: ${BYOK_ENCRYPTION_KEY:?set in .env.prod (openssl rand -hex 32)}
       LOG_LEVEL: info
+    # Той самий том, що й у worker, але RO: worker пише картинки, api їх лише роздає
+    # (GET /v1/media). IMAGE_STORAGE_DIR за замовчуванням /data/images — збігається з точкою монтування.
+    volumes: ["images:/data/images:ro"]
     # Без ports: api доступний лише web-сервісу по внутрішній мережі.
 
   worker:

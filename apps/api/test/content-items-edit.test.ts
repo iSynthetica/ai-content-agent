@@ -58,6 +58,9 @@ class FakeContentItemsRepo implements ContentItemsRepo {
     this.item = { ...this.item, text: patch.text, title: patch.title };
     return this.item;
   }
+  async existsByImageUrl(accountId: string, imageUrl: string): Promise<boolean> {
+    return accountId === ACCOUNT && this.item.imageUrl === imageUrl;
+  }
 }
 
 class FakeVersionsRepo implements ContentItemVersionsRepo {

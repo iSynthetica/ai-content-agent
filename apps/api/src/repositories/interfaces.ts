@@ -235,6 +235,10 @@ export interface ContentItemsRepo {
   // Людська правка тексту/заголовка (§content-editing). НЕ чіпає status/scores/violations/imageUrl —
   // ті лишаються власністю пайплайна/reviewer'а; правка тексту — окрема дія, не workflow-рішення.
   updateContent(accountId: string, id: string, patch: ContentItemContentPatch): Promise<ContentItem | null>;
+  // Роздача медіа (GET /media): чи існує айтем цього акаунта з таким image_url. RLS уже ізолює
+  // рядки за accountId, тож знахідка = «ключ належить орендарю» → можна віддавати байти. Немає
+  // рядка → 404, навіть якщо файл фізично лежить на спільному томі (крос-тенант захист).
+  existsByImageUrl(accountId: string, imageUrl: string): Promise<boolean>;
 }
 
 // ── версії тексту поста (§content-editing) ────────────────────────────────────

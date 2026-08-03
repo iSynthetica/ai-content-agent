@@ -10,8 +10,9 @@
 // Список ЗВІРЯЄТЬСЯ з роутами api автотестом (apps/api/test/route-allowlist.contract.test.ts).
 // Він падає в обидва боки: і коли роут є в api, але його забули тут (фронт отримає 404 у проксі),
 // і коли тут лишився запис без реалізації — така «обіцянка» ендпоінта помічається лише в рантаймі.
-// SSE (/runs/:id/stream) і /media свідомо ПРИБРАНІ: це шви на майбутнє, і доки їх немає в api,
-// їм тут не місце.
+// SSE (/runs/:id/stream) свідомо ПРИБРАНО: шов на майбутнє, доки його немає в api, йому тут не місце.
+// /media — реалізовано (роздача зображень постів): браузер тягне <img src=/api/media/...>, проксі
+// форвардить у api /v1/media/:runId/:file (той стрімить байти зі спільного тому).
 export const ALLOW: ReadonlyArray<{ method: string; pattern: RegExp }> = [
   { method: "GET", pattern: /^\/accounts$/ },
   { method: "GET", pattern: /^\/accounts\/[^/]+\/companies$/ },
@@ -30,6 +31,9 @@ export const ALLOW: ReadonlyArray<{ method: string; pattern: RegExp }> = [
   { method: "POST", pattern: /^\/runs\/[^/]+\/decision$/ }, // { action, feedback } по всьому run
   { method: "POST", pattern: /^\/content-items\/[^/]+\/decision$/ }, // { action, feedback } по item
   { method: "GET", pattern: /^\/runs\/[^/]+\/export$/ },
+
+  // Роздача зображень постів (mediaUrl): /api/media/<runId>/<draftId>.<ext> → api /v1/media/:runId/:file
+  { method: "GET", pattern: /^\/media\/[^/]+\/[^/]+$/ },
 
   // Topic preview (§runtopics): AI-підбір тем для ad-hoc прогону + поллінг чернетки
   { method: "POST", pattern: /^\/companies\/[^/]+\/runs\/suggest-topics$/ },
