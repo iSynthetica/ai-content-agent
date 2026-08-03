@@ -17,15 +17,12 @@ import type { GraphDeps } from "../ports";
 
 type Scores = ReviewResult["scores"];
 
-// Середній бал за 4 критеріями (використовується в determineStatus і у payload interrupt'а).
+// Середній бал за УСІМА критеріями рубрики (determineStatus + payload interrupt'а). Ітеруємо
+// Object.values, а не хардкодимо список: додавання критерію (topicFit) не потребує правки тут,
+// і старі 4-критерійні стани з checkpointer'а (resume) рахуються без NaN.
 export function averageScore(scores: Scores): number {
-  const vals = [
-    scores.toneAlignment.score,
-    scores.specificity.score,
-    scores.factualCoherence.score,
-    scores.channelFit.score,
-  ];
-  return vals.reduce((a, b) => a + b, 0) / vals.length;
+  const vals = Object.values(scores).map((c) => c.score);
+  return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
 }
 
 // determineStatus (§7.5) — детермінований КОДОМ (не з LLM-статусу), щоб gate був передбачуваним:
@@ -115,6 +112,7 @@ async function reviewOne(
   const prompt = fillTemplate(loadPrompt("reviewer.md"), {
     draft: draft.text,
     channel: draft.channel,
+    topic: draft.topic, // призначена тема — для перевірки topic-drift (topicFit)
     brief: JSON.stringify(s.company),
     hedgingFlags: JSON.stringify(ruleIssues),
     language: s.company.language,

@@ -16,14 +16,23 @@ import { company, meta } from "../fixtures/brief";
 
 function scores(n: number): ReviewResult["scores"] {
   const c = { score: n, why: "reason ".repeat(4) };
-  return { toneAlignment: c, specificity: c, factualCoherence: c, channelFit: c };
+  return { topicFit: c, toneAlignment: c, specificity: c, factualCoherence: c, channelFit: c };
 }
 const pass = { companyFactsInPost: [], factsInBrief: [], violations: [], verdict: "pass" as const };
 const fail = { companyFactsInPost: [], factsInBrief: [], violations: ["fabricated"], verdict: "fail" as const };
 
 describe("averageScore / determineStatus (§7.5)", () => {
-  it("averageScore рахує середнє 4 критеріїв", () => {
+  it("averageScore рахує середнє усіх критеріїв рубрики", () => {
     expect(averageScore(scores(4))).toBe(4);
+  });
+  it("topic-drift: topicFit<2 → flagged (як будь-який критерій<2)", () => {
+    const s = { ...scores(5), topicFit: { score: 1, why: "пост про зовсім іншу тему, дрейф" } };
+    expect(determineStatus(s, pass)).toBe("flagged");
+  });
+  it("averageScore толерантний до старих 4-критерійних станів (resume, без topicFit)", () => {
+    const legacy = { ...scores(4) } as ReviewResult["scores"] & { topicFit?: unknown };
+    delete legacy.topicFit;
+    expect(averageScore(legacy as ReviewResult["scores"])).toBe(4);
   });
   it("fact-check fail → flagged", () => {
     expect(determineStatus(scores(5), fail)).toBe("flagged");
@@ -41,7 +50,7 @@ describe("averageScore / determineStatus (§7.5)", () => {
 });
 
 function draft(id: string, channel: DraftItem["channel"] = "linkedin"): DraftItem {
-  return { id, planItemId: id, channel, text: "Some text.", metadata: {}, revisionHistory: [] };
+  return { id, planItemId: id, channel, topic: `Topic ${id}`, text: "Some text.", metadata: {}, revisionHistory: [] };
 }
 function baseState(overrides: Partial<ContentStateT>): ContentStateT {
   return {

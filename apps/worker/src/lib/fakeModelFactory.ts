@@ -38,6 +38,7 @@ const writerResponder = (prompt: string) =>
 const REVIEW_APPROVED = {
   draftId: "",
   scores: {
+    topicFit: { score: 5, why: "пост повністю тримається призначеної теми без дрейфу зовсім" },
     toneAlignment: { score: 5, why: "тон точно відповідає бренду й аудиторії загалом добре" },
     specificity: { score: 4, why: "достатньо конкретики з деталями під канал загалом добре" },
     factualCoherence: { score: 5, why: "узгоджено з фактами brief без вигадок цілком зовсім" },

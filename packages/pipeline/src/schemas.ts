@@ -70,6 +70,9 @@ export const ReviewResultSchema = z.object({
     specificity: CriterionScoreSchema,
     factualCoherence: CriterionScoreSchema,
     channelFit: CriterionScoreSchema,
+    // topicFit — чи тримається пост призначеної теми (topic-drift). П'ятий критерій свідомо доданий:
+    // раніше дрейф теми ніяк не флагався. Бал <2 → flagged у determineStatus (як і решта).
+    topicFit: CriterionScoreSchema,
   }),
   factCheck: FactCheckResultSchema,
   hedgingIssues: z.array(ViolationSchema),
