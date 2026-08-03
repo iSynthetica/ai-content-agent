@@ -108,9 +108,11 @@ export const companySettingsDTO = z.object({
 export type CompanySettingsDTO = z.infer<typeof companySettingsDTO>;
 
 // ── BYOK: ключі провайдерів на рівні акаунта ──────────────────────────────────
-// Провайдери, для яких орендар приносить свій ключ = провайдери МОДЕЛЕЙ (генерація коштує його
-// грошей). Tavily лишається платформенним (пошук — не той ризик). db-колонка text — розширювана.
-export const apiKeyProviderSchema = z.enum(["openai", "anthropic", "gemini"]);
+// Провайдери, для яких орендар може принести свій ключ. openai/anthropic/gemini — МОДЕЛІ (генерація
+// коштує грошей орендаря; для них діє «block, no fallback», §ADR-0016). tavily — веб-пошук: НЕ модель,
+// опційне збагачення research; ключ орендаря НЕ обов'язковий — за його відсутності worker падає на
+// платформенний ключ (свідомий відступ від block-no-fallback: без пошуку research деградує, не блокує).
+export const apiKeyProviderSchema = z.enum(["openai", "anthropic", "gemini", "tavily"]);
 export type ApiKeyProvider = z.infer<typeof apiKeyProviderSchema>;
 
 // Маскований DTO — НІКОЛИ не містить самого ключа, лише last4. Читає будь-який член акаунта (щоб

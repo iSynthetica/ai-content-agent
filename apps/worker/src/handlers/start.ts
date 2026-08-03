@@ -31,7 +31,7 @@ import { openInbox, writeNotification } from "../lib/notify.js";
 import { upsertContentItems } from "../lib/persist.js";
 import { makeProgressReporter } from "../lib/progress.js";
 import { enqueueVisuals } from "../lib/enqueueVisuals.js";
-import { NoTenantKeyError, tenantModelsBuilder } from "../lib/tenantModels.js";
+import { NoTenantKeyError, tenantModelsBuilder, tenantWebSearch } from "../lib/tenantModels.js";
 
 type GenerationStartJob = Extract<Job, { kind: "generation.start" }>;
 
@@ -187,8 +187,11 @@ export async function handleStart(job: GenerationStartJob, ctx: HandlerContext):
   // ── 3) ПОЗА txn: виконати граф (worker — єдиний виконавець; LLM хвилинами). threadId === runId. ──
   // Per-node прогрес (§progress): onProgress персиститься окремими короткими txn під час стріму графа.
   const progress = makeProgressReporter(ctx, accountId, runId);
+  // Веб-пошук (Tavily) — на ключі орендаря з платформенним фолбеком (§Tavily BYOK). Резолвиться
+  // per-run, як і моделі; researcher — єдиний, хто його кличе, тож достатньо підмінити тут (start).
+  const webSearch = await tenantWebSearch(ctx, accountId);
   // Пайплайн сам кличе deps.models(modelConfig) — тож підміняємо саме models на tenant-білдер (§ADR-0016).
-  const res = await createPipeline({ ...ctx.pipeline, models: tenantModels }).start(input, runId, {
+  const res = await createPipeline({ ...ctx.pipeline, models: tenantModels, webSearch }).start(input, runId, {
     onProgress: progress.onProgress,
   });
   await progress.flush(); // дочекатися всіх відкладених записів прогресу перед фінальним персистом

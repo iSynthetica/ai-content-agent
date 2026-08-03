@@ -20,6 +20,7 @@ const PROVIDERS: Array<{ id: ApiKeyProvider; label: string; hint: string }> = [
   { id: "openai", label: "OpenAI", hint: "Потрібен для генерації тексту й зображень (gpt-image-1)." },
   { id: "anthropic", label: "Anthropic", hint: "Потрібен, лише якщо в налаштуваннях обрано Claude." },
   { id: "gemini", label: "Google Gemini", hint: "Потрібен, лише якщо в налаштуваннях обрано Gemini." },
+  { id: "tavily", label: "Tavily (веб-пошук)", hint: "Необов'язковий: свій ключ для research-пошуку. Без нього використовується платформенний." },
 ];
 
 export function ApiKeysManager({

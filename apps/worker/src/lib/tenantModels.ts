@@ -5,8 +5,9 @@ import {
   type ModelConfig,
   type ModelFactoryBuilder,
   type ModelSecrets,
+  type WebSearchTool,
 } from "@forteq/pipeline";
-import { withAccountScope, type HandlerContext } from "../composition.js";
+import { TavilyWebSearch, withAccountScope, type HandlerContext } from "../composition.js";
 
 // BYOK (§ADR-0016): ключ провайдера орендаря резолвиться на МОМЕНТ ВИКОНАННЯ за accountId і НІКОЛИ
 // не потрапляє у снапшот прогону чи checkpointer (секрет у стані графа в БД — недопустимо). Тут же
@@ -81,4 +82,43 @@ export async function tenantModelsBuilder(
   }
 
   return (mc: ModelConfig) => defaultModelFactory(mc, secrets);
+}
+
+/**
+ * WebSearchTool на ключі Tavily ОРЕНДАРЯ, з ПЛАТФОРМЕННИМ фолбеком. На відміну від моделей
+ * (block-no-fallback), веб-пошук опційний: ключ орендаря → платформенний env-ключ → порожній
+ * (TavilyWebSearch на порожньому ключі повертає []). Тобто research деградує, а не блокується.
+ * Fake-режим: віддаємо app-tier webSearch як є (жодних декриптів).
+ */
+export async function tenantWebSearch(
+  ctx: HandlerContext,
+  accountId: string,
+): Promise<WebSearchTool> {
+  if (ctx.env.FAKE_MODELS === "1") return ctx.pipeline.webSearch;
+
+  let tenantKey: string | undefined;
+  if (ctx.masterKey) {
+    const master = ctx.masterKey;
+    const rows = await withAccountScope(ctx, accountId, (tx) =>
+      tx
+        .select({ ciphertext: apiKeys.ciphertext })
+        .from(apiKeys)
+        .where(and(eq(apiKeys.accountId, accountId), eq(apiKeys.provider, "tavily"))),
+    );
+    if (rows[0]) tenantKey = decryptSecret(rows[0].ciphertext, master);
+  }
+
+  if (tenantKey) {
+    try {
+      await touchLastUsed(ctx, accountId, "tavily");
+    } catch (e) {
+      ctx.logger.warn(
+        { err: e instanceof Error ? e.message : String(e) },
+        "tenantWebSearch: touch last_used_at failed",
+      );
+    }
+  }
+
+  // tenantKey ?? платформенний env-ключ (може бути undefined → [] у TavilyWebSearch).
+  return new TavilyWebSearch(tenantKey ?? ctx.env.TAVILY_API_KEY, ctx.logger);
 }

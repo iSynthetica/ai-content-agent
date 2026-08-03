@@ -54,7 +54,7 @@ function extFromContentType(ct: string): string {
 
 // WebSearchTool → Tavily (§5, §7.1). РЕАЛЬНИЙ fetch. Порожній ключ АБО помилка мережі → повертаємо []
 // (а не throw), щоб smoke/офлайн-прогін не падав через відсутній TAVILY_API_KEY.
-class TavilyWebSearch implements WebSearchTool {
+export class TavilyWebSearch implements WebSearchTool {
   constructor(
     private readonly apiKey: string | undefined,
     private readonly logger?: PinoLogger,
