@@ -16,6 +16,7 @@ import { DrizzleContentItemVersionsRepo } from "../repositories/content-item-ver
 import { DrizzleInboxRepo, DrizzleNotificationsRepo } from "../repositories/notifications.repo";
 import { DrizzleTopicDraftsRepo } from "../repositories/topic-drafts.repo";
 import { DrizzleRunConfigPresetsRepo } from "../repositories/run-config-presets.repo";
+import { DrizzleMembersRepo } from "../repositories/members.repo";
 
 import { AccountsService } from "../services/accounts.service";
 import { CompaniesService } from "../services/companies.service";
@@ -29,6 +30,8 @@ import { PlannerService } from "../services/planner.service";
 import { ApiKeysService } from "../services/api-keys.service";
 import { RunTopicDraftsService } from "../services/run-topic-drafts.service";
 import { RunConfigPresetsService } from "../services/run-config-presets.service";
+import { MembersService } from "../services/members.service";
+import type { Auth } from "../auth/better-auth";
 import {
   NotificationServiceImpl,
   type NotificationService,
@@ -48,6 +51,7 @@ export interface Services {
   apiKeys: ApiKeysService;
   runTopicDrafts: RunTopicDraftsService;
   runConfigPresets: RunConfigPresetsService;
+  members: MembersService;
 }
 
 export interface RequestScope {
@@ -73,6 +77,7 @@ export function buildRepos(tx: DbExecutor): Repos {
     inbox: new DrizzleInboxRepo(tx),
     topicDrafts: new DrizzleTopicDraftsRepo(tx),
     runConfigPresets: new DrizzleRunConfigPresetsRepo(tx),
+    members: new DrizzleMembersRepo(tx),
   };
 }
 
@@ -85,6 +90,7 @@ export function buildRequestScope(
   _ports: Ports,
   logger: Logger,
   masterKey: Buffer,
+  authInstance: Auth, // better-auth (§RBAC member-mgmt): провіженінг ba_user при «додати члена»
 ): RequestScope {
   const repos = buildRepos(tx);
   // NotificationService — реальна реалізація (Фаза 3, B11a): пише у notifications/inbox_items
@@ -134,6 +140,8 @@ export function buildRequestScope(
     ),
     // Named-конфіги прогону (§Phase 5): тонкий CRUD поверх run_config_presets (RLS-ізольовано).
     runConfigPresets: new RunConfigPresetsService(repos.runConfigPresets, repos.companies),
+    // Керування членами акаунта (§RBAC member-mgmt F2): активує наявний RBAC. auth — для провіженінгу.
+    members: new MembersService(repos.members, authInstance, logger),
   };
 
   return { auth, afterCommit, repos, services };

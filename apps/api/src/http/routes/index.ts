@@ -15,6 +15,7 @@ import { apiKeysController } from "../../controllers/api-keys.controller";
 import { runTopicsController } from "../../controllers/run-topics.controller";
 import { mediaController } from "../../controllers/media.controller";
 import { runConfigPresetsController } from "../../controllers/run-config-presets.controller";
+import { membersController } from "../../controllers/members.controller";
 
 // Бізнес-роути під /v1 (за auth-middleware). Кожен контролер сам відкриває request-scope (openScope):
 // BEGIN + SET LOCAL app.current_* → репо/сервіси на tx → COMMIT/ROLLBACK + after-commit-хуки (§2.10.3).
@@ -34,10 +35,18 @@ export function businessRoutes(root: Composition): Router {
   const runTopics = runTopicsController(root);
   const media = mediaController(root);
   const presets = runConfigPresetsController(root);
+  const members = membersController(root);
 
   // Акаунти користувача + компанії акаунта (switcher-и shell)
   r.get("/accounts", accounts.list);
   r.get("/accounts/:accountId/companies", accounts.companies);
+
+  // Керування членами акаунта (§RBAC member-mgmt F2) — активує наявний RBAC. Усе за member:manage
+  // (owner/admin), включно з GET (список членів — не для рядового viewer'а).
+  r.get("/accounts/:accountId/members", requirePermission("member:manage"), members.list);
+  r.post("/accounts/:accountId/members", requirePermission("member:manage"), members.add);
+  r.patch("/accounts/:accountId/members/:userId", requirePermission("member:manage"), members.changeRole);
+  r.delete("/accounts/:accountId/members/:userId", requirePermission("member:manage"), members.remove);
 
   // RBAC (§ADR-0015): мутуючі роути стережуться requirePermission за матрицею @forteq/shared.
   // GET-и дозволу не потребують — читає будь-який член акаунта (viewer), ізоляцію форсить RLS.

@@ -16,6 +16,12 @@
 export const ALLOW: ReadonlyArray<{ method: string; pattern: RegExp }> = [
   { method: "GET", pattern: /^\/accounts$/ },
   { method: "GET", pattern: /^\/accounts\/[^/]+\/companies$/ },
+
+  // Керування членами акаунта (§RBAC member-mgmt): list/add + change-role/remove
+  { method: "GET", pattern: /^\/accounts\/[^/]+\/members$/ },
+  { method: "POST", pattern: /^\/accounts\/[^/]+\/members$/ },
+  { method: "PATCH", pattern: /^\/accounts\/[^/]+\/members\/[^/]+$/ },
+  { method: "DELETE", pattern: /^\/accounts\/[^/]+\/members\/[^/]+$/ },
   { method: "GET", pattern: /^\/companies$/ },
   { method: "POST", pattern: /^\/companies$/ },
   { method: "GET", pattern: /^\/companies\/[^/]+$/ },
@@ -87,6 +93,12 @@ export function isAllowed(method: string, restPath: string): boolean {
 export const endpoints = {
   accounts: () => "/api/accounts",
   companies: (aid: string) => `/api/accounts/${aid}/companies`,
+
+  // Керування членами акаунта (§RBAC member-mgmt)
+  members: (aid: string) => `/api/accounts/${aid}/members`, // GET список + POST додати
+  member: (aid: string, userId: string) => `/api/accounts/${aid}/members/${userId}`, // PATCH роль / DELETE
+
+
   company: (cid: string) => `/api/companies/${cid}`, // GET деталі + PATCH company core
   settings: (cid: string) => `/api/companies/${cid}/settings`, // PUT бренд + дефолти
   runs: (cid: string) => `/api/companies/${cid}/runs`, // GET список + POST створити

@@ -311,6 +311,26 @@ export interface RunConfigPresetsRepo {
   deleteById(accountId: string, id: string): Promise<boolean>;
 }
 
+// ── Керування членами акаунта (§RBAC member-mgmt, F2) ─────────────────────────
+export interface MemberRow {
+  userId: string;
+  email: string;
+  name: string | null;
+  role: string;
+  createdAt: string; // users.created_at (memberships не має created_at)
+}
+export interface MembersRepo {
+  listByAccount(accountId: string): Promise<MemberRow[]>;
+  // Пошук доменного користувача за email (таблиця users БЕЗ RLS → глобально, для провіженінгу).
+  findUserByEmail(email: string): Promise<{ userId: string; name: string | null } | null>;
+  insertUser(email: string, name: string | null): Promise<{ userId: string; createdAt: string }>;
+  insertMembership(accountId: string, userId: string, role: string): Promise<void>;
+  updateRole(accountId: string, userId: string, role: string): Promise<boolean>;
+  deleteMembership(accountId: string, userId: string): Promise<boolean>;
+  countOwners(accountId: string): Promise<number>;
+  memberRow(accountId: string, userId: string): Promise<MemberRow | null>;
+}
+
 // ── Нотифікації та inbox (§2.13) ─────────────────────────────────────────────
 export interface NotificationRow {
   id: string;
@@ -384,4 +404,5 @@ export interface Repos {
   inbox: InboxItemsRepo;
   topicDrafts: TopicDraftsRepo;
   runConfigPresets: RunConfigPresetsRepo;
+  members: MembersRepo;
 }

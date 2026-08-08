@@ -253,6 +253,14 @@ export type AddMemberRequest = z.infer<typeof addMemberRequest>;
 export const changeMemberRoleRequest = z.object({ role: roleSchema });
 export type ChangeMemberRoleRequest = z.infer<typeof changeMemberRoleRequest>;
 
+// Відповідь на додавання: DTO члена + ОДНОРАЗОВИЙ тимчасовий пароль (invite-provisions-user, §F2).
+// tempPassword null, коли ba_user уже існував (пароль невідомий — інвайт логіниться наявним).
+export const addMemberResponse = z.object({
+  member: memberDTO,
+  tempPassword: z.string().nullable(),
+});
+export type AddMemberResponse = z.infer<typeof addMemberResponse>;
+
 // ── AI-підбір тем для ad-hoc прогону (topic preview) ──────────────────────────
 // Окремий флоу ВІД createRun: тут лише просимо AI запропонувати теми (LLM-виклик), людина їх
 // редагує, і вже ЗАТВЕРДЖЕНИЙ список іде у createRun.topics (fan-out, існуючий шлях, без дублю).
