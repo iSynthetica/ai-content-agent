@@ -228,6 +228,31 @@ export const runPresetDTO = z.object({
 export type RunPresetDTO = z.infer<typeof runPresetDTO>;
 export const runPresetsResponse = z.object({ items: z.array(runPresetDTO) });
 
+// ── Керування членами акаунта (§RBAC member-mgmt, F1) ─────────────────────────
+// Активує наявний RBAC: список членів + додати/змінити роль/видалити. Роль — той самий roleSchema
+// (єдине джерело ROLES). member DTO НІКОЛИ не несе секретів. createdAt опційний: колонки
+// memberships.created_at ще може не бути — рішення про міграцію належить фазі F2.
+export const memberDTO = z.object({
+  userId: z.string(),
+  email: z.string(),
+  name: z.string().nullable(),
+  role: roleSchema,
+  createdAt: z.string().optional(),
+});
+export type MemberDTO = z.infer<typeof memberDTO>;
+export const membersResponse = z.object({ items: z.array(memberDTO) });
+
+// Додати вже зареєстрованого користувача в акаунт за email + роль (MVP: direct add, §tech-plan F2).
+export const addMemberRequest = z.object({
+  email: z.string().email(),
+  role: roleSchema,
+});
+export type AddMemberRequest = z.infer<typeof addMemberRequest>;
+
+// Змінити роль наявного члена.
+export const changeMemberRoleRequest = z.object({ role: roleSchema });
+export type ChangeMemberRoleRequest = z.infer<typeof changeMemberRoleRequest>;
+
 // ── AI-підбір тем для ad-hoc прогону (topic preview) ──────────────────────────
 // Окремий флоу ВІД createRun: тут лише просимо AI запропонувати теми (LLM-виклик), людина їх
 // редагує, і вже ЗАТВЕРДЖЕНИЙ список іде у createRun.topics (fan-out, існуючий шлях, без дублю).

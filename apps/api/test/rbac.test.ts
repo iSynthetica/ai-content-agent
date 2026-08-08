@@ -21,6 +21,7 @@ const EXPECTED: Record<Role, Permission[]> = {
     "run:start",
     "decision:make",
     "apikey:manage",
+    "member:manage",
     "content:edit",
   ],
   admin: [
@@ -31,6 +32,7 @@ const EXPECTED: Record<Role, Permission[]> = {
     "run:start",
     "decision:make",
     "apikey:manage",
+    "member:manage",
     "content:edit",
   ],
   editor: [
@@ -65,9 +67,18 @@ describe("RBAC matrix (can)", () => {
     }
   });
 
-  it("editor may not manage API keys or delete companies", () => {
+  it("editor may not manage API keys, delete companies, or manage members", () => {
     expect(can("editor", "apikey:manage")).toBe(false);
     expect(can("editor", "company:delete")).toBe(false);
+    expect(can("editor", "member:manage")).toBe(false);
+  });
+
+  it("only owner/admin may manage members (activates the rest of RBAC)", () => {
+    expect(can("owner", "member:manage")).toBe(true);
+    expect(can("admin", "member:manage")).toBe(true);
+    for (const role of ["editor", "reviewer", "viewer"] as const) {
+      expect(can(role, "member:manage")).toBe(false);
+    }
   });
 
   it("reviewer may decide but not edit post content directly", () => {

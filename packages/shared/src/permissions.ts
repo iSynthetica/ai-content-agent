@@ -16,6 +16,9 @@ export const PERMISSIONS = [
   "run:start", // запуск генерації (enqueue прогону)
   "decision:make", // HITL: approve/reject/rerun на рівні прогону і поста
   "apikey:manage", // BYOK: додати/ротувати/видалити ключ орендаря (шов треку BYOK)
+  // Керування членами акаунта (§RBAC member-mgmt): список/додати/змінити роль/видалити члена.
+  // Це той дозвіл, що АКТИВУЄ решту ролей — без нього нема як призначити роль другому користувачу.
+  "member:manage",
   // Людське редагування тексту/заголовка поста + revert до попередньої версії (§content-editing).
   // Окремо від decision:make: рішення (approve/reject/rerun) — це workflow-статус, а edit —
   // авторська правка вмісту; reviewer вирішує долю поста, але не переписує його за автора.
@@ -40,6 +43,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "run:start",
     "decision:make",
     "apikey:manage",
+    "member:manage",
     "content:edit",
   ],
   admin: [
@@ -50,6 +54,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "run:start",
     "decision:make",
     "apikey:manage",
+    "member:manage",
     "content:edit",
   ],
   editor: [
