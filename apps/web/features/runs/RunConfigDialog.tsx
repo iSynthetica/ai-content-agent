@@ -4,11 +4,12 @@
 // явного «Запустити генерацію» на кроці review. Два кроки: Configure → Review → (confirm). Scoped
 // (з календаря) пропускає вибір каналів/к-сті — їх задають обрані слоти.
 //
-// Теми (Phase 2): «AI обере» (Strategist вигадує на льоту, к-сть контрольована), «вписати вручну»
-// (генеруємо РІВНО введені теми — fan-out: один пост на тему, точна к-сть і повний контроль) або
-// «AI пропонує → редагувати» (topic preview, §runtopics): AI пропонує теми ЗАЗДАЛЕГІДЬ окремим
-// LLM-викликом (async job, поллінг), людина їх редагує, і вже затверджений список іде у ТОЙ САМИЙ
-// шлях, що ручний ввід — createRun.topics (жодного другого шляху створення прогону).
+// Теми: два режими (сліпий «AI обере» прибрано — його надмножина «AI пропонує → редагувати»):
+// «вписати вручну» (генеруємо РІВНО введені теми — fan-out: один пост на тему) або «AI пропонує →
+// редагувати» (topic preview, §runtopics, ДЕФОЛТ): AI пропонує теми ЗАЗДАЛЕГІДЬ окремим LLM-викликом
+// (async job, поллінг), людина їх редагує/викидає — і вже затверджений список іде у ТОЙ САМИЙ шлях,
+// що ручний ввід — createRun.topics (жодного другого шляху створення прогону). Обидва режими несуть
+// явні topics, тож «сліпого» вигадування тем без перегляду людиною більше немає.
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
@@ -62,7 +63,7 @@ export function RunConfigDialog({
   const [step, setStep] = useState<"configure" | "review">("configure");
   const [included, setIncluded] = useState<Set<Channel>>(new Set(CHANNELS));
   const [counts, setCounts] = useState<Record<Channel, number>>({ ...CHANNEL_DEFAULTS });
-  const [topicMode, setTopicMode] = useState<"ai" | "manual" | "preview">("ai");
+  const [topicMode, setTopicMode] = useState<"manual" | "preview">("preview");
   const [manualTopics, setManualTopics] = useState<Record<string, string>>({});
   const [angle, setAngle] = useState("");
   const [agentModels, setAgentModels] = useState<AgentModelsValue>({});
@@ -138,15 +139,12 @@ export function RunConfigDialog({
   // працює зі списком, а не перевибирає канали.
   const previewChannels = CHANNELS.filter((c) => previewTopics.some((p) => p.channel === c));
 
-  // Підсумок для review + валідація.
-  const aiTotal = activeChannels.reduce((s, c) => s + (counts[c] || 0), 0);
+  // Підсумок для review + валідація. Обидва ad-hoc режими несуть явні topics (manual/preview).
   const total = scoped
     ? planEntryIds!.length
     : topicMode === "manual"
       ? manualList.length
-      : topicMode === "preview"
-        ? previewList.length
-        : aiTotal;
+      : previewList.length;
   const tooMany = total > MAX_POSTS_PER_RUN;
   const canProceed = scoped || (total >= 1 && !tooMany);
 
@@ -165,18 +163,13 @@ export function RunConfigDialog({
   }
 
   // Тіло createRun/estimate — ЄДИНЕ джерело (обидва шляхи мусять слати те саме, інакше оцінка
-  // рахувала б не той прогін, що запуститься). scoped/manual/preview/ai → різна форма тем/лічильників.
+  // рахувала б не той прогін, що запуститься). scoped → слоти; manual/preview → явні topics.
   function buildRunBody(): Record<string, unknown> {
     const base = scoped
       ? { planEntryIds }
       : topicMode === "manual"
         ? { topics: manualList }
-        : topicMode === "preview"
-          ? { topics: previewList.map((p) => ({ ...p, topic: p.topic.trim() })) }
-          : {
-              channels: activeChannels,
-              counts: Object.fromEntries(activeChannels.map((c) => [c, counts[c]])),
-            };
+        : { topics: previewList.map((p) => ({ ...p, topic: p.topic.trim() })) };
     return {
       ...base,
       ...(angle.trim() ? { angle: angle.trim() } : {}),
@@ -190,7 +183,7 @@ export function RunConfigDialog({
     if (cfg.counts) setCounts({ ...CHANNEL_DEFAULTS, ...(cfg.counts as Record<Channel, number>) });
     setAgentModels((cfg.agentModels ?? {}) as AgentModelsValue);
     setAngle(cfg.angle ?? "");
-    setTopicMode("ai"); // пресети НЕ несуть тем → режим «AI обере»
+    setTopicMode("preview"); // пресети НЕ несуть тем → дефолтний режим «AI пропонує → редагувати»
     toast.success(t("Пресет застосовано"));
   }
 
@@ -309,7 +302,7 @@ export function RunConfigDialog({
                         <label htmlFor={`ch-${c}`} className="w-28 text-sm">
                           {t(CHANNEL_LABELS[c])}
                         </label>
-                        {(topicMode === "ai" || (topicMode === "preview" && !previewReady && !previewPending)) && (
+                        {topicMode === "preview" && !previewReady && !previewPending && (
                           <Input
                             type="number"
                             min={1}
@@ -333,11 +326,11 @@ export function RunConfigDialog({
                       <label className="flex items-center gap-1.5">
                         <input
                           type="radio"
-                          checked={topicMode === "ai"}
-                          onChange={() => setTopicMode("ai")}
+                          checked={topicMode === "preview"}
+                          onChange={() => setTopicMode("preview")}
                           className="accent-primary"
                         />
-                        {t("AI обере теми")}
+                        {t("AI пропонує → редагувати")}
                       </label>
                       <label className="flex items-center gap-1.5">
                         <input
@@ -347,15 +340,6 @@ export function RunConfigDialog({
                           className="accent-primary"
                         />
                         {t("Вписати вручну")}
-                      </label>
-                      <label className="flex items-center gap-1.5">
-                        <input
-                          type="radio"
-                          checked={topicMode === "preview"}
-                          onChange={() => setTopicMode("preview")}
-                          className="accent-primary"
-                        />
-                        {t("AI пропонує → редагувати")}
                       </label>
                     </div>
 
@@ -510,20 +494,11 @@ export function RunConfigDialog({
                       ))}
                     <li className="mt-1 font-medium text-foreground">{t("Разом")}: {total} {t("постів")}</li>
                   </ul>
-                ) : topicMode === "preview" ? (
+                ) : (
                   <ul className="text-muted-foreground">
                     {previewChannels.map((c) => (
                       <li key={c}>
                         {t(CHANNEL_LABELS[c])} — {previewList.filter((p) => p.channel === c).length} ({t("теми AI, відредаговані")})
-                      </li>
-                    ))}
-                    <li className="mt-1 font-medium text-foreground">{t("Разом")}: {total} {t("постів")}</li>
-                  </ul>
-                ) : (
-                  <ul className="text-muted-foreground">
-                    {activeChannels.map((c) => (
-                      <li key={c}>
-                        {t(CHANNEL_LABELS[c])} — {counts[c]} ({t("теми обере AI")})
                       </li>
                     ))}
                     <li className="mt-1 font-medium text-foreground">{t("Разом")}: {total} {t("постів")}</li>
