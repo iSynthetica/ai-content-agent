@@ -53,9 +53,11 @@ function normTopic(t: string): string {
   return t.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-// §spec 08: точне дотримання лічильників — обрізаємо по КОЖНОМУ каналу до запитаної к-сті
-// (channelConfig). LLM може дати більше — тут кап; менше (shortfall) поки лишається (Phase 2 fan-out).
-// Код, не LLM. Експортується для unit-тесту.
+// §spec 08: точне дотримання per-run конфігу каналів. `counts` (channelConfig) — це ПОВНИЙ перелік
+// каналів прогону з лічильниками: канал у ньому обрізаємо до запитаної к-сті (LLM може дати більше),
+// а канал ПОЗА ним дропаємо повністю (0 дозволено). Раніше канал без ліміту лишався як є — і LLM
+// «домальовував» пости в невибрані канали, чим перегенеровував і підривав естіматор вартості.
+// `counts === undefined` (скоуп/без конфігу) → без капу, повертаємо як є. Код, не LLM. Експорт для тесту.
 export function capPerChannel<T extends { channel: string }>(
   items: T[],
   counts: Record<string, number> | undefined,
@@ -65,10 +67,7 @@ export function capPerChannel<T extends { channel: string }>(
   const out: T[] = [];
   for (const it of items) {
     const limit = counts[it.channel];
-    if (limit === undefined) {
-      out.push(it);
-      continue;
-    }
+    if (limit === undefined) continue; // канал не в per-run конфігу → дроп
     const n = kept[it.channel] ?? 0;
     if (n < limit) {
       kept[it.channel] = n + 1;

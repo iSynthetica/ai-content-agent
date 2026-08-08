@@ -19,8 +19,11 @@ describe("capPerChannel (§spec 08 — exact counts)", () => {
     expect(out.filter((i) => i.channel === "linkedin")).toHaveLength(2);
     expect(out.filter((i) => i.channel === "blog")).toHaveLength(1);
   });
-  it("канал без ліміту в counts лишається як є", () => {
-    expect(capPerChannel(items, { blog: 1 })).toHaveLength(4); // 3 linkedin (без ліміту) + 1 blog→1
+  it("канал ПОЗА per-run конфігом дропається повністю", () => {
+    // channelConfig={blog:1} → лишається лише blog (1); усі linkedin (не в конфігу) відсічені
+    const out = capPerChannel(items, { blog: 1 });
+    expect(out).toHaveLength(1);
+    expect(out.every((i) => i.channel === "blog")).toBe(true);
   });
   it("undefined counts → без змін", () => {
     expect(capPerChannel(items, undefined)).toHaveLength(4);
@@ -81,6 +84,25 @@ describe("Strategist — повний режим", () => {
       expect(typeof item.id).toBe("string");
     }
     expect((patch.cost?.cents ?? 0)).toBeGreaterThan(0);
+  });
+
+  it("дропає канали поза per-run channelConfig (прод-баг: instagram×1 → 1 пост)", async () => {
+    // LLM «домальовує» пости в невибрані канали; channelConfig={instagram:1} мусить лишити рівно 1.
+    const fake = new FakeModelFactory({
+      strategist: {
+        items: [
+          { topic: "IG", channel: "instagram", format: "caption", keyMessage: "k", seoKeywords: [] },
+          { topic: "LI", channel: "linkedin", format: "post", keyMessage: "k", seoKeywords: [] },
+          { topic: "TW", channel: "twitter", format: "thread", keyMessage: "k", seoKeywords: [] },
+          { topic: "BL", channel: "blog", format: "article", keyMessage: "k", seoKeywords: [] },
+        ],
+      },
+    });
+    const patch = await makeStrategistNode(depsWith(fake))(
+      baseState({ channelConfig: { instagram: 1 } }),
+    );
+    expect(patch.contentPlan).toHaveLength(1);
+    expect(patch.contentPlan?.[0]?.channel).toBe("instagram");
   });
 });
 
