@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   Settings2,
   SquarePen,
+  Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -46,7 +47,10 @@ export function NavList({
       ]
     : [];
 
-  const globalItems: NavItem[] = [{ href: "/inbox", label: t("Задачі"), icon: Inbox }];
+  const globalItems: NavItem[] = [
+    { href: "/inbox", label: t("Задачі"), icon: Inbox },
+    { href: "/members", label: t("Команда"), icon: Users },
+  ];
 
   return (
     <nav className="flex flex-1 flex-col gap-1 px-3 py-2">

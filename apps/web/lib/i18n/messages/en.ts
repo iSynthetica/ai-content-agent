@@ -344,6 +344,29 @@ export const en: Record<string, string> = {
   "Пресет застосовано": "Preset applied",
   "Пресет збережено": "Preset saved",
   "Не вдалося зберегти пресет": "Couldn't save the preset",
+  // §RBAC member-mgmt (Команда)
+  "Команда": "Team",
+  "Додавайте користувачів у акаунт і призначайте ролі. Роль визначає, що людина може робити.":
+    "Add users to the account and assign roles. The role determines what a person can do.",
+  "Керувати командою можуть лише власник і адміністратор акаунта.":
+    "Only the account owner and admin can manage the team.",
+  "Тимчасовий пароль для": "Temporary password for",
+  "Передайте пароль користувачу — показується лише раз. Він увійде за цим email і паролем.":
+    "Share the password with the user — it's shown only once. They log in with this email and password.",
+  "Додати члена": "Add member",
+  "email користувача": "user's email",
+  "Роль": "Role",
+  "Додаємо…": "Adding…",
+  "Додати": "Add",
+  "Члени акаунта": "Account members",
+  "ви": "you",
+  "Видалити члена": "Remove member",
+  "Видалити": "Remove",
+  "додано (наявний обліковий запис)": "added (existing account)",
+  "Не вдалося додати члена": "Couldn't add the member",
+  "Не вдалося змінити роль": "Couldn't change the role",
+  "видалено": "removed",
+  "Не вдалося видалити члена": "Couldn't remove the member",
   "Назад": "Back",
   "Далі": "Next",
 
