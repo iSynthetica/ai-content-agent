@@ -170,4 +170,47 @@ export class ContentItemsService {
     this.logger.info({ itemId, versionId }, "content item reverted to earlier version");
     return updated;
   }
+
+  // POST /v1/content-items/:id/archive — м'яке архівування (§post-archive). Оборотна дія (content:edit):
+  // виставляє archived_at=now, БЕЗ зміни статусу — архів ортогональний до workflow-рішення. Ідемпотентно:
+  // повторний archive лише оновлює позначку часу (не помилка), головне — прибрати пост із основного списку.
+  async archiveItem(ctx: AuthCtx, itemId: string): Promise<ContentItem> {
+    const item = await this.items.findById(ctx.accountId, itemId);
+    if (!item) throw AppError.notFound("content item");
+
+    const updated = await this.items.setArchivedAt(ctx.accountId, itemId, new Date());
+    if (!updated) throw AppError.notFound("content item");
+
+    this.logger.info({ itemId }, "content item archived");
+    return updated;
+  }
+
+  // POST /v1/content-items/:id/unarchive — розархівувати (§post-archive). Оборотна дія (content:edit):
+  // archived_at=null повертає пост у основний список. Статус лишається тим, яким був до архівації.
+  async unarchiveItem(ctx: AuthCtx, itemId: string): Promise<ContentItem> {
+    const item = await this.items.findById(ctx.accountId, itemId);
+    if (!item) throw AppError.notFound("content item");
+
+    const updated = await this.items.setArchivedAt(ctx.accountId, itemId, null);
+    if (!updated) throw AppError.notFound("content item");
+
+    this.logger.info({ itemId }, "content item unarchived");
+    return updated;
+  }
+
+  // DELETE /v1/content-items/:id — незворотне видалення (§post-archive hard-delete, content:delete).
+  // Двокроковий захист: видалити можна ЛИШЕ вже архівований пост (інакше 422) — щоб випадковий клік
+  // не знищив активний контент разом із публікаціями та історією версій (ті зникають каскадом по FK).
+  async deleteItem(ctx: AuthCtx, itemId: string): Promise<void> {
+    const item = await this.items.findById(ctx.accountId, itemId);
+    if (!item) throw AppError.notFound("content item");
+    if (!item.archivedAt) {
+      throw AppError.unprocessable("спершу архівуйте пост, а потім видаляйте назавжди");
+    }
+
+    const deleted = await this.items.deleteById(ctx.accountId, itemId);
+    if (!deleted) throw AppError.notFound("content item");
+
+    this.logger.info({ itemId }, "content item permanently deleted");
+  }
 }

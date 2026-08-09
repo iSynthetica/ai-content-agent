@@ -23,6 +23,8 @@ export function ChannelTabs({
   runId,
   companyId,
   canEdit,
+  // §post-archive: гейт content:delete (кнопка «Видалити назавжди» на архівованих постах).
+  canDelete = false,
   // §publishing: гейт + контекст публікації (стан/куди можна). Прокидаємо крізь таби до карток.
   canPublish,
   connectedProviders,
@@ -34,6 +36,7 @@ export function ChannelTabs({
   runId: string;
   companyId: string;
   canEdit: boolean;
+  canDelete?: boolean;
   canPublish: boolean;
   connectedProviders: Set<string>;
   publicationByItem: Map<string, PublicationDTO>;
@@ -118,6 +121,7 @@ export function ChannelTabs({
               runId={runId}
               companyId={companyId}
               canEdit={canEdit}
+              canDelete={canDelete}
               canPublish={canPublish}
               providerConnected={connectedProviders.has(item.channel)}
               publication={publicationByItem.get(item.id) ?? null}

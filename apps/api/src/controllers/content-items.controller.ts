@@ -43,5 +43,35 @@ export function contentItemsController(root: Composition) {
       );
       res.status(200).json(updated);
     }),
+
+    // POST /v1/content-items/:id/archive — м'яке архівування (§post-archive). RBAC: content:edit
+    // (оборотна дія). Тіло порожнє. Відповідь — оновлений contentItemDTO (з archivedAt).
+    archive: asyncHandler(async (req: Request, res: Response) => {
+      const auth = requireAuth(req);
+      const id = idParam.parse(req.params.id);
+      const updated = await root.openScope(auth, (s) =>
+        s.services.contentItems.archiveItem(auth, id),
+      );
+      res.status(200).json(updated);
+    }),
+
+    // POST /v1/content-items/:id/unarchive — розархівувати (§post-archive). RBAC: content:edit.
+    unarchive: asyncHandler(async (req: Request, res: Response) => {
+      const auth = requireAuth(req);
+      const id = idParam.parse(req.params.id);
+      const updated = await root.openScope(auth, (s) =>
+        s.services.contentItems.unarchiveItem(auth, id),
+      );
+      res.status(200).json(updated);
+    }),
+
+    // DELETE /v1/content-items/:id — незворотне видалення (§post-archive). RBAC: content:delete
+    // (owner/admin). Сервіс вимагає попередньої архівації (інакше 422). 204 без тіла.
+    remove: asyncHandler(async (req: Request, res: Response) => {
+      const auth = requireAuth(req);
+      const id = idParam.parse(req.params.id);
+      await root.openScope(auth, (s) => s.services.contentItems.deleteItem(auth, id));
+      res.status(204).end();
+    }),
   };
 }

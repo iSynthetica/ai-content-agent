@@ -8,7 +8,7 @@
 // §content-editing: Edit (inline textarea, гейт по content:edit) + History (доступно всім членам
 // акаунта — read без RBAC-гварда, revert усередині діалогу так само гейтиться canEdit).
 import * as React from "react";
-import { AlertTriangle, Check, Copy, ExternalLink, History, ImageIcon, Loader2, Pencil, Send, X } from "lucide-react";
+import { Archive, ArchiveRestore, AlertTriangle, Check, Copy, ExternalLink, History, ImageIcon, Loader2, Pencil, Send, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { CONNECTION_PROVIDER_LABELS, PUBLISH_PROVIDERS, type ConnectionProvider } from "@forteq/shared";
 
@@ -24,8 +24,10 @@ import { ScoreMeter } from "@/components/common/score-meter";
 import { StatusBadge, FlaggedBadge } from "@/components/common/status-badge";
 import { ViolationsPanel } from "@/components/common/violations-panel";
 import { VersionHistoryDialog } from "@/components/common/version-history-dialog";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { useItemDecision } from "@/features/content/use-item-decision";
 import { useItemEdit } from "@/features/content/use-item-edit";
+import { useItemArchive } from "@/features/content/use-item-archive";
 import { useT } from "@/lib/i18n";
 import type { ContentItemDTO } from "@/features/content/schemas";
 import type { PublicationDTO } from "@/lib/dto";
@@ -35,6 +37,7 @@ export function ContentItemCard({
   runId,
   companyId,
   canEdit,
+  canDelete = false,
   canPublish = false,
   providerConnected = false,
   publication = null,
@@ -48,6 +51,9 @@ export function ContentItemCard({
   // прапорця кнопки Edit/Revert не рендерились би взагалі — бек все одно відхилив би 403, але
   // показувати недоступну дію — гірший UX, ніж її ховати (той самий підхід, що й ApiKeysManager).
   canEdit: boolean;
+  // §post-archive: гейт content:delete (owner/admin) — керує кнопкою «Видалити назавжди» для
+  // архівованих постів. Архів/розархів гейтяться тим самим canEdit (оборотні дії).
+  canDelete?: boolean;
   // §publishing: гейт publish:manage + контекст публікації айтема (стан + чи підключений провайдер).
   // Опційні: картку рендерять і поза run-детеллю (напр. прев'ю), де публікації немає.
   canPublish?: boolean;
@@ -59,14 +65,103 @@ export function ContentItemCard({
   const t = useT();
   const decision = useItemDecision(runId, companyId);
   const edit = useItemEdit(runId);
+  const archiveOps = useItemArchive(runId, companyId);
   const [rerunOpen, setRerunOpen] = React.useState(false);
   const [historyOpen, setHistoryOpen] = React.useState(false);
+  const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [editing, setEditing] = React.useState(false);
   const [draftText, setDraftText] = React.useState(item.text ?? "");
   const [draftTitle, setDraftTitle] = React.useState(item.title ?? "");
   const [copied, setCopied] = React.useState(false);
 
   const violationsCount = item.violations?.length ?? 0;
+  const isArchived = Boolean(item.archivedAt);
+
+  function onArchive() {
+    archiveOps.archive.mutate(item.id, {
+      onSuccess: () => toast.success(t("Пост заархівовано")),
+      onError: () => toast.error(t("Не вдалося заархівувати пост")),
+    });
+  }
+
+  function onUnarchive() {
+    archiveOps.unarchive.mutate(item.id, {
+      onSuccess: () => toast.success(t("Пост відновлено з архіву")),
+      onError: () => toast.error(t("Не вдалося відновити пост")),
+    });
+  }
+
+  function onDelete() {
+    archiveOps.remove.mutate(item.id, {
+      onSuccess: () => {
+        toast.success(t("Пост видалено назавжди"));
+        setDeleteOpen(false);
+      },
+      onError: () => toast.error(t("Не вдалося видалити пост")),
+    });
+  }
+
+  // §post-archive: архівований пост — компактна «муміфікована» картка. Схвалення/публікація/правки
+  // тут не мають сенсу (пост прибрано з обігу), тож лишаємо тільки Розархівувати + Видалити назавжди.
+  if (isArchived) {
+    return (
+      <Card className="opacity-70">
+        <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 space-y-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <ChannelBadge channel={item.channel} />
+            <StatusBadge domain="item" status={item.status} />
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+              <Archive className="h-3.5 w-3.5" aria-hidden />
+              {t("В архіві")}
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-1">
+            {canEdit && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={onUnarchive}
+                disabled={archiveOps.unarchive.isPending}
+              >
+                <ArchiveRestore />
+                {t("Розархівувати")}
+              </Button>
+            )}
+            {canDelete && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:text-destructive"
+                onClick={() => setDeleteOpen(true)}
+                disabled={archiveOps.remove.isPending}
+              >
+                <Trash2 />
+                {t("Видалити назавжди")}
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+
+        <CardContent>
+          {(item.title ?? item.topic) && (
+            <p className="text-sm font-medium text-muted-foreground">{item.title ?? item.topic}</p>
+          )}
+        </CardContent>
+
+        <ConfirmDialog
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+          pending={archiveOps.remove.isPending}
+          title={t("Видалити пост назавжди?")}
+          description={t("Пост, його історію версій та публікації буде видалено безповоротно. Цю дію не можна скасувати.")}
+          confirmLabel={t("Видалити назавжди")}
+          onConfirm={onDelete}
+        />
+      </Card>
+    );
+  }
 
   // §publishing: кнопку публікації показуємо лише для соц-каналів (channel === provider), схваленого
   // поста й ролі з publish:manage. blog таргета не має. Стан (pending/published/failed) — з publication.
@@ -124,6 +219,19 @@ export function ContentItemCard({
             <Button type="button" variant="ghost" size="sm" onClick={startEdit} disabled={!item.text}>
               <Pencil />
               {t("Редагувати")}
+            </Button>
+          )}
+          {/* §post-archive: прибрати пост із основного списку (оборотно, content:edit). */}
+          {canEdit && !editing && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onArchive}
+              disabled={archiveOps.archive.isPending}
+            >
+              <Archive />
+              {t("Архівувати")}
             </Button>
           )}
           <Button

@@ -117,6 +117,12 @@ export function businessRoutes(root: Composition): Router {
   r.get("/content-items/:id/versions", contentItems.versions);
   r.post("/content-items/:id/revert", requirePermission("content:edit"), contentItems.revert);
 
+  // §post-archive: архів/розархів (оборотні, content:edit) + hard-delete (незворотний, content:delete
+  // → owner/admin). Видалення дозволене лише для вже архівованого поста (гвард у сервісі → 422).
+  r.post("/content-items/:id/archive", requirePermission("content:edit"), contentItems.archive);
+  r.post("/content-items/:id/unarchive", requirePermission("content:edit"), contentItems.unarchive);
+  r.delete("/content-items/:id", requirePermission("content:delete"), contentItems.remove);
+
   // Нотифікації + Inbox (§2.13) — персональний фід, без RBAC-гварда (див. коментар вище)
   r.get("/notifications", notifications.list);
   r.post("/notifications/:id/read", notifications.markRead);

@@ -14,7 +14,12 @@ const listRunsQuery = z.object({
   from: z.string().datetime().optional(),
   to: z.string().datetime().optional(),
 });
-const itemsQuery = z.object({ channel: channelSchema.optional() });
+// archived — фільтр архіву (§post-archive). Дефолт "exclude": основний список прогону ховає архів;
+// "only" — окремий вигляд керування архівом; "all" — усі пости разом.
+const itemsQuery = z.object({
+  channel: channelSchema.optional(),
+  archived: z.enum(["exclude", "only", "all"]).default("exclude"),
+});
 // Дефолт md: FR-10.1 (Markdown) — MUST, JSON (FR-10.2) — SHOULD, тож без параметра віддаємо саме md.
 const exportQuery = z.object({ format: z.enum(["md", "json"]).default("md") });
 

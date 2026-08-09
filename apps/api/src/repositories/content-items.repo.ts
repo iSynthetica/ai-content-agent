@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNotNull, isNull } from "drizzle-orm";
 import { contentItems } from "@forteq/db";
 import type { DbExecutor } from "../di/types";
 import type {
@@ -25,6 +25,8 @@ function toItem(row: ItemRow): ContentItem {
     imageUrl: row.imageUrl,
     status: row.status,
     version: row.version,
+    // archived_at — Date|null із драйвера; на межі віддаємо ISO-рядок (форма contentItemDTO).
+    archivedAt: row.archivedAt ? row.archivedAt.toISOString() : null,
   };
 }
 
@@ -35,6 +37,11 @@ export class DrizzleContentItemsRepo implements ContentItemsRepo {
   async listByRun(accountId: string, runId: string, query: ItemsQuery): Promise<ContentItem[]> {
     const conds = [eq(contentItems.accountId, accountId), eq(contentItems.runId, runId)];
     if (query.channel) conds.push(eq(contentItems.channel, query.channel));
+    // Архів-фільтр (§post-archive): дефолт (undefined) === "exclude" — основний список ховає архів.
+    // "only" — лише архівовані (окремий вигляд), "all" — без фільтра (жодного нового condition).
+    const archived = query.archived ?? "exclude";
+    if (archived === "exclude") conds.push(isNull(contentItems.archivedAt));
+    else if (archived === "only") conds.push(isNotNull(contentItems.archivedAt));
 
     const rows = await this.tx
       .select()
@@ -79,6 +86,27 @@ export class DrizzleContentItemsRepo implements ContentItemsRepo {
       .where(and(eq(contentItems.accountId, accountId), eq(contentItems.id, id)))
       .returning();
     return row ? toItem(row) : null;
+  }
+
+  // М'яке архівування (§post-archive): value=Date → в архів, value=null → розархівувати. Свідомо
+  // НЕ чіпає status/text/scores — архів ортогональний до workflow-статусу (пост зберігає рішення).
+  async setArchivedAt(accountId: string, id: string, value: Date | null): Promise<ContentItem | null> {
+    const [row] = await this.tx
+      .update(contentItems)
+      .set({ archivedAt: value })
+      .where(and(eq(contentItems.accountId, accountId), eq(contentItems.id, id)))
+      .returning();
+    return row ? toItem(row) : null;
+  }
+
+  // Незворотне видалення поста (§post-archive hard-delete). content_item_versions + publications
+  // зникають каскадом (FK ON DELETE cascade). Повертає true лише коли рядок цього акаунта справді був.
+  async deleteById(accountId: string, id: string): Promise<boolean> {
+    const rows = await this.tx
+      .delete(contentItems)
+      .where(and(eq(contentItems.accountId, accountId), eq(contentItems.id, id)))
+      .returning({ id: contentItems.id });
+    return rows.length > 0;
   }
 
   // Роздача медіа (GET /media): належність ключа орендарю. RLS ізолює за accountId, тож достатньо

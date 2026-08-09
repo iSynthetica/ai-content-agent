@@ -43,6 +43,7 @@ function makeItem(over: Partial<ContentItem> & { id: string }): ContentItem {
     imageUrl: null,
     status: "approved" as ItemStatus,
     version: 1,
+    archivedAt: null,
     ...over,
   };
 }
@@ -90,6 +91,12 @@ class FakeContentItemsRepo implements ContentItemsRepo {
     throw new Error("not used");
   }
   async updateContent(_a: string, _id: string, _p: ContentItemContentPatch): Promise<ContentItem | null> {
+    throw new Error("not used");
+  }
+  async setArchivedAt(): Promise<ContentItem | null> {
+    throw new Error("not used");
+  }
+  async deleteById(): Promise<boolean> {
     throw new Error("not used");
   }
   async existsByImageUrl(): Promise<boolean> {

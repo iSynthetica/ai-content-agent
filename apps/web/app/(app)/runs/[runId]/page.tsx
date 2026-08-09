@@ -27,6 +27,8 @@ export default async function RunPage({
   // §content-editing: гейт Edit/Revert рахуємо тут, з ролі сесії — той самий підхід, що й
   // settings/page.tsx (canManage). Немає сесії (не мало б статись під (app)-гейтом) → безпечний deny.
   const canEdit = session ? can(session.account.role, "content:edit") : false;
+  // §post-archive: гейт незворотного видалення поста (owner/admin) — той самий сесія-рівневий підхід.
+  const canDelete = session ? can(session.account.role, "content:delete") : false;
   // §publishing: гейт кнопки «Опублікувати» — той самий сесія-рівневий підхід (сервер форсить
   // publish:manage; ховаємо недоступну дію).
   const canPublish = session ? can(session.account.role, "publish:manage") : false;
@@ -37,6 +39,7 @@ export default async function RunPage({
       initialRun={run}
       initialItems={items}
       canEdit={canEdit}
+      canDelete={canDelete}
       canPublish={canPublish}
     />
   );

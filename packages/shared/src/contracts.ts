@@ -318,6 +318,10 @@ export const contentItemDTO = z.object({
   imageUrl: z.string().nullable(),
   status: itemStatusSchema,
   version: z.number().int(),
+  // archivedAt — м'яке архівування поста (§post-archive). ISO-рядок або null. Це НЕ статус:
+  // архів ортогональний до workflow-статусу, тож пост зберігає approved/rejected і в архіві.
+  // Основний список прогону віддає лише неархівовані (archived=exclude); архів дивляться окремо.
+  archivedAt: z.string().nullable(),
 });
 // ── per-node прогрес пайплайна (n8n-подібний «хто зараз виконується») ──────────
 // Єдина форма прогресу, узгоджена з фронтом. Worker пише її per-node під час прогону графа

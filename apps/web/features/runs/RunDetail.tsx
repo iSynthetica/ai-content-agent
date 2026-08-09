@@ -5,7 +5,7 @@
 // needs_review (Approve/Reject/Rerun по всьому run), стани generating/failed, ChannelTabs з картками.
 import * as React from "react";
 import Link from "next/link";
-import { AlertTriangle, ArrowLeft, Loader2 } from "lucide-react";
+import { AlertTriangle, Archive, ArrowLeft, Loader2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,7 @@ export function RunDetail({
   initialRun,
   initialItems,
   canEdit,
+  canDelete,
   canPublish,
 }: {
   runId: string;
@@ -43,6 +44,8 @@ export function RunDetail({
   // §content-editing: гейт Edit/Revert на постах — рахує роль сесії з RSC-сторінки (той самий
   // патерн, що й ApiKeysManager.canManage), тож клієнтський дерево нижче лишається "тупим".
   canEdit: boolean;
+  // §post-archive: гейт content:delete (кнопка «Видалити назавжди» в архіві) — рахується так само.
+  canDelete: boolean;
   // §publishing: гейт кнопки «Опублікувати» — так само рахується на сторінці з ролі сесії.
   canPublish: boolean;
 }) {
@@ -52,6 +55,12 @@ export function RunDetail({
   const { data: items } = useItems(runId, initialItems);
   const runDecision = useRunDecision(runId, initialRun.companyId);
   const [rerunOpen, setRerunOpen] = React.useState(false);
+
+  // §post-archive: окремий вигляд архіву прогону. Запит на архів вмикається лише коли вкладку
+  // відкрито (enabled=showArchive), щоб не тягнути архів на кожному завантаженні сторінки.
+  const [showArchive, setShowArchive] = React.useState(false);
+  const { data: archivedItems } = useItems(runId, undefined, "only", showArchive);
+  const archivedCount = archivedItems?.length ?? 0;
 
   // §publishing: connection'и (щоб знати, куди можна публікувати) + стан публікацій по прогону
   // (окремий полл — результат фонової джоби доїжджає ПІСЛЯ дії). publish триґерить enqueue.
@@ -127,6 +136,20 @@ export function RunDetail({
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {/* §post-archive: перемикач архіву прогону (керування архівованими постами). */}
+            <Button
+              type="button"
+              variant={showArchive ? "secondary" : "outline"}
+              size="sm"
+              onClick={() => setShowArchive((v) => !v)}
+              aria-pressed={showArchive}
+            >
+              <Archive className="h-4 w-4" />
+              {t("Архів")}
+              {archivedCount > 0 && (
+                <span className="tabular-nums text-xs text-muted-foreground">{archivedCount}</span>
+              )}
+            </Button>
             {/* Поки граф працює, постів ще немає — вивантажувати нічого. */}
             <ExportMenu runId={run.id} disabled={generating} />
             <StatusBadge domain="run" status={run.status} />
@@ -232,6 +255,34 @@ export function RunDetail({
       {/* ── Флоу пайплайна: ролі-ноди й хто зараз виконується (над картками статей) ── */}
       <PipelineFlow run={run} />
 
+      {/* ── Архів прогону (§post-archive): керування архівованими постами ── */}
+      {showArchive && (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col gap-4 py-5">
+            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <Archive className="h-4 w-4" aria-hidden />
+              {t("Архівовані пости")}
+            </div>
+            {archivedCount > 0 ? (
+              <ChannelTabs
+                items={archivedItems ?? []}
+                runId={runId}
+                companyId={companyId}
+                canEdit={canEdit}
+                canDelete={canDelete}
+                canPublish={canPublish}
+                connectedProviders={connectedProviders}
+                publicationByItem={publicationByItem}
+                onPublish={(itemId) => publish.mutate([itemId])}
+                publishPending={publish.isPending}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">{t("В архіві поки що порожньо.")}</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* ── Пости за каналами ── */}
       {items && items.length > 0 ? (
         <ChannelTabs
@@ -239,6 +290,7 @@ export function RunDetail({
           runId={runId}
           companyId={companyId}
           canEdit={canEdit}
+          canDelete={canDelete}
           canPublish={canPublish}
           connectedProviders={connectedProviders}
           publicationByItem={publicationByItem}

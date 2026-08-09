@@ -217,6 +217,11 @@ export const contentItems = pgTable(
     version: integer("version").default(1).notNull(),
     revisionHistory: jsonb("revision_history").$type<string[]>().default([]).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    // archivedAt — м'яке архівування поста (§post-archive). Nullable-таймстемп, а НЕ статус:
+    // архів ортогональний до workflow-статусу (approved/rejected/…), тож пост зберігає своє рішення
+    // й після архівації. null = активний; not-null = в архіві (ховаємо з основного списку прогону).
+    // Hard-delete дозволений лише ПІСЛЯ архівації (service-гвард) — незворотну дію відділяємо в два кроки.
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
   },
   (t) => ({ runIdx: index("content_items_run_idx").on(t.runId) }),
 );

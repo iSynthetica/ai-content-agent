@@ -24,17 +24,28 @@ function hasPendingVisuals(items: ContentItemDTO[] | undefined): boolean {
   return Boolean(items?.some((i) => i.channel === "instagram" && !i.imageUrl));
 }
 
-export function useItems(runId: string, initialData?: ContentItemDTO[]) {
+// archived (§post-archive): "exclude" (дефолт) — основний список без архіву; "only" — окремий
+// вигляд архіву прогону. Ключ архіву має спільний префікс ["items", runId], тож інвалідація
+// qk.items(runId) з мутацій архіву перечитує обидва списки. Архів не поллить картинки (вони не
+// генеруються для архівованих) — visuals-таймер лишається лише для основного списку.
+export function useItems(
+  runId: string,
+  initialData?: ContentItemDTO[],
+  archived: "exclude" | "only" | "all" = "exclude",
+  enabled = true,
+) {
   const polls = React.useRef(0);
+  const isArchiveView = archived === "only";
 
   return useQuery({
-    queryKey: qk.items(runId),
-    queryFn: () => http.get(endpoints.items(runId), itemsResponse),
+    queryKey: isArchiveView ? qk.itemsArchived(runId) : qk.items(runId),
+    queryFn: () =>
+      http.get(endpoints.items(runId, isArchiveView ? "only" : undefined), itemsResponse),
     initialData,
-    enabled: !!runId,
+    enabled: !!runId && enabled,
     refetchInterval: (q) => {
-      if (!hasPendingVisuals(q.state.data)) {
-        polls.current = 0; // картинки доїхали (або їх і не було) — лічильник назад у нуль
+      if (isArchiveView || !hasPendingVisuals(q.state.data)) {
+        polls.current = 0; // картинки доїхали (або їх і не було / архів) — лічильник назад у нуль
         return false;
       }
       if (polls.current >= MAX_VISUAL_POLLS) return false;

@@ -56,6 +56,11 @@ export const ALLOW: ReadonlyArray<{ method: string; pattern: RegExp }> = [
   { method: "GET", pattern: /^\/content-items\/[^/]+\/versions$/ },
   { method: "POST", pattern: /^\/content-items\/[^/]+\/revert$/ }, // { versionId }
 
+  // §post-archive: архів/розархів (content:edit) + hard-delete (content:delete)
+  { method: "POST", pattern: /^\/content-items\/[^/]+\/archive$/ },
+  { method: "POST", pattern: /^\/content-items\/[^/]+\/unarchive$/ },
+  { method: "DELETE", pattern: /^\/content-items\/[^/]+$/ }, // hard-delete (лише після архівації)
+
   // §13 онбординг + bootstrap
   { method: "POST", pattern: /^\/onboarding$/ },
   { method: "POST", pattern: /^\/companies\/[^/]+\/bootstrap$/ },
@@ -115,7 +120,10 @@ export const endpoints = {
   runs: (cid: string) => `/api/companies/${cid}/runs`, // GET список + POST створити
   runEstimate: (cid: string) => `/api/companies/${cid}/runs/estimate`, // POST пре-ран оцінка вартості
   run: (id: string) => `/api/runs/${id}`,
-  items: (id: string) => `/api/runs/${id}/items`,
+  // archived — фільтр архіву (§post-archive). Без параметра api дефолтить на "exclude" (ховає архів);
+  // "only" — окремий вигляд керування архівом. Query не входить у path, тож allowlist не змінюється.
+  items: (id: string, archived?: "exclude" | "only" | "all") =>
+    `/api/runs/${id}/items${archived ? `?archived=${archived}` : ""}`,
   runStream: (id: string) => `/api/runs/${id}/stream`,
   runDecision: (id: string) => `/api/runs/${id}/decision`,
   itemDecision: (id: string) => `/api/content-items/${id}/decision`,
@@ -133,6 +141,11 @@ export const endpoints = {
   itemEdit: (id: string) => `/api/content-items/${id}`,
   itemVersions: (id: string) => `/api/content-items/${id}/versions`,
   itemRevert: (id: string) => `/api/content-items/${id}/revert`,
+
+  // §post-archive: архів/розархів + hard-delete поста
+  itemArchive: (id: string) => `/api/content-items/${id}/archive`,
+  itemUnarchive: (id: string) => `/api/content-items/${id}/unarchive`,
+  itemDelete: (id: string) => `/api/content-items/${id}`, // DELETE (лише після архівації)
 
   // §13 онбординг
   onboarding: () => "/api/onboarding",
