@@ -19,6 +19,9 @@ import { GenerateButton } from "@/features/runs/GenerateButton";
 import { useRun } from "@/features/runs/use-run";
 import { useItems } from "@/features/content/use-items";
 import { useRunDecision } from "@/features/runs/use-run-decision";
+import { useConnections } from "@/features/connections/use-connections";
+import { usePublications, usePublish } from "@/features/publishing/use-publications";
+import type { PublicationDTO } from "@/lib/dto";
 import { qk } from "@/lib/query-keys";
 import { isRunGenerating, type RunStatus } from "@/lib/status";
 import { ExportMenu } from "@/components/runs/ExportMenu";
@@ -32,6 +35,7 @@ export function RunDetail({
   initialRun,
   initialItems,
   canEdit,
+  canPublish,
 }: {
   runId: string;
   initialRun: RunDTO;
@@ -39,6 +43,8 @@ export function RunDetail({
   // §content-editing: гейт Edit/Revert на постах — рахує роль сесії з RSC-сторінки (той самий
   // патерн, що й ApiKeysManager.canManage), тож клієнтський дерево нижче лишається "тупим".
   canEdit: boolean;
+  // §publishing: гейт кнопки «Опублікувати» — так само рахується на сторінці з ролі сесії.
+  canPublish: boolean;
 }) {
   const { t, language } = useLanguage();
   const qc = useQueryClient();
@@ -46,6 +52,31 @@ export function RunDetail({
   const { data: items } = useItems(runId, initialItems);
   const runDecision = useRunDecision(runId, initialRun.companyId);
   const [rerunOpen, setRerunOpen] = React.useState(false);
+
+  // §publishing: connection'и (щоб знати, куди можна публікувати) + стан публікацій по прогону
+  // (окремий полл — результат фонової джоби доїжджає ПІСЛЯ дії). publish триґерить enqueue.
+  const { data: connections } = useConnections();
+  const publications = usePublications(runId);
+  const publish = usePublish(runId);
+
+  const connectedProviders = React.useMemo(
+    () =>
+      new Set(
+        (connections?.items ?? [])
+          .filter((c) => c.status === "connected")
+          .map((c) => c.provider),
+      ),
+    [connections],
+  );
+  // Останній стан публікації на айтем (беремо найсвіжіший рядок, якщо їх кілька).
+  const publicationByItem = React.useMemo(() => {
+    const map = new Map<string, PublicationDTO>();
+    for (const p of publications.data ?? []) {
+      const prevP = map.get(p.contentItemId);
+      if (!prevP || p.createdAt > prevP.createdAt) map.set(p.contentItemId, p);
+    }
+    return map;
+  }, [publications.data]);
 
   const itemsCount = run?.counts?.items;
   const status = run?.status;
@@ -203,7 +234,17 @@ export function RunDetail({
 
       {/* ── Пости за каналами ── */}
       {items && items.length > 0 ? (
-        <ChannelTabs items={items} runId={runId} companyId={companyId} canEdit={canEdit} />
+        <ChannelTabs
+          items={items}
+          runId={runId}
+          companyId={companyId}
+          canEdit={canEdit}
+          canPublish={canPublish}
+          connectedProviders={connectedProviders}
+          publicationByItem={publicationByItem}
+          onPublish={(itemId) => publish.mutate([itemId])}
+          publishPending={publish.isPending}
+        />
       ) : !generating ? (
         <Card>
           <CardContent className="py-8 text-center text-sm text-muted-foreground">

@@ -132,5 +132,16 @@ export async function forward(req: Request, restPath: string): Promise<Response>
     // Стрім тіла наскрізь (нуль-копі). Passthrough content-type/disposition + Set-Cookie.
     return new Response(res.body, { status: res.status, headers: passthroughHeaders(res, requestId) });
   }
+  // 3xx (OAuth-callback повертає 302 з Location + Set-Cookie): це НЕ помилка. І Location, і сесійний
+  // Set-Cookie МУСЯТЬ дійти до браузера, інакше connect-флоу не завершиться (браузер має піти за
+  // редіректом назад на /connections?connected=...). JSON-нормалізація (гілка не-2xx нижче) з'їла б
+  // обидва заголовки й лишила б 302 без Location. Тому 3xx — вузький passthrough: статус + Location +
+  // Set-Cookie (redirect:"manual" вище гарантує, що fetch сам не проковтнув редірект).
+  if (res.status >= 300 && res.status < 400) {
+    const headers = passthroughHeaders(res, requestId); // content-type/cache + усі Set-Cookie
+    const location = res.headers.get("location");
+    if (location) headers.set("location", location);
+    return new Response(null, { status: res.status, headers });
+  }
   return normalizeError(res, requestId, cookieHeader);
 }

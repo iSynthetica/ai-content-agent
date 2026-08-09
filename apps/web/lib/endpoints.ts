@@ -82,6 +82,17 @@ export const ALLOW: ReadonlyArray<{ method: string; pattern: RegExp }> = [
   { method: "PUT", pattern: /^\/api-keys\/[^/]+$/ },
   { method: "DELETE", pattern: /^\/api-keys\/[^/]+$/ },
 
+  // §publishing: підключення соцмереж/Telegram + публікація схвалених постів
+  { method: "GET", pattern: /^\/connections$/ },
+  { method: "POST", pattern: /^\/connections\/[^/]+\/authorize$/ }, // → { authUrl } + state-cookie
+  { method: "GET", pattern: /^\/connections\/[^/]+\/callback$/ }, // OAuth redirect-target (302 назад)
+  { method: "PUT", pattern: /^\/connections\/telegram$/ }, // { botToken, chatId }
+  { method: "DELETE", pattern: /^\/connections\/[^/]+$/ }, // відключити провайдера
+  { method: "POST", pattern: /^\/runs\/[^/]+\/publish$/ }, // { itemIds } → enqueue content.publish
+  { method: "GET", pattern: /^\/runs\/[^/]+\/publications$/ }, // per-run стан публікацій
+  // Публічна роздача медіа за підписаним токеном (IG тягне сервером без сесії; транскод у JPEG)
+  { method: "GET", pattern: /^\/media\/public\/[^/]+$/ },
+
   { method: "*", pattern: /^\/auth\/.+$/ }, // Better Auth: sign-in/out/session тощо
 ];
 
@@ -145,6 +156,16 @@ export const endpoints = {
   // BYOK: ключі провайдерів акаунта
   apiKeys: () => "/api/api-keys",
   apiKey: (provider: string) => `/api/api-keys/${provider}`,
+
+  // §publishing: підключення соцмереж/Telegram + публікація
+  connections: () => "/api/connections", // GET список (items + configured)
+  connectionAuthorize: (provider: string) => `/api/connections/${provider}/authorize`, // POST
+  connectionCallback: (provider: string) => `/api/connections/${provider}/callback`, // GET redirect
+  connectionTelegram: () => "/api/connections/telegram", // PUT { botToken, chatId }
+  connection: (provider: string) => `/api/connections/${provider}`, // DELETE відключити
+  runPublish: (id: string) => `/api/runs/${id}/publish`, // POST { itemIds }
+  runPublications: (id: string) => `/api/runs/${id}/publications`, // GET per-run стан
+  mediaPublic: (token: string) => `/api/media/public/${token}`, // GET публічне зображення (JPEG)
 } as const;
 
 // Знімає провідний префікс /api (спільна нормалізація для proxy й apiClient).

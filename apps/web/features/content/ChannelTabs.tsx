@@ -12,6 +12,7 @@ import { CHANNEL_META } from "@/components/common/channel-badge";
 import { ContentItemCard } from "@/components/common/content-item-card";
 import { useT } from "@/lib/i18n";
 import type { ContentItemDTO } from "@/features/content/schemas";
+import type { PublicationDTO } from "@/lib/dto";
 
 function isChannel(v: string | null): v is Channel {
   return !!v && (CHANNELS as readonly string[]).includes(v);
@@ -22,11 +23,22 @@ export function ChannelTabs({
   runId,
   companyId,
   canEdit,
+  // §publishing: гейт + контекст публікації (стан/куди можна). Прокидаємо крізь таби до карток.
+  canPublish,
+  connectedProviders,
+  publicationByItem,
+  onPublish,
+  publishPending,
 }: {
   items: ContentItemDTO[];
   runId: string;
   companyId: string;
   canEdit: boolean;
+  canPublish: boolean;
+  connectedProviders: Set<string>;
+  publicationByItem: Map<string, PublicationDTO>;
+  onPublish: (itemId: string) => void;
+  publishPending: boolean;
 }) {
   const t = useT();
   const router = useRouter();
@@ -106,6 +118,11 @@ export function ChannelTabs({
               runId={runId}
               companyId={companyId}
               canEdit={canEdit}
+              canPublish={canPublish}
+              providerConnected={connectedProviders.has(item.channel)}
+              publication={publicationByItem.get(item.id) ?? null}
+              onPublish={onPublish}
+              publishPending={publishPending}
             />
           ))}
         </div>

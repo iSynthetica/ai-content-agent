@@ -16,6 +16,14 @@ export {
   apiKeysResponse,
   apiKeyProviderSchema,
   setApiKeyRequest,
+  // §publishing: підключення соцмереж/Telegram + публікація схвалених постів
+  connectionDTO,
+  connectionsResponse,
+  authorizeConnectionResponse,
+  telegramConfigRequest,
+  publishRequest,
+  publicationDTO,
+  publicationsResponse,
 } from "@forteq/shared";
 export type {
   AccountDTO,
@@ -24,6 +32,14 @@ export type {
   ContentPlanDTO as ContentPlanResponse,
   ApiKeyDTO,
   ApiKeyProvider,
+  // §publishing
+  ConnectionDTO,
+  ConnectionsResponse,
+  ConnectionProvider,
+  ConnectionStatus,
+  PublicationDTO,
+  PublishProvider,
+  TelegramConfigRequest,
 } from "@forteq/shared";
 
 // Локальна відповідь-підтвердження для мутацій без сутності (НЕ частина контракту межі —

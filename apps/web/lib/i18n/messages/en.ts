@@ -430,6 +430,43 @@ export const en: Record<string, string> = {
   "Пост відновлено до обраної версії": "Post restored to the selected version",
   "Не вдалося відновити версію": "Couldn't restore the version",
 
+  // ── Publishing / Connections (§publishing) ──────────────────────────────
+  "Підключення": "Connections",
+  "Підключіть соцмережі, щоб публікувати схвалені пости, і Telegram — щоб отримувати сповіщення про готовий контент.":
+    "Connect social networks to publish approved posts, and Telegram to get notified when content is ready.",
+  "Керувати підключеннями можуть лише власник і адміністратор акаунта.":
+    "Only the account owner and admin can manage connections.",
+  "Опублікуйте схвалені пости прямо в цей акаунт.": "Publish approved posts straight to this account.",
+  "Потрібні ключі застосунку": "App keys required",
+  "Підключено": "Connected",
+  "Не підключено": "Not connected",
+  "Токен протух": "Token expired",
+  "Помилка підключення": "Connection error",
+  "Підключити": "Connect",
+  "Підключаємо…": "Connecting…",
+  "Відключити": "Disconnect",
+  "підключено": "connected",
+  "відключено": "disconnected",
+  "Не вдалося підключити": "Couldn't connect",
+  "Не вдалося почати підключення": "Couldn't start the connection",
+  "Не вдалося відключити": "Couldn't disconnect",
+  "Сповіщення в Telegram, коли контент прогону готовий до рецензії.":
+    "Telegram notification when a run's content is ready for review.",
+  "Токен бота": "Bot token",
+  "Замінити токен бота": "Replace bot token",
+  "Chat ID": "Chat ID",
+  "Вкажіть токен бота й chat id": "Enter the bot token and chat id",
+  "Telegram налаштовано": "Telegram configured",
+  "Не вдалося налаштувати Telegram": "Couldn't configure Telegram",
+  "Опублікувати": "Publish",
+  "Опублікувати ще раз": "Publish again",
+  "Опубліковано": "Published",
+  "Публікується…": "Publishing…",
+  "Помилка публікації": "Publishing failed",
+  "Відкрити пост": "Open post",
+  "Спершу підключіть провайдера на сторінці «Підключення».":
+    "Connect the provider first on the Connections page.",
+
   // ── Global error fallbacks (BFF proxy, query client, api-error) ─────────
   "Сталася непередбачена помилка. Спробуйте ще раз.": "An unexpected error occurred. Please try again.",
   "Сталася помилка. Спробуйте ще раз.": "Something went wrong. Please try again.",

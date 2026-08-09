@@ -16,6 +16,9 @@ export const qk = {
   inbox: () => ["inbox"] as const,
   // BYOK: ключі провайдерів акаунта (§ADR-0016)
   apiKeys: () => ["api-keys"] as const,
+  // §publishing: підключення соцмереж/Telegram (глобальні) + стан публікацій по прогону
+  connections: () => ["connections"] as const,
+  publications: (runId: string) => ["publications", runId] as const,
   // §15 план + слоти
   plan: (companyId: string) => ["plan", companyId] as const,
   planEntries: (companyId: string, range?: string) =>

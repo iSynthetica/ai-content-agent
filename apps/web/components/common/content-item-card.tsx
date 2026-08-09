@@ -8,8 +8,9 @@
 // §content-editing: Edit (inline textarea, гейт по content:edit) + History (доступно всім членам
 // акаунта — read без RBAC-гварда, revert усередині діалогу так само гейтиться canEdit).
 import * as React from "react";
-import { Check, Copy, History, ImageIcon, Pencil, X } from "lucide-react";
+import { AlertTriangle, Check, Copy, ExternalLink, History, ImageIcon, Loader2, Pencil, Send, X } from "lucide-react";
 import { toast } from "sonner";
+import { CONNECTION_PROVIDER_LABELS, PUBLISH_PROVIDERS, type ConnectionProvider } from "@forteq/shared";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -27,12 +28,18 @@ import { useItemDecision } from "@/features/content/use-item-decision";
 import { useItemEdit } from "@/features/content/use-item-edit";
 import { useT } from "@/lib/i18n";
 import type { ContentItemDTO } from "@/features/content/schemas";
+import type { PublicationDTO } from "@/lib/dto";
 
 export function ContentItemCard({
   item,
   runId,
   companyId,
   canEdit,
+  canPublish = false,
+  providerConnected = false,
+  publication = null,
+  onPublish,
+  publishPending = false,
 }: {
   item: ContentItemDTO;
   runId: string;
@@ -41,6 +48,13 @@ export function ContentItemCard({
   // прапорця кнопки Edit/Revert не рендерились би взагалі — бек все одно відхилив би 403, але
   // показувати недоступну дію — гірший UX, ніж її ховати (той самий підхід, що й ApiKeysManager).
   canEdit: boolean;
+  // §publishing: гейт publish:manage + контекст публікації айтема (стан + чи підключений провайдер).
+  // Опційні: картку рендерять і поза run-детеллю (напр. прев'ю), де публікації немає.
+  canPublish?: boolean;
+  providerConnected?: boolean;
+  publication?: PublicationDTO | null;
+  onPublish?: (itemId: string) => void;
+  publishPending?: boolean;
 }) {
   const t = useT();
   const decision = useItemDecision(runId, companyId);
@@ -53,6 +67,14 @@ export function ContentItemCard({
   const [copied, setCopied] = React.useState(false);
 
   const violationsCount = item.violations?.length ?? 0;
+
+  // §publishing: кнопку публікації показуємо лише для соц-каналів (channel === provider), схваленого
+  // поста й ролі з publish:manage. blog таргета не має. Стан (pending/published/failed) — з publication.
+  const isSocialChannel = (PUBLISH_PROVIDERS as readonly string[]).includes(item.channel);
+  const showPublish = canPublish && isSocialChannel && item.status === "approved";
+  const providerLabel = CONNECTION_PROVIDER_LABELS[item.channel as ConnectionProvider] ?? item.channel;
+  const pubStatus = publication?.status;
+  const publishInFlight = pubStatus === "pending" || publishPending;
 
   async function onCopy() {
     if (!item.text) return;
@@ -240,7 +262,65 @@ export function ContentItemCard({
         >
           {t("Перегенерувати")}
         </Button>
+
+        {/* §publishing: публікація схваленого соц-поста в підключений акаунт. */}
+        {showPublish && (
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            {pubStatus === "published" ? (
+              <>
+                <span className="inline-flex items-center gap-1.5 text-sm text-success">
+                  <Check className="h-4 w-4" />
+                  {t("Опубліковано")}
+                </span>
+                {publication?.externalUrl && (
+                  <a
+                    href={publication.externalUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    {t("Відкрити пост")}
+                  </a>
+                )}
+              </>
+            ) : pubStatus === "pending" ? (
+              <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {t("Публікується…")}
+              </span>
+            ) : (
+              <div className="flex flex-wrap items-center gap-2">
+                {pubStatus === "failed" && (
+                  <span
+                    className="inline-flex items-center gap-1.5 text-sm text-destructive"
+                    title={publication?.error ?? undefined}
+                  >
+                    <AlertTriangle className="h-4 w-4" />
+                    {t("Помилка публікації")}
+                  </span>
+                )}
+                <Button
+                  size="sm"
+                  onClick={() => onPublish?.(item.id)}
+                  // Вимкнено, якщо провайдер не підключений (підказка нижче) або публікація в польоті.
+                  disabled={!providerConnected || publishInFlight}
+                >
+                  <Send className="h-4 w-4" />
+                  {pubStatus === "failed" ? t("Опублікувати ще раз") : t("Опублікувати")}
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Підказка, коли публікувати нікуди: провайдер каналу не підключений. */}
+      {showPublish && !providerConnected && pubStatus !== "published" && (
+        <p className="px-4 pb-4 -mt-2 text-xs text-muted-foreground">
+          {t("Спершу підключіть провайдера на сторінці «Підключення».")} ({providerLabel})
+        </p>
+      )}
 
       <RerunDialog
         open={rerunOpen}

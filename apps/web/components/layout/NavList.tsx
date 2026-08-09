@@ -11,6 +11,7 @@ import {
   Inbox,
   LayoutDashboard,
   Settings2,
+  Share2,
   SquarePen,
   Users,
 } from "lucide-react";
@@ -50,6 +51,8 @@ export function NavList({
   const globalItems: NavItem[] = [
     { href: "/inbox", label: t("Задачі"), icon: Inbox },
     { href: "/members", label: t("Команда"), icon: Users },
+    // §publishing: підключення соцмереж/Telegram. Сторінку бачить будь-який член; дії гейтяться всередині.
+    { href: "/connections", label: t("Підключення"), icon: Share2 },
   ];
 
   return (
