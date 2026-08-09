@@ -66,7 +66,7 @@ export function buildComposition(config: AppConfig): Composition {
     };
 
     const result = await withAccountContext(db, authCtx, (tx) =>
-      fn(buildRequestScope(tx, authCtx, afterCommit, ports, logger, masterKey, auth)),
+      fn(buildRequestScope(tx, authCtx, afterCommit, ports, logger, masterKey, auth, config)),
     );
 
     for (const hook of hooks) {

@@ -16,6 +16,9 @@ import { runTopicsController } from "../../controllers/run-topics.controller";
 import { mediaController } from "../../controllers/media.controller";
 import { runConfigPresetsController } from "../../controllers/run-config-presets.controller";
 import { membersController } from "../../controllers/members.controller";
+import { connectionsController } from "../../controllers/connections.controller";
+import { publicationsController } from "../../controllers/publications.controller";
+import { publicMediaController } from "../../controllers/public-media.controller";
 
 // Бізнес-роути під /v1 (за auth-middleware). Кожен контролер сам відкриває request-scope (openScope):
 // BEGIN + SET LOCAL app.current_* → репо/сервіси на tx → COMMIT/ROLLBACK + after-commit-хуки (§2.10.3).
@@ -36,6 +39,8 @@ export function businessRoutes(root: Composition): Router {
   const media = mediaController(root);
   const presets = runConfigPresetsController(root);
   const members = membersController(root);
+  const connections = connectionsController(root);
+  const publications = publicationsController(root);
 
   // Акаунти користувача + компанії акаунта (switcher-и shell)
   r.get("/accounts", accounts.list);
@@ -132,5 +137,27 @@ export function businessRoutes(root: Composition): Router {
   r.patch("/plan-entries/:id", requirePermission("plan:write"), planner.patch);
   r.post("/plan-entries/approve", requirePermission("plan:write"), planner.approve);
 
+  // Пряма публікація (§publishing §3). Підключення соцмереж/Telegram + публікація схвалених постів.
+  // list — read (будь-який член, RLS ізолює); мутації токенів — connection:manage (owner/admin);
+  // публікація — publish:manage (+ editor). callback — ЛИШЕ під auth (сесія долітає з редіректом
+  // провайдера), без permission-гварда: це технічний redirect-target, а не мутація-намір.
+  r.get("/connections", connections.list);
+  r.post("/connections/:provider/authorize", requirePermission("connection:manage"), connections.authorize);
+  r.get("/connections/:provider/callback", connections.callback);
+  r.put("/connections/telegram", requirePermission("connection:manage"), connections.telegram);
+  r.delete("/connections/:provider", requirePermission("connection:manage"), connections.disconnect);
+  r.post("/runs/:id/publish", requirePermission("publish:manage"), publications.publish);
+  r.get("/runs/:id/publications", publications.list);
+
+  return r;
+}
+
+// Публічні /v1-роути БЕЗ auth-middleware (монтуються у server.ts ПЕРЕД auth-гейтом). Тут лише
+// роздача зображень за підписаним токеном: її б'є СЕРВЕР провайдера (Instagram) без cookie-сесії,
+// тож requireAuth тут неприпустимий — авторизація вшита у сам HMAC-токен (§publishing §2.5).
+export function publicRoutes(root: Composition): Router {
+  const r = Router();
+  const publicMedia = publicMediaController(root);
+  r.get("/media/public/:token", publicMedia.serve);
   return r;
 }

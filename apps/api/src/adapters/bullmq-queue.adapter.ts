@@ -8,6 +8,7 @@ import {
   onboardingBootstrapJob,
   suggestTopicsJob,
   suggestRunTopicsJob,
+  publishContentJob,
 } from "@forteq/shared";
 import type {
   QueuePort,
@@ -15,6 +16,7 @@ import type {
   EnqueueBootstrapPayload,
   EnqueueSuggestTopicsPayload,
   EnqueueSuggestRunTopicsPayload,
+  EnqueuePublishPayload,
 } from "../ports/queue.port";
 
 // Назва черги — ЄДИНЕ джерело правди, узгоджене з consumer'ом (apps/worker QUEUE_NAMES.jobs).
@@ -106,6 +108,23 @@ export class BullMqQueueAdapter implements QueuePort {
     });
     await this.queue.add(data.kind, data, { jobId, ...JOB_OPTS });
     this.logger.info({ jobId, kind: data.kind }, "enqueued runtopics.suggest job");
+    return { jobId };
+  }
+
+  async enqueuePublish(p: EnqueuePublishPayload): Promise<{ jobId: string }> {
+    // dash-only jobId (БЕЗ двокрапок — landmine BullMQ): один прогін може публікуватись кілька разів
+    // (retry/довибір айтемів), тож short-nonce робить кожен enqueue унікальним, а не дедуплить.
+    const short = randomUUID().slice(0, 8);
+    const jobId = `publish-${p.runId}-${short}`;
+    const data = publishContentJob.parse({
+      kind: "content.publish",
+      jobId,
+      accountId: p.accountId,
+      runId: p.runId,
+      targets: p.targets,
+    });
+    await this.queue.add(data.kind, data, { jobId, ...JOB_OPTS });
+    this.logger.info({ jobId, kind: data.kind }, "enqueued publish job");
     return { jobId };
   }
 

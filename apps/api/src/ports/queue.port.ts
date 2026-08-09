@@ -33,6 +33,14 @@ export interface EnqueueSuggestRunTopicsPayload {
   draftId: string;
 }
 
+// Публікація схвалених постів (§publishing §1.4). targets несе лише itemId+provider — токени
+// resolve'ляться воркером за accountId на момент виконання (НЕ у payload/checkpointer, §ADR-0016).
+export interface EnqueuePublishPayload {
+  accountId: string;
+  runId: string;
+  targets: Array<{ itemId: string; provider: "linkedin" | "twitter" | "instagram" }>;
+}
+
 export interface QueuePort {
   // generate → generation.start; resume → generation.resume (jobs.ts).
   enqueueRun(payload: EnqueueRunPayload): Promise<{ jobId: string }>;
@@ -42,4 +50,6 @@ export interface QueuePort {
   enqueueSuggestTopics(payload: EnqueueSuggestTopicsPayload): Promise<{ jobId: string }>;
   // topic preview → runtopics.suggest.
   enqueueSuggestRunTopics(payload: EnqueueSuggestRunTopicsPayload): Promise<{ jobId: string }>;
+  // §publishing → content.publish.
+  enqueuePublish(payload: EnqueuePublishPayload): Promise<{ jobId: string }>;
 }

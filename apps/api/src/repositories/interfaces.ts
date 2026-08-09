@@ -389,6 +389,68 @@ export interface InboxItemsRepo {
   resolveByEntity(accountId: string, entityId: string, resolvedBy: string | null): Promise<void>;
 }
 
+// ── Пряма публікація: service_connections + publications (§publishing foundation §2/§3) ──────
+// Маскована форма connection'а для api/UI — БЕЗ *_ct (токенів). Дзеркалить last4-правило api_keys:
+// шифротекст НІКОЛИ не виходить із репо; розшифровує токени лише worker на момент публікації.
+export interface ServiceConnectionMasked {
+  provider: string;
+  status: string;
+  externalAccountId: string | null;
+  externalAccountName: string | null;
+  scopes: string[]; // розпарсені зі збереженого рядка (пробіл/кома)
+  expiresAt: string | null;
+  lastUsedAt: string | null;
+  createdAt: string;
+}
+
+// Вхід upsert'а — уже ГОТОВИЙ шифротекст (шифрування живе у сервісі з master-ключем, як BYOK).
+export interface NewServiceConnection {
+  provider: string;
+  status?: string; // дефолт 'connected'
+  accessTokenCt: string | null; // base64 blob; nullable-шов, але на практиці завжди заданий
+  refreshTokenCt?: string | null;
+  externalAccountId?: string | null;
+  externalAccountName?: string | null;
+  scopes?: string | null; // рядок як зберігаємо (пробіл/кома-joined)
+  expiresAt?: Date | null;
+  meta?: Record<string, unknown>;
+}
+
+// getDecryptedForProvider тут НЕМАЄ свідомо: розшифрування — відповідальність сервісу/воркера (з
+// master-ключем), репо віддає лише масковану форму (defense-in-depth поверх RLS, accountId перший).
+export interface ServiceConnectionsRepo {
+  list(accountId: string): Promise<ServiceConnectionMasked[]>;
+  upsert(accountId: string, data: NewServiceConnection): Promise<void>;
+  delete(accountId: string, provider: string): Promise<boolean>;
+  existsByProvider(accountId: string, provider: string): Promise<boolean>;
+}
+
+// DTO-проєкція publications для per-run UI (без account/run — вони в шляху/скоупі).
+export interface PublicationRow {
+  id: string;
+  contentItemId: string;
+  provider: string;
+  status: string;
+  externalUrl: string | null;
+  error: string | null;
+  publishedAt: string | null;
+  createdAt: string;
+}
+
+// Рядок для upsert'а pending-публікації (api лише СТВОРЮЄ pending; результат пише worker).
+export interface NewPendingPublication {
+  contentItemId: string;
+  runId: string;
+  provider: string;
+}
+
+export interface PublicationsRepo {
+  listByRun(accountId: string, runId: string): Promise<PublicationRow[]>;
+  // Ідемпотентний upsert pending-рядків: повторний publish не дублює й не збиває вже 'published'
+  // (idempotency-ключ UNIQUE(content_item_id, provider) + setWhere status<>'published').
+  upsertPending(accountId: string, items: NewPendingPublication[]): Promise<void>;
+}
+
 // Бег репо — будується на кожен запит поверх request-scoped tx (buildRepos, §4.1).
 export interface Repos {
   accounts: AccountsRepo;
@@ -405,4 +467,6 @@ export interface Repos {
   topicDrafts: TopicDraftsRepo;
   runConfigPresets: RunConfigPresetsRepo;
   members: MembersRepo;
+  serviceConnections: ServiceConnectionsRepo;
+  publications: PublicationsRepo;
 }

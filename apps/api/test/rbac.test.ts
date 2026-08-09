@@ -23,6 +23,8 @@ const EXPECTED: Record<Role, Permission[]> = {
     "apikey:manage",
     "member:manage",
     "content:edit",
+    "connection:manage",
+    "publish:manage",
   ],
   admin: [
     "company:write",
@@ -34,6 +36,8 @@ const EXPECTED: Record<Role, Permission[]> = {
     "apikey:manage",
     "member:manage",
     "content:edit",
+    "connection:manage",
+    "publish:manage",
   ],
   editor: [
     "company:write",
@@ -42,6 +46,7 @@ const EXPECTED: Record<Role, Permission[]> = {
     "run:start",
     "decision:make",
     "content:edit",
+    "publish:manage",
   ],
   reviewer: ["decision:make"],
   viewer: [],

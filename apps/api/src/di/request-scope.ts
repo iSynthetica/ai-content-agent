@@ -17,6 +17,8 @@ import { DrizzleInboxRepo, DrizzleNotificationsRepo } from "../repositories/noti
 import { DrizzleTopicDraftsRepo } from "../repositories/topic-drafts.repo";
 import { DrizzleRunConfigPresetsRepo } from "../repositories/run-config-presets.repo";
 import { DrizzleMembersRepo } from "../repositories/members.repo";
+import { DrizzleServiceConnectionsRepo } from "../repositories/service-connections.repo";
+import { DrizzlePublicationsRepo } from "../repositories/publications.repo";
 
 import { AccountsService } from "../services/accounts.service";
 import { CompaniesService } from "../services/companies.service";
@@ -31,6 +33,9 @@ import { ApiKeysService } from "../services/api-keys.service";
 import { RunTopicDraftsService } from "../services/run-topic-drafts.service";
 import { RunConfigPresetsService } from "../services/run-config-presets.service";
 import { MembersService } from "../services/members.service";
+import { ConnectionsService } from "../services/connections.service";
+import { PublicationsService } from "../services/publications.service";
+import type { AppConfig } from "../config/env";
 import type { Auth } from "../auth/better-auth";
 import {
   NotificationServiceImpl,
@@ -52,6 +57,8 @@ export interface Services {
   runTopicDrafts: RunTopicDraftsService;
   runConfigPresets: RunConfigPresetsService;
   members: MembersService;
+  connections: ConnectionsService;
+  publications: PublicationsService;
 }
 
 export interface RequestScope {
@@ -78,6 +85,8 @@ export function buildRepos(tx: DbExecutor): Repos {
     topicDrafts: new DrizzleTopicDraftsRepo(tx),
     runConfigPresets: new DrizzleRunConfigPresetsRepo(tx),
     members: new DrizzleMembersRepo(tx),
+    serviceConnections: new DrizzleServiceConnectionsRepo(tx),
+    publications: new DrizzlePublicationsRepo(tx),
   };
 }
 
@@ -91,6 +100,7 @@ export function buildRequestScope(
   logger: Logger,
   masterKey: Buffer,
   authInstance: Auth, // better-auth (§RBAC member-mgmt): провіженінг ba_user при «додати члена»
+  config: AppConfig, // §publishing: ConnectionsService читає OAuth-реєстр + секрети cookie з env
 ): RequestScope {
   const repos = buildRepos(tx);
   // NotificationService — реальна реалізація (Фаза 3, B11a): пише у notifications/inbox_items
@@ -142,6 +152,17 @@ export function buildRequestScope(
     runConfigPresets: new RunConfigPresetsService(repos.runConfigPresets, repos.companies),
     // Керування членами акаунта (§RBAC member-mgmt F2): активує наявний RBAC. auth — для провіженінгу.
     members: new MembersService(repos.members, authInstance, logger),
+    // Підключення соцмереж/Telegram (§publishing §3): шифрує токени master-ключем; OAuth-реєстр і
+    // секрети cookie бере з config. HTTP-обмін — у контролері ПОЗА txn.
+    connections: new ConnectionsService(repos.serviceConnections, masterKey, config),
+    // Публікація схвалених постів (§publishing §3): валідує + pending + after-commit enqueuePublish.
+    publications: new PublicationsService(
+      repos.publications,
+      repos.runs,
+      repos.contentItems,
+      afterCommit,
+      logger,
+    ),
   };
 
   return { auth, afterCommit, repos, services };

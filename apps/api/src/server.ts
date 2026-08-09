@@ -9,7 +9,7 @@ import type { Composition } from "./composition";
 import { AppError, toErrorEnvelope } from "./http/errors";
 import { authMiddleware } from "./http/middlewares/auth";
 import { authRoutes } from "./http/routes/auth.routes";
-import { businessRoutes } from "./http/routes/index";
+import { businessRoutes, publicRoutes } from "./http/routes/index";
 
 // Розширення Express.Request полями каркаса (заповнює request-context middleware).
 declare global {
@@ -64,6 +64,10 @@ export function createServer(root: Composition): Express {
 
   // /v1/auth/* — тонкі обгортки Better Auth, БЕЗ business-auth-middleware (це сам вхід у сесію).
   app.use("/v1/auth", authRoutes(root));
+
+  // Публічна роздача медіа за підписаним токеном (§publishing §2.5) — ПЕРЕД auth-гейтом: її б'є
+  // сервер провайдера без cookie. Не збігається з бізнес-роутами — інше падає далі під auth.
+  app.use("/v1", publicRoutes(root));
 
   // Бізнес /v1/* — за auth-middleware (req.auth) + request-scope (openScope у контролерах, §2.10.3).
   app.use("/v1", authMiddleware(root), businessRoutes(root));

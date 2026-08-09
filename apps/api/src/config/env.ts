@@ -28,6 +28,19 @@ export const envSchema = z.object({
   IMAGE_STORAGE_DIR: z.string().default("/data/images"),
   PUBLIC_BASE_URL: z.string().url().optional(),
 
+  // Публікація в соцмережі (§publishing, master-plan §2 п.5).
+  // MEDIA_SIGNING_SECRET — спільний секрет HMAC для публічних медіа-токенів (worker підписує URL
+  // зображення, який тягне СЕРВЕР провайдера без cookie; api-роут /media/public/:token перевіряє).
+  // Той самий секрет підписує короткоживучий OAuth-state-cookie (CSRF + PKCE-verifier), якщо
+  // окремий OAUTH_STATE_SECRET не заданий.
+  MEDIA_SIGNING_SECRET: z.string().min(16),
+  // Абсолютна база публічних медіа-URL (worker мінтить сюди; api тримає для симетрії конфіга).
+  PUBLIC_MEDIA_BASE_URL: z.string().url().default("https://saas.forteqsolution.com/api"),
+  // Окремий секрет для підпису OAuth-state-cookie (шов). Не заданий → реюз MEDIA_SIGNING_SECRET.
+  OAUTH_STATE_SECRET: z.string().min(16).optional(),
+  // Провайдерські client id/secret (LINKEDIN_/X_/IG_) додають АДАПТЕР-фази у lib/oauth/providers.ts —
+  // тут їх свідомо НЕ оголошуємо: провайдер без кред просто «не сконфігурований» (кнопка Connect off).
+
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
 });
 
