@@ -22,20 +22,19 @@ export function twitterOAuthConfig(env: AppConfig): OAuthProviderConfig {
     authorizeUrl: "https://twitter.com/i/oauth2/authorize",
     tokenUrl: "https://api.twitter.com/2/oauth2/token",
     scopes: TWITTER_SCOPES,
-    clientId: env.X_CLIENT_ID!,
-    clientSecret: env.X_CLIENT_SECRET!,
     redirectUri,
     // X — обидва прапорці, на відміну від LinkedIn: PKCE обовʼязковий навіть для confidential-клієнта;
     // креди йдуть HTTP Basic'ом (Authorization: Basic base64(id:secret)), не в тілі форми.
     usesPkce: true,
     tokenAuth: "basic",
 
-    // state ставить фреймворк; pkce.challenge інжектиться сюди, коли usesPkce (exchange.buildAuthorizeUrl).
-    // scope-роздільник (пробіл) теж тут — фреймворк не join'ить сам (master-plan §2 п.3).
-    buildAuthParams(state: string, pkce) {
+    // state ставить фреймворк; clientId приходить per-request (креди орендаря/env, BYO-app);
+    // pkce.challenge інжектиться сюди, коли usesPkce (exchange.buildAuthorizeUrl). scope-роздільник
+    // (пробіл) теж тут — фреймворк не join'ить сам (master-plan §2 п.3).
+    buildAuthParams(clientId: string, state: string, pkce) {
       const params: Record<string, string> = {
         response_type: "code",
-        client_id: env.X_CLIENT_ID!,
+        client_id: clientId,
         redirect_uri: redirectUri,
         state,
         scope: TWITTER_SCOPES.join(" "),
@@ -67,7 +66,8 @@ export function twitterOAuthConfig(env: AppConfig): OAuthProviderConfig {
 
     // Identity через GET /2/users/me. id → external_account_id; name → "@"+username (людська назва);
     // username кладемо в meta для потенційної побудови URL /<username>/status/<id> (§2.7).
-    async fetchAccountIdentity(accessToken: string) {
+    // creds не потрібні: X identity — лише Bearer-виклик users/me (на відміну від IG).
+    async fetchAccountIdentity(_creds, accessToken: string) {
       const r = await fetch("https://api.twitter.com/2/users/me?user.fields=username,name", {
         headers: { Authorization: `Bearer ${accessToken}` },
       });

@@ -40,8 +40,8 @@ export const envSchema = z.object({
   OAUTH_STATE_SECRET: z.string().min(16).optional(),
 
   // ── LinkedIn OAuth + Posts API (§publishing/01-linkedin §7) ──
-  // Усі креди optional: без них провайдер «не сконфігурований» і кнопка Connect вимкнена
-  // (foundation §3.1, isConfigured → false). client_secret — тільки з env, у логи ніколи.
+  // Креди optional: BYO-app (§byo-oauth-app-creds) — застосунок належить орендарю (креди в БД); env —
+  // лише ТИХИЙ FALLBACK, коли орендар не приніс свій. client_secret — тільки з env, у логи ніколи.
   LINKEDIN_CLIENT_ID: z.string().optional(),
   LINKEDIN_CLIENT_SECRET: z.string().optional(),
   // Абсолютний HTTPS redirect, ЗБІГ із зареєстрованим у LinkedIn-застосунку (§2.1). Читається у
@@ -54,8 +54,8 @@ export const envSchema = z.object({
   LINKEDIN_API_VERSION: z.string().regex(/^\d{6}$/).default("202606"),
 
   // ── X/Twitter OAuth 2.0 + PKCE (§publishing/02-twitter §8) ──
-  // Обидві креди optional: без них провайдер «не сконфігурований» і кнопка Connect вимкнена
-  // (foundation §3.1, isConfigured → false). client_secret — тільки з env, у логи ніколи.
+  // Креди optional: BYO-app — застосунок орендаря (креди в БД); env — лише тихий FALLBACK.
+  // client_secret — тільки з env, у логи ніколи.
   X_CLIENT_ID: z.string().optional(),
   X_CLIENT_SECRET: z.string().optional(),
   // Абсолютний HTTPS redirect, ТОЧНИЙ збіг із зареєстрованим у X-застосунку (§2.1). Читається у
@@ -66,9 +66,8 @@ export const envSchema = z.object({
     .default("https://saas.forteqsolution.com/api/connections/twitter/callback"),
 
   // ── Instagram OAuth (Facebook Login for Business) (§publishing/03-instagram §9) ──
-  // Обидві креди optional: без них провайдер «не сконфігурований» і кнопка Connect вимкнена
-  // (foundation §3.1, isConfigured → false). client_secret — тільки з env, у логи ніколи.
-  // = Meta App ID / App Secret.
+  // Креди optional: BYO-app — застосунок орендаря (креди в БД); env — лише тихий FALLBACK.
+  // client_secret — тільки з env, у логи ніколи. = Meta App ID / App Secret.
   IG_CLIENT_ID: z.string().optional(),
   IG_CLIENT_SECRET: z.string().optional(),
   // Абсолютний HTTPS redirect, ТОЧНИЙ збіг із зареєстрованим у Meta-застосунку (§10). Читається у

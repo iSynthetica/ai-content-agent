@@ -30,19 +30,30 @@ export interface AccountIdentity {
   tokenOverride?: string; // якщо заданий — зберігається як access_token (замість OAuth-токена)
 }
 
-// Конфіг одного провайдера. Усе, чим соцмережі різняться, — тут; решта коду параметрична.
+// OAuth-креди застосунку (client id + secret). BYO-app (§byo-oauth-app-creds): резолвляться
+// per-request у сервісі (креди орендаря з БД → інакше платформенні env-fallback), а НЕ запікаються
+// у конфіг провайдера. Так один код-path обслуговує застосунок кожного орендаря окремими кредами.
+export interface OAuthCreds {
+  clientId: string;
+  clientSecret: string;
+}
+
+// Конфіг одного провайдера. Усе, чим соцмережі різняться, — тут; решта коду параметрична. Креди
+// (clientId/clientSecret) СВІДОМО тут НЕМАЄ — вони per-request (OAuthCreds), бо застосунок належить
+// орендарю (BYO-app), а не платформі. Конфіг лишається чистою статичною метаданою провайдера.
 export interface OAuthProviderConfig {
   authorizeUrl: string; // consent-ендпоінт
   tokenUrl: string; // code → token
   scopes: string[]; // запитувані scope
-  clientId: string; // з env (адаптер-фаза); НІКОЛИ не хардкод
-  clientSecret: string; // з env (адаптер-фаза)
   redirectUri: string; // зареєстрований у провайдера redirect (через web-BFF → api callback)
   usesPkce?: boolean; // X/Twitter — true
   tokenAuth?: "params" | "basic"; // LinkedIn/IG — params (creds у тілі); X — basic (Authorization)
-  // Будує query authorize-URL. scope-роздільник — тут (LinkedIn/X пробіл, FB/IG кома): фреймворк
-  // НЕ join'ить сам (master-plan §2 п.3). pkce переданий, коли usesPkce.
-  buildAuthParams(state: string, pkce?: PkcePair): Record<string, string>;
+  // Будує query authorize-URL. clientId приходить per-request (креди орендаря/env). scope-роздільник
+  // — тут (LinkedIn/X пробіл, FB/IG кома): фреймворк НЕ join'ить сам (master-plan §2 п.3). pkce
+  // переданий, коли usesPkce.
+  buildAuthParams(clientId: string, state: string, pkce?: PkcePair): Record<string, string>;
   parseTokenResponse(json: unknown): ParsedTokenResponse;
-  fetchAccountIdentity(accessToken: string): Promise<AccountIdentity>;
+  // creds потрібні IG (fb_exchange_token робить app-scoped обмін токена й мусить іти саме тими
+  // кредами, якими зроблено code-exchange); LinkedIn/X їх ігнорують (identity — лише Bearer-токен).
+  fetchAccountIdentity(creds: OAuthCreds, accessToken: string): Promise<AccountIdentity>;
 }

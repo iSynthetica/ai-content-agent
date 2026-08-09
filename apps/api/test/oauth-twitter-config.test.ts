@@ -27,9 +27,10 @@ describe("twitterOAuthConfig", () => {
     ]);
   });
 
-  it("space-joins scope and injects the PKCE challenge into authorize params", () => {
+  it("space-joins scope and injects the PKCE challenge + per-request clientId into authorize params", () => {
     const cfg = twitterOAuthConfig(env);
-    const params = cfg.buildAuthParams("st-1", { verifier: "v", challenge: "ch" });
+    // clientId тепер приходить per-request (BYO-app), а не з env-конфіга.
+    const params = cfg.buildAuthParams("x-client", "st-1", { verifier: "v", challenge: "ch" });
     expect(params.response_type).toBe("code");
     expect(params.client_id).toBe("x-client");
     expect(params.redirect_uri).toBe(env.X_REDIRECT_URI);

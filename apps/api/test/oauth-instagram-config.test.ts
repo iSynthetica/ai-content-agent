@@ -27,12 +27,14 @@ describe("instagramOAuthConfig", () => {
     expect(cfg.tokenUrl).toBe("https://graph.facebook.com/v21.0/oauth/access_token");
   });
 
-  it("comma-joins scope in authorize params (FB, not space)", () => {
+  it("comma-joins scope in authorize params (FB, not space) + per-request clientId", () => {
     const cfg = instagramOAuthConfig(env);
-    const params = cfg.buildAuthParams("st-1");
+    // clientId тепер приходить per-request (BYO-app), а не з env-конфіга.
+    const params = cfg.buildAuthParams("ig-client", "st-1");
     expect(params.scope).toContain(",");
     expect(params.scope).not.toContain(" ");
     expect(params.scope).toContain("instagram_content_publish");
+    expect(params.client_id).toBe("ig-client");
     expect(params.redirect_uri).toBe(env.IG_REDIRECT_URI);
     expect(params.state).toBe("st-1");
   });
@@ -53,7 +55,10 @@ describe("instagramOAuthConfig", () => {
       }),
     );
     const cfg = instagramOAuthConfig(env);
-    const identity = await cfg.fetchAccountIdentity("SHORT_USER_TOKEN");
+    const identity = await cfg.fetchAccountIdentity(
+      { clientId: "ig-client", clientSecret: "ig-secret" },
+      "SHORT_USER_TOKEN",
+    );
     expect(identity.id).toBe("ig-999");
     expect(identity.tokenOverride).toBe("PAGE_TOKEN");
     expect((identity.meta as { igUserId?: string }).igUserId).toBe("ig-999");
@@ -70,6 +75,8 @@ describe("instagramOAuthConfig", () => {
       }),
     );
     const cfg = instagramOAuthConfig(env);
-    await expect(cfg.fetchAccountIdentity("SHORT")).rejects.toThrow(/Instagram Business/);
+    await expect(
+      cfg.fetchAccountIdentity({ clientId: "ig-client", clientSecret: "ig-secret" }, "SHORT"),
+    ).rejects.toThrow(/Instagram Business/);
   });
 });

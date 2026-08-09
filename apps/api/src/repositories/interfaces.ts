@@ -410,6 +410,18 @@ export interface ServiceConnectionMasked {
   expiresAt: string | null;
   lastUsedAt: string | null;
   createdAt: string;
+  // BYO-app (§byo-oauth-app-creds): чи введено обидві креди застосунку орендаря (id + secret).
+  appConfigured: boolean;
+  // client id — НЕ секрет, тож віддаємо (UI показує, який застосунок підключено). СЕКРЕТ — НІКОЛИ.
+  appClientId: string | null;
+}
+
+// Креди застосунку орендаря для OAuth-обміну. app_client_secret_ct — шифротекст (сервіс розшифрує
+// master-ключем). Свідомий виняток із «*_ct не виходить із репо»: OAuth-обмін робить САМЕ api (не
+// worker), тож сервісу api потрібен секрет, щоб виконати exchange/refresh кредами орендаря.
+export interface ServiceConnectionAppCreds {
+  appClientId: string | null;
+  appClientSecretCt: string | null;
 }
 
 // Вхід upsert'а — уже ГОТОВИЙ шифротекст (шифрування живе у сервісі з master-ключем, як BYOK).
@@ -432,6 +444,17 @@ export interface ServiceConnectionsRepo {
   upsert(accountId: string, data: NewServiceConnection): Promise<void>;
   delete(accountId: string, provider: string): Promise<boolean>;
   existsByProvider(accountId: string, provider: string): Promise<boolean>;
+  // BYO-app (§byo-oauth-app-creds): креди застосунку орендаря для OAuth-обміну (сервіс розшифрує
+  // секрет). null → рядка немає (сервіс падає на env-fallback).
+  getAppCredentials(accountId: string, provider: string): Promise<ServiceConnectionAppCreds | null>;
+  // Записує ЛИШЕ креди застосунку (app_client_id + app_client_secret_ct), зберігаючи токени/статус
+  // наявного рядка. Створює рядок (status 'disconnected', без токенів), якщо його ще немає.
+  setAppCredentials(
+    accountId: string,
+    provider: string,
+    clientId: string,
+    clientSecretCt: string,
+  ): Promise<void>;
 }
 
 // DTO-проєкція publications для per-run UI (без account/run — вони в шляху/скоупі).

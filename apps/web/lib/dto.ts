@@ -20,6 +20,7 @@ export {
   connectionDTO,
   connectionsResponse,
   authorizeConnectionResponse,
+  setAppCredentialsRequest,
   telegramConfigRequest,
   publishRequest,
   publicationDTO,
@@ -40,6 +41,7 @@ export type {
   PublicationDTO,
   PublishProvider,
   TelegramConfigRequest,
+  SetAppCredentialsRequest,
 } from "@forteq/shared";
 
 // Локальна відповідь-підтвердження для мутацій без сутності (НЕ частина контракту межі —

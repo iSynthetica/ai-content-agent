@@ -1,31 +1,8 @@
-// Реєстр OAuth-провайдерів (§publishing foundation §3.1). ПОРОЖНІЙ у foundation-фазі: адаптер-фази
-// (linkedin/twitter/instagram) додають сюди по одному запису OAuthProviderConfig і відповідні
-// env-креди (LINKEDIN_CLIENT_ID/SECRET, X_CLIENT_ID/SECRET, IG_CLIENT_ID/SECRET) у config/env.ts.
-//
-// Форма одного запису (шов для адаптера — ЗАПОВНЮЙ ТУТ):
-//   linkedin: env.LINKEDIN_CLIENT_ID && env.LINKEDIN_CLIENT_SECRET
-//     ? {
-//         authorizeUrl: "https://www.linkedin.com/oauth/v2/authorization",
-//         tokenUrl: "https://www.linkedin.com/oauth/v2/accessToken",
-//         scopes: ["openid", "profile", "w_member_social"],
-//         clientId: env.LINKEDIN_CLIENT_ID,
-//         clientSecret: env.LINKEDIN_CLIENT_SECRET,
-//         redirectUri: `${env.PUBLIC_MEDIA_BASE_URL}/connections/linkedin/callback`,
-//         tokenAuth: "params",
-//         buildAuthParams: (state) => ({
-//           response_type: "code",
-//           client_id: env.LINKEDIN_CLIENT_ID!,
-//           redirect_uri: `${env.PUBLIC_MEDIA_BASE_URL}/connections/linkedin/callback`,
-//           state,
-//           scope: ["openid", "profile", "w_member_social"].join(" "), // scope-роздільник тут
-//         }),
-//         parseTokenResponse: (json) => ({ accessToken: (json as any).access_token, ... }),
-//         fetchAccountIdentity: async (accessToken) => ({ id, name, meta }),
-//       }
-//     : undefined,
-//
-// isConfigured(env, provider) → true лише коли запис присутній (тобто креди в env є). UI вимикає
-// кнопку Connect для не-сконфігурованих провайдерів.
+// Реєстр OAuth-провайдерів (§publishing foundation §3.1, §byo-oauth-app-creds). ЗАВЖДИ реєструє всі
+// три соц-провайдери: конфіг тепер — чиста статична метадана (authorize/token URLs, scopes, tokenAuth,
+// PKCE), БЕЗ кред. Креди (client id + secret) належать орендарю (BYO-app) і резолвляться per-request
+// у ConnectionsService.resolveCreds (креди з БД → env-fallback). Тому «configured» більше НЕ залежить
+// від наявності env-запису тут — це per-tenant перевірка в сервісі (env-gate прибрано).
 import type { PublishProvider } from "@forteq/shared";
 import type { AppConfig } from "../../config/env";
 import type { OAuthProviderConfig } from "./types";
@@ -36,27 +13,10 @@ import { instagramOAuthConfig } from "./providers/instagram";
 export function oauthProviders(
   env: AppConfig,
 ): Partial<Record<PublishProvider, OAuthProviderConfig>> {
-  const providers: Partial<Record<PublishProvider, OAuthProviderConfig>> = {};
-  // linkedin — запис присутній ЛИШЕ коли обидві креди задані; інакше провайдер «не сконфігурований»
-  // (isConfigured → false, UI вимикає кнопку Connect). Секрети — тільки з env, у логи ніколи.
-  if (env.LINKEDIN_CLIENT_ID && env.LINKEDIN_CLIENT_SECRET) {
-    providers.linkedin = linkedinOAuthConfig(env);
-  }
-  // twitter — той самий шов: запис присутній ЛИШЕ коли обидві X-креди задані (usesPkce+basic виставляє
-  // конфіг провайдера; фреймворк-шлях їх лише читає). Без кред — isConfigured→false, Connect вимкнено.
-  if (env.X_CLIENT_ID && env.X_CLIENT_SECRET) {
-    providers.twitter = twitterOAuthConfig(env);
-  }
-  // instagram — той самий шов: запис лише коли обидві IG-креди задані. Специфіка IG (comma-scopes,
-  // PAGE-токен через tokenOverride, ig-user-id discovery) інкапсульована в instagramOAuthConfig.
-  if (env.IG_CLIENT_ID && env.IG_CLIENT_SECRET) {
-    providers.instagram = instagramOAuthConfig(env);
-  }
-  return providers;
-}
-
-// «Сконфігурований» = у реєстрі є запис (адаптер повертає undefined без кред). Дешева перевірка для
-// connectionsResponse.configured — фронт (server-компонент без доступу до env api) інакше не знав би.
-export function isConfigured(env: AppConfig, provider: PublishProvider): boolean {
-  return oauthProviders(env)[provider] !== undefined;
+  // Усі три — завжди. env потрібен лише для статики (redirectUri, IG_GRAPH_VERSION), не для кред.
+  return {
+    linkedin: linkedinOAuthConfig(env),
+    twitter: twitterOAuthConfig(env),
+    instagram: instagramOAuthConfig(env),
+  };
 }

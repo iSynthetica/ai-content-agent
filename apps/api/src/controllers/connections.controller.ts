@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   connectionProviderSchema,
   publishProviderSchema,
+  setAppCredentialsRequest,
   telegramConfigRequest,
 } from "@forteq/shared";
 import type { Composition } from "../composition";
@@ -37,10 +38,22 @@ export function connectionsController(root: Composition) {
       const auth = requireAuth(req);
       const provider = publishProviderSchema.parse(req.params.provider);
       const { authUrl, setCookie } = await root.openScope(auth, async (s) =>
-        s.services.connections.startAuthorize(provider),
+        s.services.connections.startAuthorize(auth, provider),
       );
       res.setHeader("Set-Cookie", setCookie);
       res.status(200).json({ authUrl });
+    }),
+
+    // BYO-app: орендар зберігає креди власного OAuth-застосунку (client id + secret). Секрет
+    // шифрується у сервісі (master-ключ); назад НІКОЛИ не віддається (204).
+    setAppCredentials: asyncHandler(async (req: Request, res: Response) => {
+      const auth = requireAuth(req);
+      const provider = publishProviderSchema.parse(req.params.provider);
+      const body = setAppCredentialsRequest.parse(req.body);
+      await root.openScope(auth, (s) =>
+        s.services.connections.setAppCredentials(auth, provider, body),
+      );
+      res.status(204).end();
     }),
 
     // Redirect-target провайдера. НІКОЛИ не кидає у відповідь JSON-помилку — завжди редіректить
@@ -68,10 +81,17 @@ export function connectionsController(root: Composition) {
       const cfg = oauthProviders(root.config)[provider];
       if (!cfg) return redirectBack(res, `error=not_configured&provider=${provider}`);
 
+      // Резолвимо креди орендаря (→env) у КОРОТКІЙ txn ДО exchange (сам exchange — HTTP ПОЗА txn,
+      // hard-boundary #4). Без кред → редірект not_configured (не запускаємо exchange наосліп).
+      const creds = await root.openScope(auth, (s) =>
+        s.services.connections.resolveCreds(auth, provider),
+      );
+      if (!creds) return redirectBack(res, `error=not_configured&provider=${provider}`);
+
       try {
-        // HTTP ПОЗА будь-якою txn (hard-boundary #4).
-        const tokens = await exchangeCode(cfg, query.data.code, payload.verifier);
-        const identity = await cfg.fetchAccountIdentity(tokens.accessToken);
+        // HTTP ПОЗА будь-якою txn (hard-boundary #4). Кредами орендаря (BYO-app) або env-fallback.
+        const tokens = await exchangeCode(cfg, creds, query.data.code, payload.verifier);
+        const identity = await cfg.fetchAccountIdentity(creds, tokens.accessToken);
         // Коротка txn: шифруємо й upsert'имо (усередині сервісу з master-ключем).
         await root.openScope(auth, (s) =>
           s.services.connections.saveConnection(auth, provider, {

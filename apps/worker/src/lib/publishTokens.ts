@@ -2,13 +2,19 @@
 //
 // Свідомо НЕ імпортуємо з apps/api (тверда межа між застосунками) — це локальне дзеркало
 // apps/api/src/lib/oauth/exchange.ts:refreshAccessToken. Тримаємо мінімальним: token-URL і стиль
-// авторизації беремо зі статичної per-provider мапи, client_id/secret — з env воркера.
+// авторизації беремо зі статичної per-provider мапи, client_id/secret приходять КРЕДАМИ від виклика.
 //
-// Foundation-фаза: кред у env зазвичай ще нема → refresh повертає null, і хендлер позначає
-// публікацію failed "reconnect required". Адаптер-фази додають креди того ж провайдера.
+// BYO-app (§byo-oauth-app-creds): креди резолвить хендлер (креди орендаря з рядка service_connections
+// → env-fallback), а НЕ ця функція. Без кред → refresh повертає null, і хендлер позначає публікацію
+// failed "reconnect required".
 import type { Logger as PinoLogger } from "pino";
-import type { Env } from "../config/env.js";
 import type { PublishProvider } from "@forteq/shared";
+
+// Креди OAuth-застосунку для refresh. Резолвить хендлер (орендар→env); тут лише споживаємо.
+export interface OAuthClientCreds {
+  clientId: string;
+  clientSecret: string;
+}
 
 // Розшифрований connection у пам'яті (токени НЕ потрапляють у payload/checkpointer, §ADR-0016).
 export interface DecryptedConnection {
@@ -50,12 +56,6 @@ const TOKEN_ENDPOINTS: Record<
   },
 };
 
-function creds(env: Env, provider: PublishProvider): { id?: string; secret?: string } {
-  if (provider === "linkedin") return { id: env.LINKEDIN_CLIENT_ID, secret: env.LINKEDIN_CLIENT_SECRET };
-  if (provider === "twitter") return { id: env.X_CLIENT_ID, secret: env.X_CLIENT_SECRET };
-  return { id: env.IG_CLIENT_ID, secret: env.IG_CLIENT_SECRET };
-}
-
 /** Токен протух (або протухне за 60с)? Немає expiresAt → вважаємо валідним (не рефрешимо наосліп). */
 export function isExpired(expiresAt: Date | null | undefined, now: Date = new Date()): boolean {
   if (!expiresAt) return false;
@@ -72,7 +72,7 @@ export function isExpired(expiresAt: Date | null | undefined, now: Date = new Da
 export async function refreshIfNeeded(
   provider: PublishProvider,
   conn: DecryptedConnection,
-  env: Env,
+  creds: OAuthClientCreds | null,
   logger: PinoLogger,
 ): Promise<RefreshedToken | null> {
   if (!isExpired(conn.expiresAt)) {
@@ -82,11 +82,11 @@ export async function refreshIfNeeded(
   const cfg = TOKEN_ENDPOINTS[provider];
   if (!cfg.refreshable || !conn.refreshToken) return null; // рефреш неможливий → reconnect required
 
-  const { id, secret } = creds(env, provider);
-  if (!id || !secret) {
-    logger.warn({ provider }, "publishTokens: нема OAuth-кред у env — рефреш пропущено");
+  if (!creds) {
+    logger.warn({ provider }, "publishTokens: нема OAuth-кред (орендаря/env) — рефреш пропущено");
     return null;
   }
+  const { clientId: id, clientSecret: secret } = creds;
 
   try {
     const form = new URLSearchParams({

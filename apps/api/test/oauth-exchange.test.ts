@@ -3,19 +3,20 @@
 // уже в проді. Мокаємо fetch і перевіряємо саме конструкцію заголовка/тіла + проброс PKCE-verifier.
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildAuthorizeUrl, exchangeCode, refreshAccessToken } from "../src/lib/oauth/exchange";
-import type { OAuthProviderConfig } from "../src/lib/oauth/types";
+import type { OAuthCreds, OAuthProviderConfig } from "../src/lib/oauth/types";
+
+// BYO-app: креди тепер per-request (не в конфізі). Один набір на всі тести обміну.
+const CREDS: OAuthCreds = { clientId: "client-123", clientSecret: "secret-xyz" };
 
 function baseCfg(overrides: Partial<OAuthProviderConfig> = {}): OAuthProviderConfig {
   return {
     authorizeUrl: "https://provider.example/oauth/authorize",
     tokenUrl: "https://provider.example/oauth/token",
     scopes: ["read", "write"],
-    clientId: "client-123",
-    clientSecret: "secret-xyz",
     redirectUri: "https://saas.example/api/connections/x/callback",
-    buildAuthParams: (state, pkce) => ({
+    buildAuthParams: (clientId, state, pkce) => ({
       response_type: "code",
-      client_id: "client-123",
+      client_id: clientId,
       redirect_uri: "https://saas.example/api/connections/x/callback",
       state,
       scope: "read write",
@@ -55,7 +56,7 @@ describe("exchangeCode — tokenAuth", () => {
   it('"params": креди в тілі форми, БЕЗ Authorization', async () => {
     const fn = mockFetch();
     const cfg = baseCfg({ tokenAuth: "params" });
-    const res = await exchangeCode(cfg, "the-code");
+    const res = await exchangeCode(cfg, CREDS, "the-code");
 
     const { headers, body } = lastCall(fn);
     expect(headers.authorization).toBeUndefined();
@@ -71,7 +72,7 @@ describe("exchangeCode — tokenAuth", () => {
   it('"basic": Authorization: Basic base64(id:secret), креди НЕ в тілі', async () => {
     const fn = mockFetch();
     const cfg = baseCfg({ tokenAuth: "basic" });
-    await exchangeCode(cfg, "the-code");
+    await exchangeCode(cfg, CREDS, "the-code");
 
     const { headers, body } = lastCall(fn);
     const expected = "Basic " + Buffer.from("client-123:secret-xyz").toString("base64");
@@ -82,14 +83,22 @@ describe("exchangeCode — tokenAuth", () => {
 
   it("PKCE: code_verifier у тілі, коли переданий", async () => {
     const fn = mockFetch();
-    await exchangeCode(baseCfg({ usesPkce: true }), "the-code", "verifier-abc");
+    await exchangeCode(baseCfg({ usesPkce: true }), CREDS, "the-code", "verifier-abc");
     expect(lastCall(fn).body.get("code_verifier")).toBe("verifier-abc");
   });
 
   it("без PKCE: code_verifier відсутній", async () => {
     const fn = mockFetch();
-    await exchangeCode(baseCfg(), "the-code");
+    await exchangeCode(baseCfg(), CREDS, "the-code");
     expect(lastCall(fn).body.get("code_verifier")).toBeNull();
+  });
+
+  it("per-request креди йдуть у обмін (BYO-app), а не з конфіга", async () => {
+    const fn = mockFetch();
+    await exchangeCode(baseCfg({ tokenAuth: "params" }), { clientId: "tenant-id", clientSecret: "tenant-sec" }, "code");
+    const { body } = lastCall(fn);
+    expect(body.get("client_id")).toBe("tenant-id");
+    expect(body.get("client_secret")).toBe("tenant-sec");
   });
 
   it("не-2xx token-ендпоінт → кидає (не тихо повертає сміття)", async () => {
@@ -97,14 +106,14 @@ describe("exchangeCode — tokenAuth", () => {
       "fetch",
       vi.fn(async () => new Response("invalid_grant", { status: 400 })),
     );
-    await expect(exchangeCode(baseCfg(), "bad")).rejects.toThrow(/400/);
+    await expect(exchangeCode(baseCfg(), CREDS, "bad")).rejects.toThrow(/400/);
   });
 });
 
 describe("refreshAccessToken", () => {
   it("шле grant_type=refresh_token + refresh_token", async () => {
     const fn = mockFetch();
-    await refreshAccessToken(baseCfg({ tokenAuth: "params" }), "RT-1");
+    await refreshAccessToken(baseCfg({ tokenAuth: "params" }), CREDS, "RT-1");
     const { body } = lastCall(fn);
     expect(body.get("grant_type")).toBe("refresh_token");
     expect(body.get("refresh_token")).toBe("RT-1");
@@ -112,10 +121,13 @@ describe("refreshAccessToken", () => {
 });
 
 describe("buildAuthorizeUrl", () => {
-  it("делегує scope-рядок у buildAuthParams (НЕ хардкодить space-join)", () => {
-    const url = new URL(buildAuthorizeUrl(baseCfg({ usesPkce: true }), "st-1", { verifier: "v", challenge: "ch" }));
+  it("делегує scope-рядок у buildAuthParams (НЕ хардкодить space-join) + вшиває per-request clientId", () => {
+    const url = new URL(
+      buildAuthorizeUrl(baseCfg({ usesPkce: true }), "tenant-id", "st-1", { verifier: "v", challenge: "ch" }),
+    );
     expect(url.origin + url.pathname).toBe("https://provider.example/oauth/authorize");
     expect(url.searchParams.get("state")).toBe("st-1");
+    expect(url.searchParams.get("client_id")).toBe("tenant-id");
     expect(url.searchParams.get("scope")).toBe("read write");
     expect(url.searchParams.get("code_challenge")).toBe("ch");
     expect(url.searchParams.get("code_challenge_method")).toBe("S256");

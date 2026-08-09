@@ -14,6 +14,7 @@ import {
   authorizeConnectionResponse,
   type ConnectionsResponse,
   type PublishProvider,
+  type SetAppCredentialsRequest,
   type TelegramConfigRequest,
 } from "@/lib/dto";
 
@@ -31,6 +32,17 @@ export function useAuthorize() {
   return useMutation({
     mutationFn: (provider: PublishProvider) =>
       http.post(endpoints.connectionAuthorize(provider), undefined, authorizeConnectionResponse),
+  });
+}
+
+// BYO-app: зберегти креди власного OAuth-застосунку орендаря (client id + secret) для провайдера.
+// Секрет назад НІКОЛИ не приходить; після успіху інвалідуємо connections (appConfigured/appClientId).
+export function useSetAppCredentials() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ provider, input }: { provider: PublishProvider; input: SetAppCredentialsRequest }) =>
+      http.put(endpoints.connectionAppCredentials(provider), input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.connections() }),
   });
 }
 

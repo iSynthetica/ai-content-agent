@@ -88,6 +88,7 @@ export const ALLOW: ReadonlyArray<{ method: string; pattern: RegExp }> = [
 
   // §publishing: підключення соцмереж/Telegram + публікація схвалених постів
   { method: "GET", pattern: /^\/connections$/ },
+  { method: "PUT", pattern: /^\/connections\/[^/]+\/app-credentials$/ }, // BYO-app: { clientId, clientSecret }
   { method: "POST", pattern: /^\/connections\/[^/]+\/authorize$/ }, // → { authUrl } + state-cookie
   { method: "GET", pattern: /^\/connections\/[^/]+\/callback$/ }, // OAuth redirect-target (302 назад)
   { method: "PUT", pattern: /^\/connections\/telegram$/ }, // { botToken, chatId }
@@ -170,6 +171,7 @@ export const endpoints = {
 
   // §publishing: підключення соцмереж/Telegram + публікація
   connections: () => "/api/connections", // GET список (items + configured)
+  connectionAppCredentials: (provider: string) => `/api/connections/${provider}/app-credentials`, // PUT BYO-app
   connectionAuthorize: (provider: string) => `/api/connections/${provider}/authorize`, // POST
   connectionCallback: (provider: string) => `/api/connections/${provider}/callback`, // GET redirect
   connectionTelegram: () => "/api/connections/telegram", // PUT { botToken, chatId }

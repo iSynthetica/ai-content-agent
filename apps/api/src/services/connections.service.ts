@@ -1,4 +1,4 @@
-import { encryptSecret } from "@forteq/db";
+import { decryptSecret, encryptSecret } from "@forteq/db";
 import {
   PUBLISH_PROVIDERS,
   type ConnectionDTO,
@@ -11,8 +11,8 @@ import { AppError } from "../http/errors";
 import type { AppConfig } from "../config/env";
 import type { AuthCtx } from "../di/types";
 import type { ServiceConnectionMasked, ServiceConnectionsRepo } from "../repositories/interfaces";
-import { isConfigured, oauthProviders } from "../lib/oauth/providers";
-import type { AccountIdentity } from "../lib/oauth/types";
+import { oauthProviders } from "../lib/oauth/providers";
+import type { AccountIdentity, OAuthCreds } from "../lib/oauth/types";
 import { buildAuthorizeUrl } from "../lib/oauth/exchange";
 import { generatePkce, generateState } from "../lib/oauth/pkce";
 import {
@@ -41,6 +41,8 @@ function toDTO(m: ServiceConnectionMasked): ConnectionDTO {
     expiresAt: m.expiresAt,
     lastUsedAt: m.lastUsedAt,
     createdAt: m.createdAt,
+    appConfigured: m.appConfigured,
+    appClientId: m.appClientId,
   };
 }
 
@@ -64,28 +66,78 @@ export class ConnectionsService {
     return this.config.NODE_ENV === "production";
   }
 
+  // Платформенні env-креди провайдера (тихий fallback, коли орендар не приніс свій застосунок).
+  // Читаються синхронно з config; null, якщо котроїсь із двох немає.
+  private envCreds(provider: PublishProvider): OAuthCreds | null {
+    const pair: Record<PublishProvider, [string | undefined, string | undefined]> = {
+      linkedin: [this.config.LINKEDIN_CLIENT_ID, this.config.LINKEDIN_CLIENT_SECRET],
+      twitter: [this.config.X_CLIENT_ID, this.config.X_CLIENT_SECRET],
+      instagram: [this.config.IG_CLIENT_ID, this.config.IG_CLIENT_SECRET],
+    };
+    const [clientId, clientSecret] = pair[provider];
+    return clientId && clientSecret ? { clientId, clientSecret } : null;
+  }
+
+  // Резолвить OAuth-креди для флоу: КРЕДИ ОРЕНДАРЯ (з БД, secret розшифровується master-ключем) у
+  // пріоритеті → інакше платформенні env → інакше null (провайдер не сконфігуровано). Виклик уже під
+  // request-scope (репо на tx); decrypt — у пам'яті. Використовується startAuthorize і callback'ом.
+  async resolveCreds(ctx: AuthCtx, provider: PublishProvider): Promise<OAuthCreds | null> {
+    const row = await this.serviceConnections.getAppCredentials(ctx.accountId, provider);
+    if (row?.appClientId && row.appClientSecretCt) {
+      return {
+        clientId: row.appClientId,
+        clientSecret: decryptSecret(row.appClientSecretCt, this.masterKey),
+      };
+    }
+    return this.envCreds(provider);
+  }
+
   async list(ctx: AuthCtx): Promise<ConnectionsResponse> {
     const rows = await this.serviceConnections.list(ctx.accountId);
-    // configured — провайдери, чиї СЕРВЕРНІ креди присутні (соцмережі) + завжди telegram (він
-    // серверних кред не потребує). Фронт вимикає Connect для не-configured.
+    // configured (per-tenant): провайдер сконфігуровано, якщо resolveCreds для нього вдався б — тобто
+    // орендар увів креди застосунку (рядок з appConfigured) АБО присутні платформенні env-креди. Один
+    // прохід: рядки вже прочитані, env читаємо синхронно (без N+1/decrypt — секрет тут не потрібен).
+    const byProvider = new Map(rows.map((r) => [r.provider, r]));
     const configured: ConnectionProvider[] = [];
     for (const p of PUBLISH_PROVIDERS) {
-      if (isConfigured(this.config, p)) configured.push(p);
+      const appConfigured = byProvider.get(p)?.appConfigured ?? false;
+      if (appConfigured || this.envCreds(p)) configured.push(p);
     }
-    configured.push("telegram");
+    configured.push("telegram"); // серверних кред не потребує — завжди configured
     return { items: rows.map(toDTO), configured };
   }
 
-  // Стартує OAuth: будує consent-URL + підписаний state/PKCE-cookie. БЕЗ доступу до БД. Контролер
-  // ставить setCookie у відповідь і повертає { authUrl } браузеру (той редіректиться на провайдера).
-  startAuthorize(provider: PublishProvider): { authUrl: string; setCookie: string } {
-    const cfg = oauthProviders(this.config)[provider];
-    if (!cfg) {
-      throw AppError.unprocessable(`provider '${provider}' is not configured`);
+  // BYO-app: орендар вводить креди власного OAuth-застосунку. Секрет шифрується на запис (master-ключ,
+  // як BYOK LLM-ключі); repo зберігає лише шифротекст. telegram не має OAuth-застосунку → 422.
+  async setAppCredentials(
+    ctx: AuthCtx,
+    provider: string,
+    input: { clientId: string; clientSecret: string },
+  ): Promise<void> {
+    if (!(PUBLISH_PROVIDERS as readonly string[]).includes(provider)) {
+      throw AppError.unprocessable(`provider '${provider}' does not use OAuth app credentials`);
     }
+    const clientId = input.clientId.trim();
+    const clientSecret = input.clientSecret.trim();
+    if (!clientId || !clientSecret) throw AppError.unprocessable("client id/secret не можуть бути порожніми");
+    const secretCt = encryptSecret(clientSecret, this.masterKey).ciphertext;
+    await this.serviceConnections.setAppCredentials(ctx.accountId, provider, clientId, secretCt);
+  }
+
+  // Стартує OAuth: резолвить креди (орендар→env), будує consent-URL + підписаний state/PKCE-cookie.
+  // Контролер ставить setCookie у відповідь і повертає { authUrl } браузеру (той редіректиться на
+  // провайдера). Без кред → 422 (спершу треба ввести ключі застосунку).
+  async startAuthorize(
+    ctx: AuthCtx,
+    provider: PublishProvider,
+  ): Promise<{ authUrl: string; setCookie: string }> {
+    const cfg = oauthProviders(this.config)[provider];
+    if (!cfg) throw AppError.unprocessable(`provider '${provider}' is not configured`);
+    const creds = await this.resolveCreds(ctx, provider);
+    if (!creds) throw AppError.unprocessable("спершу введіть ключі застосунку");
     const state = generateState();
     const pkce = cfg.usesPkce ? generatePkce() : undefined;
-    const authUrl = buildAuthorizeUrl(cfg, state, pkce);
+    const authUrl = buildAuthorizeUrl(cfg, creds.clientId, state, pkce);
     const exp = Math.floor(Date.now() / 1000) + OAUTH_STATE_TTL_SEC;
     const value = signState({ state, provider, verifier: pkce?.verifier, exp }, this.stateSecret());
     const setCookie = buildStateSetCookie(value, { secure: this.secureCookies() });

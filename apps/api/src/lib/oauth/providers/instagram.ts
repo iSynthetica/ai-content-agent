@@ -35,19 +35,18 @@ export function instagramOAuthConfig(env: AppConfig): OAuthProviderConfig {
     authorizeUrl: `https://www.facebook.com/${ver}/dialog/oauth`,
     tokenUrl: `${graph}/oauth/access_token`,
     scopes: IG_SCOPES,
-    clientId: env.IG_CLIENT_ID!,
-    clientSecret: env.IG_CLIENT_SECRET!,
     redirectUri,
     // FB Login — vanilla 3-legged OAuth: без PKCE; client_id/secret ідуть у query token-запиту (params).
     usesPkce: false,
     tokenAuth: "params",
 
-    // state ставить фреймворк; тут лише стандартні OAuth-параметри FB. scope-роздільник — КОМА
-    // (FB, не пробіл): фреймворк не join'ить сам (master-plan §2 п.3).
-    buildAuthParams(state: string) {
+    // state ставить фреймворк; clientId приходить per-request (креди орендаря/env, BYO-app). Тут лише
+    // стандартні OAuth-параметри FB. scope-роздільник — КОМА (FB, не пробіл): фреймворк не join'ить
+    // сам (master-plan §2 п.3).
+    buildAuthParams(clientId: string, state: string) {
       return {
         response_type: "code",
-        client_id: env.IG_CLIENT_ID!,
+        client_id: clientId,
         redirect_uri: redirectUri,
         state,
         scope: IG_SCOPES.join(","),
@@ -61,8 +60,10 @@ export function instagramOAuthConfig(env: AppConfig): OAuthProviderConfig {
       return { accessToken: j.access_token, expiresIn: j.expires_in };
     },
 
-    // IG-специфіка: розмінюємо на довгоживучий токен і знаходимо IG Business акаунт (§3.3).
-    async fetchAccountIdentity(shortUserToken: string): Promise<AccountIdentity> {
+    // IG-специфіка: розмінюємо на довгоживучий токен і знаходимо IG Business акаунт (§3.3). creds —
+    // per-request (BYO-app): fb_exchange_token — app-scoped обмін, тож МУСИТЬ іти саме тими кредами,
+    // якими зроблено code-exchange (креди орендаря або env-fallback), інакше Meta відхилить обмін.
+    async fetchAccountIdentity(creds, shortUserToken: string): Promise<AccountIdentity> {
       // a) short-lived → long-lived (60д) user token. З нього деривований PAGE-токен НЕ протухає,
       //    поки застосунок авторизовано — тому для MVP жодного refresh-крона (§3.4). Якщо обмін
       //    впав — кидаємо: інакше збережений PAGE-токен був би короткоживучим і зламався б за ~1год.
@@ -70,8 +71,8 @@ export function instagramOAuthConfig(env: AppConfig): OAuthProviderConfig {
         `${graph}/oauth/access_token?` +
         new URLSearchParams({
           grant_type: "fb_exchange_token",
-          client_id: env.IG_CLIENT_ID!,
-          client_secret: env.IG_CLIENT_SECRET!,
+          client_id: creds.clientId,
+          client_secret: creds.clientSecret,
           fb_exchange_token: shortUserToken,
         }).toString();
       const exchRes = await fetch(exchUrl);

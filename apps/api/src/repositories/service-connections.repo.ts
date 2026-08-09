@@ -3,6 +3,7 @@ import { serviceConnections } from "@forteq/db";
 import type { DbExecutor } from "../di/types";
 import type {
   NewServiceConnection,
+  ServiceConnectionAppCreds,
   ServiceConnectionMasked,
   ServiceConnectionsRepo,
 } from "./interfaces";
@@ -16,7 +17,8 @@ function parseScopes(raw: string | null): string[] {
   return raw.split(/[\s,]+/).filter(Boolean);
 }
 
-// Маскована проєкція — *_ct (токени) НІКОЛИ не виходять із репо (дзеркалить api_keys.toMasked).
+// Маскована проєкція — *_ct (токени + app_client_secret_ct) НІКОЛИ не виходять із репо (дзеркалить
+// api_keys.toMasked). appClientId — НЕ секрет, тож віддаємо; appConfigured — чи введено ОБИДВІ креди.
 function toMasked(row: Row): ServiceConnectionMasked {
   return {
     provider: row.provider,
@@ -27,6 +29,8 @@ function toMasked(row: Row): ServiceConnectionMasked {
     expiresAt: row.expiresAt ? row.expiresAt.toISOString() : null,
     lastUsedAt: row.lastUsedAt ? row.lastUsedAt.toISOString() : null,
     createdAt: row.createdAt.toISOString(),
+    appConfigured: Boolean(row.appClientId && row.appClientSecretCt),
+    appClientId: row.appClientId,
   };
 }
 
@@ -93,5 +97,51 @@ export class DrizzleServiceConnectionsRepo implements ServiceConnectionsRepo {
       )
       .limit(1);
     return Boolean(row);
+  }
+
+  async getAppCredentials(
+    accountId: string,
+    provider: string,
+  ): Promise<ServiceConnectionAppCreds | null> {
+    const [row] = await this.tx
+      .select({
+        appClientId: serviceConnections.appClientId,
+        appClientSecretCt: serviceConnections.appClientSecretCt,
+      })
+      .from(serviceConnections)
+      .where(
+        and(eq(serviceConnections.accountId, accountId), eq(serviceConnections.provider, provider)),
+      )
+      .limit(1);
+    return row ?? null;
+  }
+
+  // Записує ЛИШЕ креди застосунку. onConflictDoUpdate.set навмисно НЕ чіпає токени/статус/акаунт —
+  // повторний ввід кред не роз'єднує наявний конект. На INSERT (рядка ще нема) — status 'disconnected'
+  // без токенів: конект «сконфігуровано, але не підключено», доки користувач не пройде OAuth.
+  async setAppCredentials(
+    accountId: string,
+    provider: string,
+    clientId: string,
+    clientSecretCt: string,
+  ): Promise<void> {
+    await this.tx
+      .insert(serviceConnections)
+      .values({
+        accountId,
+        provider,
+        status: "disconnected",
+        accessTokenCt: null,
+        appClientId: clientId,
+        appClientSecretCt: clientSecretCt,
+      })
+      .onConflictDoUpdate({
+        target: [serviceConnections.accountId, serviceConnections.provider],
+        set: {
+          appClientId: clientId,
+          appClientSecretCt: clientSecretCt,
+          updatedAt: new Date(),
+        },
+      });
   }
 }

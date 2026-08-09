@@ -7,7 +7,7 @@
 // форсить connection:manage; ховаємо недоступну дію, як в ApiKeysManager).
 import * as React from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Link2, Send, Trash2 } from "lucide-react";
+import { Check, Copy, Link2, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +28,7 @@ import {
   useAuthorize,
   useConfigureTelegram,
   useDisconnect,
+  useSetAppCredentials,
 } from "@/features/connections/use-connections";
 import { useT } from "@/lib/i18n";
 
@@ -42,10 +43,8 @@ export function ConnectionsManager({
   initialConnections?: ConnectionsResponse;
   canManage: boolean;
 }) {
-  const t = useT();
   const { data } = useConnections(initialConnections);
   const items = data?.items ?? [];
-  const configured = data?.configured ?? [];
 
   useCallbackToast();
 
@@ -53,9 +52,6 @@ export function ConnectionsManager({
     <div className="flex flex-col gap-4">
       {(Object.keys(CONNECTION_PROVIDER_LABELS) as ConnectionProvider[]).map((provider) => {
         const current = items.find((c) => c.provider === provider) ?? null;
-        // Telegram не потребує серверних кред — завжди «configured». Соц-провайдер без серверних
-        // ключів застосунку не може стартувати OAuth: показуємо його вимкненим із підказкою.
-        const isConfigured = provider === "telegram" || configured.includes(provider);
         return provider === "telegram" ? (
           <TelegramCard key={provider} current={current} canManage={canManage} />
         ) : (
@@ -63,7 +59,6 @@ export function ConnectionsManager({
             key={provider}
             provider={provider as PublishProvider}
             current={current}
-            configured={isConfigured}
             canManage={canManage}
           />
         );
@@ -101,7 +96,9 @@ function useCallbackToast() {
 }
 
 function statusBadge(current: ConnectionDTO | null, t: (s: string) => string) {
-  if (!current) {
+  // 'disconnected' — рядок існує (введено лише ключі застосунку), але OAuth ще не пройдено: для UI це
+  // «не підключено», а не помилка.
+  if (!current || current.status === "disconnected") {
     return (
       <Badge variant="outline" className="text-muted-foreground">
         {t("Не підключено")}
@@ -117,21 +114,121 @@ function statusBadge(current: ConnectionDTO | null, t: (s: string) => string) {
   return <Badge variant="outline" className="text-destructive">{t("Помилка підключення")}</Badge>;
 }
 
+// Копіювальний рядок redirect-URI, який орендар мусить зареєструвати у своєму OAuth-застосунку.
+function RedirectUriRow({ provider }: { provider: PublishProvider }) {
+  const t = useT();
+  // window недоступний під час SSR — читаємо origin у ефекті (уникаємо hydration-mismatch).
+  const [origin, setOrigin] = React.useState("");
+  const [copied, setCopied] = React.useState(false);
+  React.useEffect(() => setOrigin(window.location.origin), []);
+  const uri = origin ? `${origin}/api/connections/${provider}/callback` : "";
+
+  async function onCopy() {
+    if (!uri) return;
+    try {
+      await navigator.clipboard.writeText(uri);
+      setCopied(true);
+      toast.success(t("Скопійовано"));
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard недоступний (http/permissions) — тихо ігноруємо, рядок усе одно видно */
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      <Label className="text-xs text-muted-foreground">{t("URL перенаправлення")}</Label>
+      <div className="flex items-center gap-2">
+        <code className="flex-1 overflow-x-auto rounded-md border border-border bg-muted px-2 py-1.5 text-xs">
+          {uri || "…"}
+        </code>
+        <Button variant="outline" size="sm" className="shrink-0" onClick={onCopy} disabled={!uri}>
+          {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// Форма вводу кред застосунку (client id + secret). Використовується і як первинний ввід, і як
+// колапс «змінити ключі». onSaved закриває колапс (де він є).
+function AppCredentialsForm({
+  provider,
+  onSaved,
+}: {
+  provider: PublishProvider;
+  onSaved?: () => void;
+}) {
+  const t = useT();
+  const [clientId, setClientId] = React.useState("");
+  const [clientSecret, setClientSecret] = React.useState("");
+  const setCreds = useSetAppCredentials();
+
+  function onSave() {
+    const id = clientId.trim();
+    const secret = clientSecret.trim();
+    if (!id || !secret) return;
+    setCreds.mutate(
+      { provider, input: { clientId: id, clientSecret: secret } },
+      {
+        onSuccess: () => {
+          toast.success(t("Ключі застосунку збережено"));
+          setClientId("");
+          setClientSecret("");
+          onSaved?.();
+        },
+        onError: (err) =>
+          toast.error(err instanceof Error ? err.message : t("Не вдалося зберегти ключі застосунку")),
+      },
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
+        <Label htmlFor={`${provider}-client-id`}>{t("Client ID застосунку")}</Label>
+        <Input
+          id={`${provider}-client-id`}
+          autoComplete="off"
+          value={clientId}
+          onChange={(e) => setClientId(e.target.value)}
+        />
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor={`${provider}-client-secret`}>{t("Client Secret застосунку")}</Label>
+        <Input
+          id={`${provider}-client-secret`}
+          type="password"
+          autoComplete="off"
+          value={clientSecret}
+          onChange={(e) => setClientSecret(e.target.value)}
+        />
+      </div>
+      <Button
+        className="w-fit"
+        onClick={onSave}
+        disabled={setCreds.isPending || !clientId.trim() || !clientSecret.trim()}
+      >
+        {setCreds.isPending ? t("Зберігаємо…") : t("Зберегти ключі застосунку")}
+      </Button>
+    </div>
+  );
+}
+
 function SocialCard({
   provider,
   current,
-  configured,
   canManage,
 }: {
   provider: PublishProvider;
   current: ConnectionDTO | null;
-  configured: boolean;
   canManage: boolean;
 }) {
   const t = useT();
   const label = CONNECTION_PROVIDER_LABELS[provider];
   const authorize = useAuthorize();
   const disconnect = useDisconnect();
+  const [changeKeysOpen, setChangeKeysOpen] = React.useState(false);
 
   function onConnect() {
     authorize.mutate(provider, {
@@ -140,7 +237,7 @@ function SocialCard({
         window.location.assign(authUrl);
       },
       onError: (err) => {
-        // 422 «провайдер не налаштований» тощо: сервер віддав людський message у ApiError.
+        // 422 «спершу введіть ключі застосунку» тощо: сервер віддав людський message у ApiError.
         toast.error(err instanceof Error ? err.message : t("Не вдалося почати підключення"));
       },
     });
@@ -154,6 +251,7 @@ function SocialCard({
   }
 
   const connected = current?.status === "connected";
+  const appConfigured = current?.appConfigured ?? false;
 
   return (
     <Card>
@@ -173,29 +271,56 @@ function SocialCard({
       </CardHeader>
 
       {canManage && (
-        <CardContent className="flex flex-col gap-2">
-          {!configured && (
-            <p className="text-sm text-muted-foreground">{t("Потрібні ключі застосунку")}</p>
-          )}
-          {connected ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-fit text-muted-foreground hover:text-destructive"
-              onClick={onDisconnect}
-              disabled={disconnect.isPending}
-            >
-              <Trash2 className="h-4 w-4" />
-              {t("Відключити")}
-            </Button>
+        <CardContent className="flex flex-col gap-3">
+          {/* Redirect-URI орендар реєструє у СВОЄМУ застосунку — показуємо завжди, копіювально. */}
+          <RedirectUriRow provider={provider} />
+
+          {!appConfigured ? (
+            // Ще нема кред застосунку: показуємо форму вводу; Connect недоступний.
+            <>
+              <p className="text-sm text-muted-foreground">{t("Потрібні ключі застосунку")}</p>
+              <AppCredentialsForm provider={provider} />
+              <Button className="w-fit" disabled>
+                {t("Підключити")}
+              </Button>
+            </>
           ) : (
-            <Button
-              className="w-fit"
-              onClick={onConnect}
-              disabled={!configured || authorize.isPending}
-            >
-              {authorize.isPending ? t("Підключаємо…") : t("Підключити")}
-            </Button>
+            // Креди застосунку є: показуємо, який client id підключено, дію (Connect/Disconnect) і
+            // колапс для заміни ключів.
+            <>
+              {current?.appClientId && (
+                <p className="text-xs text-muted-foreground">
+                  {t("Client ID застосунку")}: <code>{current.appClientId}</code>
+                </p>
+              )}
+              {connected ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-fit text-muted-foreground hover:text-destructive"
+                  onClick={onDisconnect}
+                  disabled={disconnect.isPending}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  {t("Відключити")}
+                </Button>
+              ) : (
+                <Button className="w-fit" onClick={onConnect} disabled={authorize.isPending}>
+                  {authorize.isPending ? t("Підключаємо…") : t("Підключити")}
+                </Button>
+              )}
+
+              <button
+                type="button"
+                className="w-fit text-xs text-muted-foreground underline-offset-2 hover:underline"
+                onClick={() => setChangeKeysOpen((v) => !v)}
+              >
+                {t("змінити ключі застосунку")}
+              </button>
+              {changeKeysOpen && (
+                <AppCredentialsForm provider={provider} onSaved={() => setChangeKeysOpen(false)} />
+              )}
+            </>
           )}
         </CardContent>
       )}

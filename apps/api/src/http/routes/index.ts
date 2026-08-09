@@ -148,6 +148,9 @@ export function businessRoutes(root: Composition): Router {
   // публікація — publish:manage (+ editor). callback — ЛИШЕ під auth (сесія долітає з редіректом
   // провайдера), без permission-гварда: це технічний redirect-target, а не мутація-намір.
   r.get("/connections", connections.list);
+  // BYO-app (§byo-oauth-app-creds): орендар вводить креди власного OAuth-застосунку (client id +
+  // secret) — connection:manage, як решта мутацій токенів.
+  r.put("/connections/:provider/app-credentials", requirePermission("connection:manage"), connections.setAppCredentials);
   r.post("/connections/:provider/authorize", requirePermission("connection:manage"), connections.authorize);
   r.get("/connections/:provider/callback", connections.callback);
   r.put("/connections/telegram", requirePermission("connection:manage"), connections.telegram);

@@ -7,7 +7,25 @@ import { withAccountScope, type HandlerContext } from "../composition.js";
 import { openInbox, writeNotification } from "../lib/notify.js";
 import { getPublisher } from "../lib/publishers/registry.js";
 import type { PublishInput, PublishResult } from "../lib/publishers/types.js";
-import { isExpired, refreshIfNeeded, type DecryptedConnection } from "../lib/publishTokens.js";
+import {
+  isExpired,
+  refreshIfNeeded,
+  type DecryptedConnection,
+  type OAuthClientCreds,
+} from "../lib/publishTokens.js";
+import type { Env } from "../config/env.js";
+
+// Платформенні env-креди провайдера (тихий fallback, коли орендар не приніс власний застосунок).
+// BYO-app (§byo-oauth-app-creds): у пріоритеті креди орендаря з рядка service_connections.
+function envOauthCreds(env: Env, provider: PublishProvider): OAuthClientCreds | null {
+  const pair: Record<PublishProvider, [string | undefined, string | undefined]> = {
+    linkedin: [env.LINKEDIN_CLIENT_ID, env.LINKEDIN_CLIENT_SECRET],
+    twitter: [env.X_CLIENT_ID, env.X_CLIENT_SECRET],
+    instagram: [env.IG_CLIENT_ID, env.IG_CLIENT_SECRET],
+  };
+  const [clientId, clientSecret] = pair[provider];
+  return clientId && clientSecret ? { clientId, clientSecret } : null;
+}
 
 type PublishContentJob = Extract<Job, { kind: "content.publish" }>;
 
@@ -138,6 +156,8 @@ async function publishOne(
         expiresAt: serviceConnections.expiresAt,
         meta: serviceConnections.meta,
         status: serviceConnections.status,
+        appClientId: serviceConnections.appClientId,
+        appClientSecretCt: serviceConnections.appClientSecretCt,
       })
       .from(serviceConnections)
       .where(and(eq(serviceConnections.accountId, accountId), eq(serviceConnections.provider, provider)))
@@ -162,9 +182,19 @@ async function publishOne(
     meta: connRow.meta ?? undefined,
   };
 
-  // 2c) Рефреш, якщо протух. null → рефреш неможливий (нема refresh_token/кред) → reconnect required.
+  // 2c) Рефреш, якщо протух. Креди для refresh: КРЕДИ ОРЕНДАРЯ (BYO-app, розшифровуємо secret) у
+  // пріоритеті → інакше платформенні env → інакше null. null-результат refreshIfNeeded (нема
+  // refresh_token/кред) → reconnect required.
+  const tenantCreds: OAuthClientCreds | null =
+    connRow.appClientId && connRow.appClientSecretCt
+      ? {
+          clientId: connRow.appClientId,
+          clientSecret: decryptSecret(connRow.appClientSecretCt, ctx.masterKey),
+        }
+      : null;
+  const creds = tenantCreds ?? envOauthCreds(ctx.env, provider);
   const wasExpired = isExpired(conn.expiresAt);
-  const refreshed = await refreshIfNeeded(provider, conn, ctx.env, ctx.logger);
+  const refreshed = await refreshIfNeeded(provider, conn, creds, ctx.logger);
   if (!refreshed) {
     return { kind: "failed", error: "reconnect required" };
   }

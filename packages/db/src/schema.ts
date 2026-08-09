@@ -346,6 +346,12 @@ export const serviceConnections = pgTable(
     status: text("status").default("connected").notNull(), // connected | expired | error | disconnected
     accessTokenCt: text("access_token_ct"), // base64(iv|tag|ct); nullable для telegram (лише bot-token)
     refreshTokenCt: text("refresh_token_ct"), // nullable (X/LinkedIn refresh; IG long-lived без refresh)
+    // BYO-app (§byo-oauth-app-creds): OAuth-креди застосунку самого орендаря (дзеркалить BYOK-ключі
+    // моделей). app_client_id — НЕ секрет (безпечно показати в UI, щоб було видно, який застосунок
+    // підключено); app_client_secret_ct — шифротекст (AES-256-GCM, як *_ct токенів). Обидва nullable:
+    // за їх відсутності OAuth-флоу падає на платформенні env-креди (тихий fallback). Telegram їх не має.
+    appClientId: text("app_client_id"),
+    appClientSecretCt: text("app_client_secret_ct"),
     externalAccountId: text("external_account_id"), // URN / user id / page id / chat id
     externalAccountName: text("external_account_name"), // напр. "Acme Corp on LinkedIn"
     scopes: text("scopes"), // надані scope через пробіл/кому

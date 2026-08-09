@@ -18,19 +18,18 @@ export function linkedinOAuthConfig(env: AppConfig): OAuthProviderConfig {
     authorizeUrl: "https://www.linkedin.com/oauth/v2/authorization",
     tokenUrl: "https://www.linkedin.com/oauth/v2/accessToken",
     scopes: LINKEDIN_SCOPES,
-    clientId: env.LINKEDIN_CLIENT_ID!,
-    clientSecret: env.LINKEDIN_CLIENT_SECRET!,
     redirectUri,
     // LinkedIn — vanilla 3-legged OAuth: без PKCE; client_id/secret ідуть у тілі форми (params).
     usesPkce: false,
     tokenAuth: "params",
 
-    // state ставить фреймворк; тут лише стандартні OAuth-параметри LinkedIn. scope-роздільник (пробіл)
-    // теж тут — фреймворк не join'ить сам (master-plan §2 п.3).
-    buildAuthParams(state: string) {
+    // state ставить фреймворк; clientId приходить per-request (креди орендаря/env, BYO-app). Тут лише
+    // стандартні OAuth-параметри LinkedIn. scope-роздільник (пробіл) теж тут — фреймворк не join'ить
+    // сам (master-plan §2 п.3).
+    buildAuthParams(clientId: string, state: string) {
       return {
         response_type: "code",
-        client_id: env.LINKEDIN_CLIENT_ID!,
+        client_id: clientId,
         redirect_uri: redirectUri,
         state,
         scope: LINKEDIN_SCOPES.join(" "),
@@ -57,7 +56,8 @@ export function linkedinOAuthConfig(env: AppConfig): OAuthProviderConfig {
     // MVP: member-URN через OpenID userinfo (§2.5). id → service_connections.external_account_id,
     // name → external_account_name, meta.authorType="member" → service_connections.meta. Org-режим
     // (organizationAcls → urn:li:organization:{id}) — ЄДИНА гілка identity, її тут не вмикаємо.
-    async fetchAccountIdentity(accessToken: string) {
+    // creds не потрібні: LinkedIn identity — лише Bearer-виклик userinfo (на відміну від IG).
+    async fetchAccountIdentity(_creds, accessToken: string) {
       const r = await fetch("https://api.linkedin.com/v2/userinfo", {
         headers: { Authorization: `Bearer ${accessToken}` },
       });

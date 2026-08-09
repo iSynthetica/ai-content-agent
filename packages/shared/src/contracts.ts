@@ -469,6 +469,11 @@ export const connectionDTO = z.object({
   expiresAt: z.string().nullable(),
   lastUsedAt: z.string().nullable(),
   createdAt: z.string(),
+  // BYO-app (§byo-oauth-app-creds): чи введено OAuth-креди застосунку самого орендаря (client id +
+  // secret у БД). Драйвить UI: доки false — форма вводу кред і Connect вимкнено. appClientId — НЕ
+  // секрет, тож безпечно віддати (користувач бачить, який застосунок підключено); СЕКРЕТ — НІКОЛИ.
+  appConfigured: z.boolean(),
+  appClientId: z.string().nullable(),
 });
 export type ConnectionDTO = z.infer<typeof connectionDTO>;
 
@@ -485,6 +490,15 @@ export type ConnectionsResponse = z.infer<typeof connectionsResponse>;
 // POST /connections/:provider/authorize → consent-URL провайдера (браузер редіректиться на нього).
 export const authorizeConnectionResponse = z.object({ authUrl: z.string() });
 export type AuthorizeConnectionResponse = z.infer<typeof authorizeConnectionResponse>;
+
+// PUT /connections/:provider/app-credentials — орендар реєструє власний OAuth-застосунок і вводить
+// його client id + secret (BYO-app, §byo-oauth-app-creds). Секрет шифрується на запис (як BYOK-ключі);
+// назад НІКОЛИ не віддається. min(1) відсікає порожній ввід; провайдер (лише соц-, не telegram) у path.
+export const setAppCredentialsRequest = z.object({
+  clientId: z.string().min(1),
+  clientSecret: z.string().min(1),
+});
+export type SetAppCredentialsRequest = z.infer<typeof setAppCredentialsRequest>;
 
 // Telegram не має OAuth: "connection" — це bot token + chat id (PUT /connections/telegram).
 export const telegramConfigRequest = z.object({
