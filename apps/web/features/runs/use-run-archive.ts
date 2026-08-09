@@ -31,7 +31,13 @@ export function useRunArchive(companyId: string) {
 
   const remove = useMutation({
     mutationFn: (runId: string) => http.del(endpoints.runDelete(runId)),
-    onSuccess: (_r, runId) => invalidate(runId),
+    // Прогін ВИДАЛЕНО назавжди. НЕ чіпаємо qk.run(runId): і invalidate, і remove поки деталь ще
+    // змонтована спричинили б рефетч GET /runs/:id → 404 «run not found» (тост тягнеться на список
+    // після редіректу). Оновлюємо ЛИШЕ список; редірект (у RunDetail.onSuccess) розмонтує деталь —
+    // неактивний run-запит не рефетчиться, застаріле значення саме приберуться по gcTime.
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.runs(companyId) });
+    },
   });
 
   return { archive, unarchive, remove };
