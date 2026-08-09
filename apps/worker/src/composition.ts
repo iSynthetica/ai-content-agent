@@ -19,6 +19,7 @@ import {
 import { createFakeModelFactory } from "./lib/fakeModelFactory.js";
 import { publisherRegistry, type PublisherRegistry } from "./lib/publishers/registry.js";
 import { makeLinkedInPublisher } from "./lib/publishers/linkedin.js";
+import { makeTwitterPublisher } from "./lib/publishers/twitter.js";
 import type { JobProducer } from "./queue.js";
 import type { Env } from "./config/env.js";
 
@@ -209,6 +210,9 @@ export function buildDeps(env: Env): Deps {
   // версія API з env (§publishing/01-linkedin §5). Реєструємо у composition, бо registry-синглтон
   // не має доступу до env; publish працює без OAuth-кред (їх треба лише для refresh у publishTokens).
   publisherRegistry.linkedin = makeLinkedInPublisher(env.LINKEDIN_API_VERSION);
+  // twitter — публікатор без стану/кред: токен уже свіжий (хендлер рефрешить через publishTokens.ts,
+  // де twitter уже сконфігурований). Розбивку 280+ на тред і v2 media-upload робить сам адаптер.
+  publisherRegistry.twitter = makeTwitterPublisher();
   return { env, db, logger, pipeline, masterKey, imageStorage: imageStore, publishers: publisherRegistry };
 }
 

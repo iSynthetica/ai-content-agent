@@ -53,6 +53,18 @@ export const envSchema = z.object({
   // Версія Posts/Images API у форматі YYYYMM; пінимо й періодично оновлюємо (версії сансетяться ~15міс).
   LINKEDIN_API_VERSION: z.string().regex(/^\d{6}$/).default("202606"),
 
+  // ── X/Twitter OAuth 2.0 + PKCE (§publishing/02-twitter §8) ──
+  // Обидві креди optional: без них провайдер «не сконфігурований» і кнопка Connect вимкнена
+  // (foundation §3.1, isConfigured → false). client_secret — тільки з env, у логи ніколи.
+  X_CLIENT_ID: z.string().optional(),
+  X_CLIENT_SECRET: z.string().optional(),
+  // Абсолютний HTTPS redirect, ТОЧНИЙ збіг із зареєстрованим у X-застосунку (§2.1). Читається у
+  // twitterOAuthConfig — тому з дефолтом, а не хардкодом у конфізі провайдера.
+  X_REDIRECT_URI: z
+    .string()
+    .url()
+    .default("https://saas.forteqsolution.com/api/connections/twitter/callback"),
+
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
 });
 

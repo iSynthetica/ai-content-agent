@@ -30,6 +30,7 @@ import type { PublishProvider } from "@forteq/shared";
 import type { AppConfig } from "../../config/env";
 import type { OAuthProviderConfig } from "./types";
 import { linkedinOAuthConfig } from "./providers/linkedin";
+import { twitterOAuthConfig } from "./providers/twitter";
 
 export function oauthProviders(
   env: AppConfig,
@@ -39,6 +40,11 @@ export function oauthProviders(
   // (isConfigured → false, UI вимикає кнопку Connect). Секрети — тільки з env, у логи ніколи.
   if (env.LINKEDIN_CLIENT_ID && env.LINKEDIN_CLIENT_SECRET) {
     providers.linkedin = linkedinOAuthConfig(env);
+  }
+  // twitter — той самий шов: запис присутній ЛИШЕ коли обидві X-креди задані (usesPkce+basic виставляє
+  // конфіг провайдера; фреймворк-шлях їх лише читає). Без кред — isConfigured→false, Connect вимкнено.
+  if (env.X_CLIENT_ID && env.X_CLIENT_SECRET) {
+    providers.twitter = twitterOAuthConfig(env);
   }
   return providers;
 }
