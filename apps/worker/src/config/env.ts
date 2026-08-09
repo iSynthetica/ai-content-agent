@@ -56,6 +56,31 @@ export const envSchema = z.object({
   LANGSMITH_TRACING: z.enum(["true", "false"]).optional(),
   LANGSMITH_PROJECT: z.string().optional(),
 
+  // ── Пряма публікація + Telegram-нотифікації (§publishing foundation §4/§5) ──
+  // Публічний URL веб-застосунку для deep-link у Telegram-сповіщенні (кнопка "Відкрити на перевірку").
+  // Це URL веба (/runs/<id>), а НЕ api — тому окрема змінна, а не PUBLIC_MEDIA_BASE_URL.
+  PUBLIC_APP_URL: z.string().url().default("https://saas.forteqsolution.com"),
+
+  // MEDIA_SIGNING_SECRET — HMAC-секрет для публічних медіа-токенів. Опційний зараз: знадобиться
+  // адаптеру Instagram (фаза B), щоб карбувати публічний URL зображення (§master-plan §2 п.5).
+  // Дзеркалить apps/api/src/config/env.ts. Foundation-фаза його не використовує.
+  MEDIA_SIGNING_SECRET: optionalSecret,
+
+  // Базовий URL api для публічного медіа-роуту (GET /media/public/:token). За ним IG-адаптер
+  // складе абсолютний публічний URL зображення. Дзеркалить apps/api PUBLIC_MEDIA_BASE_URL.
+  PUBLIC_MEDIA_BASE_URL: z.string().url().default("https://saas.forteqsolution.com/api"),
+
+  // OAuth-креди провайдерів публікації — потрібні ЛИШЕ для refresh access-токена у воркері
+  // (publishTokens.ts, дзеркалить apps/api/src/lib/oauth/exchange.ts). Опційні: без них воркер
+  // просто не рефрешить (протухлий токен без кред/refresh → публікація failed "reconnect required").
+  // Заповнюються адаптер-фазами разом із apps/api-кредами того ж провайдера.
+  LINKEDIN_CLIENT_ID: optionalSecret,
+  LINKEDIN_CLIENT_SECRET: optionalSecret,
+  X_CLIENT_ID: optionalSecret,
+  X_CLIENT_SECRET: optionalSecret,
+  IG_CLIENT_ID: optionalSecret,
+  IG_CLIENT_SECRET: optionalSecret,
+
   // Runtime worker'а
   LOG_LEVEL: z
     .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])

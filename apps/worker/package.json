@@ -8,7 +8,8 @@
     "smoke": "tsx scripts/smoke.ts",
     "setup:checkpointer": "tsx scripts/setupCheckpointer.ts",
     "typecheck": "tsc --noEmit",
-    "start": "tsx src/main.ts"
+    "start": "tsx src/main.ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@forteq/db": "workspace:*",
@@ -25,6 +26,7 @@
   },
   "devDependencies": {
     "tsx": "^4.19",
-    "@types/node": "^22"
+    "@types/node": "^22",
+    "vitest": "^3.2.7"
   }
 }

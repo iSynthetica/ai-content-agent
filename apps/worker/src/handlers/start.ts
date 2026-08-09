@@ -31,6 +31,7 @@ import { openInbox, writeNotification } from "../lib/notify.js";
 import { upsertContentItems } from "../lib/persist.js";
 import { makeProgressReporter } from "../lib/progress.js";
 import { enqueueVisuals } from "../lib/enqueueVisuals.js";
+import { notifyTelegramReady } from "../lib/telegramNotify.js";
 import { NoTenantKeyError, tenantModelsBuilder, tenantWebSearch } from "../lib/tenantModels.js";
 
 type GenerationStartJob = Extract<Job, { kind: "generation.start" }>;
@@ -196,8 +197,11 @@ export async function handleStart(job: GenerationStartJob, ctx: HandlerContext):
   });
   await progress.flush(); // дочекатися всіх відкладених записів прогресу перед фінальним персистом
 
-  // ── 4) НОВА scoped-txn: персист результату. ──
-  await withAccountScope(ctx, accountId, async (tx) => {
+  // ── 4) НОВА scoped-txn: персист результату. Повертаємо статус для after-commit хуків (§5). ──
+  const persisted = await withAccountScope(
+    ctx,
+    accountId,
+    async (tx): Promise<{ status: "failed" | "needs_review" | "approved" }> => {
     if (res.status === "failed") {
       ctx.logger.error({ runId, error: res.error }, "generation.start failed");
       await tx.update(generationRuns).set({ status: "failed" }).where(eq(generationRuns.id, runId));
@@ -212,7 +216,7 @@ export async function handleStart(job: GenerationStartJob, ctx: HandlerContext):
           .set({ status: "proposed" })
           .where(and(eq(planEntries.companyId, companyId), inArray(planEntries.id, planEntryIds)));
       }
-      return;
+      return { status: "failed" };
     }
 
     // Рев'юнуті items → content_items (ідемпотентний upsert по f.id).
@@ -249,7 +253,15 @@ export async function handleStart(job: GenerationStartJob, ctx: HandlerContext):
       { runId, status: runStatus, items, costCents: res.output.costCents },
       "generation.start persisted",
     );
+    return { status: runStatus };
   });
+
+  // ── 4.5) ПІСЛЯ персисту, ПОЗА txn: best-effort Telegram-пінг про готовність до рецензії (§5). ──
+  // Свідомо тут, а не в txn: зовнішній HTTP не тримаємо під транзакцією (boundary #4), а збій
+  // сповіщення НЕ має валити вже збережений прогін — точно як enqueueVisuals нижче.
+  if (persisted.status === "needs_review") {
+    await notifyTelegramReady(ctx, accountId, runId);
+  }
 
   // ── 5) ПІСЛЯ персисту: картинки фоном (§7.4). ──
   // Свідомо ПІСЛЯ txn: текст уже видно в рецензії, а зображення доїде окремо.

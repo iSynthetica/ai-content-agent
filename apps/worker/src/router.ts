@@ -6,6 +6,7 @@ import { handleBootstrapOnboarding } from "./handlers/bootstrapOnboarding.js";
 import { handleSuggestTopics } from "./handlers/suggestTopics.js";
 import { handleSuggestRunTopics } from "./handlers/suggestRunTopics.js";
 import { handleContentVisuals } from "./handlers/contentVisuals.js";
+import { handlePublishContent } from "./handlers/publishContent.js";
 
 /**
  * Роутинг за дискримінантом `job.kind` (discriminated union з @forteq/shared jobs.ts) →
@@ -25,6 +26,8 @@ export async function route(job: Job, ctx: HandlerContext): Promise<void> {
       return handleSuggestRunTopics(job, ctx);
     case "content.visuals":
       return handleContentVisuals(job, ctx);
+    case "content.publish":
+      return handlePublishContent(job, ctx);
     default: {
       // Вичерпність union: якщо у jobs.ts додасться новий kind — компілятор впаде саме тут.
       const _exhaustive: never = job;

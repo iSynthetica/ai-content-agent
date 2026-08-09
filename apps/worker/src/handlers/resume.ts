@@ -22,6 +22,7 @@ import { openInbox, resolveInboxForEntity, writeNotification } from "../lib/noti
 import { upsertContentItems } from "../lib/persist.js";
 import { makeProgressReporter } from "../lib/progress.js";
 import { enqueueVisuals } from "../lib/enqueueVisuals.js";
+import { notifyTelegramReady } from "../lib/telegramNotify.js";
 import { NoTenantKeyError, tenantModelsBuilder } from "../lib/tenantModels.js";
 
 type GenerationResumeJob = Extract<Job, { kind: "generation.resume" }>;
@@ -126,14 +127,17 @@ export async function handleResume(job: GenerationResumeJob, ctx: HandlerContext
   });
   await progress.flush(); // дочекатися всіх відкладених записів прогресу перед фінальним персистом
 
-  // ── 3) НОВА scoped-txn: персист результату. ──
-  await withAccountScope(ctx, accountId, async (tx) => {
+  // ── 3) НОВА scoped-txn: персист результату. Повертаємо статус для after-commit хуків (§5). ──
+  const persisted = await withAccountScope(
+    ctx,
+    accountId,
+    async (tx): Promise<{ status: "failed" | "needs_review" | "approved" | "rejected" }> => {
     if (res.status === "failed") {
       ctx.logger.error({ runId, error: res.error }, "generation.resume failed");
       await tx.update(generationRuns).set({ status: "failed" }).where(eq(generationRuns.id, runId));
       await writeNotification(tx, accountId, runFailedEvent({ runId, error: res.error?.message }));
       await openInbox(tx, accountId, runFailedInbox({ runId, companyId, error: res.error?.message }));
-      return;
+      return { status: "failed" };
     }
 
     await upsertContentItems(tx, runId, accountId, companyId, res.output.final);
@@ -149,7 +153,7 @@ export async function handleResume(job: GenerationResumeJob, ctx: HandlerContext
       const flagged = res.output.final.filter((f) => f.status !== "approved").length;
       await openInbox(tx, accountId, runNeedsReviewInbox({ runId, companyId, items, flagged }));
       ctx.logger.info({ runId }, "generation.resume → needs_review (revision loop)");
-      return;
+      return { status: "needs_review" };
     }
 
     // completed: явний мапінг рішення людини (§13 крок 9). reject→rejected; інакше (approve або
@@ -175,7 +179,14 @@ export async function handleResume(job: GenerationResumeJob, ctx: HandlerContext
     await resolveInboxForEntity(tx, accountId, runId);
 
     ctx.logger.info({ runId, status: runStatus }, "generation.resume persisted");
+    return { status: runStatus };
   });
+
+  // ── 3.5) ПІСЛЯ персисту, ПОЗА txn: best-effort Telegram-пінг (§5) — лише коли ревізія знову
+  // привела до гейту рецензії. Збій сповіщення НЕ валить прогін (як enqueueVisuals нижче). ──
+  if (persisted.status === "needs_review") {
+    await notifyTelegramReady(ctx, accountId, runId);
+  }
 
   // ── 4) ПІСЛЯ персисту: перемалювати картинки переписаних instagram-постів (§7.4). ──
   // Тільки для rerun: текст змінився → стара картинка йому вже не відповідає. Інвалідуємо явно

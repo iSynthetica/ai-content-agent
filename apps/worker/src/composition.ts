@@ -2,7 +2,7 @@
 // Тут збирається db-клієнт, РЕАЛЬНІ адаптери pipeline-портів (@forteq/pipeline), Postgres-checkpointer
 // і job-scoped tenant-контекст (RLS). Барʼєр B2: справжній пайплайн під'єднано замість стабів.
 import pino, { type Logger as PinoLogger } from "pino";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
 import type { BaseCheckpointSaver } from "@langchain/langgraph";
@@ -17,8 +17,16 @@ import {
   type WebSearchTool,
 } from "@forteq/pipeline";
 import { createFakeModelFactory } from "./lib/fakeModelFactory.js";
+import { publisherRegistry, type PublisherRegistry } from "./lib/publishers/registry.js";
 import type { JobProducer } from "./queue.js";
 import type { Env } from "./config/env.js";
+
+// Порт читання байтів зображення у ВОРКЕРІ (§publishing §4.2). Пайплайновий ImageStore лише ПИШЕ
+// (put) і його не чіпаємо (pipeline untouched); хендлер content.publish мусить ще й ЧИТАТИ байти
+// вже намальованого зображення, тож read живе тут, поряд із LocalImageStore.
+export interface ImageReader {
+  read(key: string): Promise<Buffer>;
+}
 
 // ── АДАПТЕРИ ПОРТІВ (РЕАЛЬНІ) ─────────────────────────────────────────────────
 
@@ -29,7 +37,7 @@ import type { Env } from "./config/env.js";
 // у content_items.image_url і браузер його не міг завантажити (баг зі звіту покупця): картинку
 // віддає api-роут GET /v1/media/:runId/:file через той самий том. Конвенція шляху — у @forteq/shared,
 // щоб worker (пише) і api (парсить ключ) не розійшлися.
-class LocalImageStore implements ImageStore {
+class LocalImageStore implements ImageStore, ImageReader {
   constructor(private readonly dir: string) {}
 
   async put(
@@ -42,6 +50,13 @@ class LocalImageStore implements ImageStore {
     await mkdir(dirname(abs), { recursive: true });
     await writeFile(abs, bytes);
     return { url: mediaUrl(key), key };
+  }
+
+  // Читає байти за ключем `${runId}/${draftId}.${ext}` (той самий том, що й put). Кидає, якщо
+  // файлу нема — хендлер публікації ловить це й публікує без зображення (де воно опційне).
+  async read(key: string): Promise<Buffer> {
+    const abs = resolve(join(this.dir, key));
+    return readFile(abs);
   }
 }
 
@@ -112,6 +127,12 @@ export interface Deps {
   // Продюсер follow-up job (§7.4): generation.start ставить content.visuals після персисту.
   // Інжектиться з main.ts (там живе redis-конект), тому опційний — тести його не потребують.
   producer?: JobProducer;
+  // Читач байтів зображення (§publishing §4.2): той самий LocalImageStore-інстанс, що й pipeline.imageStore,
+  // але типізований на read (публікатор читає намальоване зображення й віддає його в адаптер).
+  imageStorage: ImageReader;
+  // Реєстр публікаторів (§publishing §4.1): порожній у foundation-фазі; адаптер-фази заповнюють.
+  // Хендлер бере його ЗВІДСИ (не з синглтона напряму) — так тест інжектить фейковий публікатор.
+  publishers: PublisherRegistry;
 }
 
 /** Job-scoped UnitOfWork handle (drizzle tx з уже виставленим RLS-GUC). TODO(spike-2): account-scoped репозиторії.
@@ -171,15 +192,20 @@ export function buildDeps(env: Env): Deps {
   // `.setup()` (створення checkpointer-таблиць) викликається у main.ts ПЕРЕД стартом Worker'а.
   const checkpointer: BaseCheckpointSaver = PostgresSaver.fromConnString(env.DATABASE_URL);
 
+  // ОДИН інстанс LocalImageStore: пайплайн пише через нього (imageStore.put), публікатор читає
+  // через нього ж (imageStorage.read) — той самий том, без розсинхрону конвенції ключів.
+  const imageStore = new LocalImageStore(env.IMAGE_DIR);
+
   const pipeline: PipelineDeps = {
     models,
     webSearch: new TavilyWebSearch(env.TAVILY_API_KEY, logger),
-    imageStore: new LocalImageStore(env.IMAGE_DIR),
+    imageStore,
     checkpointer,
     logger,
   };
 
-  return { env, db, logger, pipeline, masterKey };
+  // publishers — мутабельний синглтон-реєстр; адаптер-фази заповнюють його при імпорті свого модуля.
+  return { env, db, logger, pipeline, masterKey, imageStorage: imageStore, publishers: publisherRegistry };
 }
 
 /**
