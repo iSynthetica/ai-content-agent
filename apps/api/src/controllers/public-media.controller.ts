@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
 import sharp from "sharp";
-import { verifyMediaToken } from "@forteq/shared";
+import { verifyMediaToken } from "@forteq/shared/media-token";
 import type { Composition } from "../composition";
 import { asyncHandler } from "../http/async-handler";
 import { AppError } from "../http/errors";

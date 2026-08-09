@@ -1,6 +1,7 @@
 import { and, eq, inArray } from "drizzle-orm";
 import type { Job, PublishProvider } from "@forteq/shared";
-import { MEDIA_PATH_PREFIX, publishFailedInbox, publishSucceededEvent, signMediaToken } from "@forteq/shared";
+import { MEDIA_PATH_PREFIX, publishFailedInbox, publishSucceededEvent } from "@forteq/shared";
+import { signMediaToken } from "@forteq/shared/media-token";
 import { contentItems, publications, serviceConnections, decryptSecret, encryptSecret } from "@forteq/db";
 import { withAccountScope, type HandlerContext } from "../composition.js";
 import { openInbox, writeNotification } from "../lib/notify.js";
