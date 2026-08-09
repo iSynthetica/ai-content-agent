@@ -325,3 +325,65 @@ export const inboxItems = pgTable(
   },
   (t) => ({ statusIdx: index("inbox_items_account_status_idx").on(t.accountId, t.status) }),
 );
+
+// ── публікації + конекти сервісів (§publishing foundation §2) ─────────────────
+// OAuth-токени сервісів (LinkedIn/X/Instagram) + конфіг Telegram-бота. Клонує BYOK-підхід api_keys:
+// у БД лежить лише шифротекст (*_ct = AES-256-GCM base64), plaintext токена не зберігаємо ніколи;
+// розшифровує воркер на момент виконання (crypto.ts encrypt/decryptSecret). provider — PLAIN TEXT,
+// не pg-enum (як api_keys.provider), щоб додавання провайдера не тягло міграцію enum. UNIQUE(account,
+// provider): один конект на провайдера в межах орендаря (MVP). Тенант-ізоляція за account_id (RLS).
+export const serviceConnections = pgTable(
+  "service_connections",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    accountId: uuid("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(), // linkedin | twitter | instagram | telegram
+    status: text("status").default("connected").notNull(), // connected | expired | error | disconnected
+    accessTokenCt: text("access_token_ct"), // base64(iv|tag|ct); nullable для telegram (лише bot-token)
+    refreshTokenCt: text("refresh_token_ct"), // nullable (X/LinkedIn refresh; IG long-lived без refresh)
+    externalAccountId: text("external_account_id"), // URN / user id / page id / chat id
+    externalAccountName: text("external_account_name"), // напр. "Acme Corp on LinkedIn"
+    scopes: text("scopes"), // надані scope через пробіл/кому
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    meta: jsonb("meta").$type<Record<string, unknown>>().default({}).notNull(), // напр. IG business id, LinkedIn org URN
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+  },
+  (t) => ({
+    accountProviderUq: uniqueIndex("service_connections_account_provider_uq").on(
+      t.accountId,
+      t.provider,
+    ),
+  }),
+);
+
+// Кожна спроба публікації content_item у провайдера. Слугує idempotency-ключем воркера: UNIQUE(item,
+// provider) означає одну живу публікацію на пару, тож повторний запуск джоби не дублює пост. run_id —
+// щоб UI тягнув статуси публікацій per-run поряд з елементами. Тенант-ізоляція за account_id (RLS);
+// repo-методи беруть accountId першим аргументом (defense-in-depth поверх RLS).
+export const publications = pgTable(
+  "publications",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    accountId: uuid("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
+    contentItemId: uuid("content_item_id")
+      .notNull()
+      .references(() => contentItems.id, { onDelete: "cascade" }),
+    runId: uuid("run_id").notNull().references(() => generationRuns.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(),
+    status: text("status").default("pending").notNull(), // pending | published | failed
+    externalPostId: text("external_post_id"),
+    externalUrl: text("external_url"),
+    error: text("error"),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    itemProviderUq: uniqueIndex("publications_content_item_provider_uq").on(
+      t.contentItemId,
+      t.provider,
+    ),
+  }),
+);
