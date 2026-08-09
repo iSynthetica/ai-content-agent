@@ -1,6 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm";
 import type { Job, PublishProvider } from "@forteq/shared";
-import { MEDIA_PATH_PREFIX, publishFailedInbox, publishSucceededEvent } from "@forteq/shared";
+import { MEDIA_PATH_PREFIX, publishFailedInbox, publishSucceededEvent, signMediaToken } from "@forteq/shared";
 import { contentItems, publications, serviceConnections, decryptSecret, encryptSecret } from "@forteq/db";
 import { withAccountScope, type HandlerContext } from "../composition.js";
 import { openInbox, writeNotification } from "../lib/notify.js";
@@ -189,6 +189,18 @@ async function publishOne(
     }
   }
 
+  // 2d-bis) Публічний URL зображення — ЛИШЕ для Instagram (Graph API тягне URL сам, сервером Meta,
+  // без cookie-сесії; байти йому не передати). Карбуємо коротко-живучий (15хв) HMAC-токен; публічний
+  // роут /media/public/:token віддасть JPEG (транскод із PNG). Для LinkedIn/X — не потрібно (байти).
+  let publicImageUrl: string | undefined;
+  if (provider === "instagram" && item.imageUrl && ctx.env.MEDIA_SIGNING_SECRET) {
+    const key = keyFromMediaUrl(item.imageUrl);
+    if (key) {
+      const token = signMediaToken(key, ctx.env.MEDIA_SIGNING_SECRET, 15 * 60);
+      publicImageUrl = `${ctx.env.PUBLIC_MEDIA_BASE_URL}/media/public/${token}`;
+    }
+  }
+
   // 2e) Реєстр публікаторів. Порожній у foundation-фазі → provider not implemented yet.
   const publisher = getPublisher(ctx.publishers, provider);
   if (!publisher) {
@@ -205,7 +217,7 @@ async function publishOne(
       imageUrl: item.imageUrl,
     },
     imageBytes,
-    // publicImageUrl карбуватиме IG-фаза (MEDIA_SIGNING_SECRET/PUBLIC_MEDIA_BASE_URL) — шов лишаємо тут.
+    publicImageUrl,
     connection: {
       accessToken: refreshed.accessToken,
       refreshToken: refreshed.refreshToken,

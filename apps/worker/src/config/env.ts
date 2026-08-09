@@ -83,6 +83,8 @@ export const envSchema = z.object({
   X_CLIENT_SECRET: optionalSecret,
   IG_CLIENT_ID: optionalSecret,
   IG_CLIENT_SECRET: optionalSecret,
+  // Версія Graph API для IG-публікатора (§publishing/03-instagram). Дзеркалить apps/api IG_GRAPH_VERSION.
+  IG_GRAPH_VERSION: z.string().regex(/^v\d+\.\d+$/).default("v21.0"),
 
   // Runtime worker'а
   LOG_LEVEL: z

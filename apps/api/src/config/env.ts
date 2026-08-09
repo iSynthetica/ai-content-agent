@@ -65,6 +65,22 @@ export const envSchema = z.object({
     .url()
     .default("https://saas.forteqsolution.com/api/connections/twitter/callback"),
 
+  // ── Instagram OAuth (Facebook Login for Business) (§publishing/03-instagram §9) ──
+  // Обидві креди optional: без них провайдер «не сконфігурований» і кнопка Connect вимкнена
+  // (foundation §3.1, isConfigured → false). client_secret — тільки з env, у логи ніколи.
+  // = Meta App ID / App Secret.
+  IG_CLIENT_ID: z.string().optional(),
+  IG_CLIENT_SECRET: z.string().optional(),
+  // Абсолютний HTTPS redirect, ТОЧНИЙ збіг із зареєстрованим у Meta-застосунку (§10). Читається у
+  // instagramOAuthConfig — тому з дефолтом, а не хардкодом у конфізі провайдера.
+  IG_REDIRECT_URI: z
+    .string()
+    .url()
+    .default("https://saas.forteqsolution.com/api/connections/instagram/callback"),
+  // Версія Graph API (з префіксом `v`) — Meta ротує ~щоквартально (§11); пінимо й bump'аємо тут.
+  // Дзеркалить apps/worker IG_GRAPH_VERSION (той самий рядок будує URL у публікаторі).
+  IG_GRAPH_VERSION: z.string().regex(/^v\d+\.\d+$/).default("v21.0"),
+
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
 });
 

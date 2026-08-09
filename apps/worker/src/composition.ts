@@ -20,6 +20,7 @@ import { createFakeModelFactory } from "./lib/fakeModelFactory.js";
 import { publisherRegistry, type PublisherRegistry } from "./lib/publishers/registry.js";
 import { makeLinkedInPublisher } from "./lib/publishers/linkedin.js";
 import { makeTwitterPublisher } from "./lib/publishers/twitter.js";
+import { makeInstagramPublisher } from "./lib/publishers/instagram.js";
 import type { JobProducer } from "./queue.js";
 import type { Env } from "./config/env.js";
 
@@ -213,6 +214,7 @@ export function buildDeps(env: Env): Deps {
   // twitter — публікатор без стану/кред: токен уже свіжий (хендлер рефрешить через publishTokens.ts,
   // де twitter уже сконфігурований). Розбивку 280+ на тред і v2 media-upload робить сам адаптер.
   publisherRegistry.twitter = makeTwitterPublisher();
+  publisherRegistry.instagram = makeInstagramPublisher(env.IG_GRAPH_VERSION);
   return { env, db, logger, pipeline, masterKey, imageStorage: imageStore, publishers: publisherRegistry };
 }
 

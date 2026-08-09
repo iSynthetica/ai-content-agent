@@ -31,6 +31,7 @@ import type { AppConfig } from "../../config/env";
 import type { OAuthProviderConfig } from "./types";
 import { linkedinOAuthConfig } from "./providers/linkedin";
 import { twitterOAuthConfig } from "./providers/twitter";
+import { instagramOAuthConfig } from "./providers/instagram";
 
 export function oauthProviders(
   env: AppConfig,
@@ -45,6 +46,11 @@ export function oauthProviders(
   // конфіг провайдера; фреймворк-шлях їх лише читає). Без кред — isConfigured→false, Connect вимкнено.
   if (env.X_CLIENT_ID && env.X_CLIENT_SECRET) {
     providers.twitter = twitterOAuthConfig(env);
+  }
+  // instagram — той самий шов: запис лише коли обидві IG-креди задані. Специфіка IG (comma-scopes,
+  // PAGE-токен через tokenOverride, ig-user-id discovery) інкапсульована в instagramOAuthConfig.
+  if (env.IG_CLIENT_ID && env.IG_CLIENT_SECRET) {
+    providers.instagram = instagramOAuthConfig(env);
   }
   return providers;
 }
