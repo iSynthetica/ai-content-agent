@@ -47,17 +47,40 @@ export async function notifyTelegramReady(
     // Deep-link веде у ВЕБ-застосунок (/runs/<id>), не в api — тому PUBLIC_APP_URL, а не media base.
     const reviewUrl = `${ctx.env.PUBLIC_APP_URL}/runs/${runId}`;
 
-    // TODO(telegram-phase): замінити цей лог на реальний виклик Bot API
-    //   POST https://api.telegram.org/bot<botToken>/sendMessage
-    //   { chat_id: row.chatId, text: "<N> posts ready for review", parse_mode: "HTML",
-    //     link_preview_options: { is_disabled: true },
-    //     reply_markup: { inline_keyboard: [[{ text: "Open review", url: reviewUrl }]] } }
-    // Best-effort: HTTP-помилку лише логувати; 401/403/400 → позначити конекшн 'error' для UI.
-    // botToken тут свідомо НЕ логуємо (секрет); фаза Telegram використає його лише в URL запиту.
-    void botToken;
+    // Bot API sendMessage. parse_mode HTML: у тексті лише статичні теги, які ми контролюємо —
+    // динамічних рядків тут нема, тож екранувати нічого (додаткові дані вставляй лише через esc &<>).
+    // URL — у кнопці inline_keyboard, він НЕ парситься як текст, тож екранування не потребує.
+    // botToken свідомо потрапляє ЛИШЕ в URL запиту й НІКОЛИ в логи (секрет).
+    const body = {
+      chat_id: row.chatId,
+      text: "🟢 <b>Контент готовий до перевірки.</b>",
+      parse_mode: "HTML",
+      link_preview_options: { is_disabled: true },
+      reply_markup: {
+        inline_keyboard: [[{ text: "Переглянути", url: reviewUrl }]],
+      },
+    };
+
+    // Захисний таймаут: зависла Telegram не має стопорити воркер. Будь-який збій — лише лог (нижче).
+    const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (!res.ok) {
+      // Тіло відповіді Bot API безпечно логувати (токен у ньому не повторюється); URL — НЕ логуємо.
+      const respBody = await res.text().catch(() => "");
+      ctx.logger.warn(
+        { runId, chatId: row.chatId, status: res.status, body: respBody },
+        "telegram sendMessage failed",
+      );
+      return;
+    }
     ctx.logger.info(
-      { runId, chatId: row.chatId, reviewUrl },
-      "telegram notify (заглушка): контент готовий до рецензії — sendMessage додасть Telegram-фаза",
+      { runId, chatId: row.chatId },
+      "telegram notify: контент готовий до рецензії — sendMessage надіслано",
     );
   } catch (e) {
     // Інваріант: збій сповіщення НЕ валить прогін.

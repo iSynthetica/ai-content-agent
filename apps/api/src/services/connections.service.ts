@@ -123,10 +123,39 @@ export class ConnectionsService {
     });
   }
 
+  // Валідація bot-token через Bot API getMe. Свідомо СТАТИЧНИЙ хелпер (без БД/txn): мережевий виклик
+  // мусить бути ПОЗА request-txn (hard-boundary #4), тож контролер кличе його ДО openScope — точно як
+  // OAuth-callback робить exchangeCode/fetchAccountIdentity перед короткою txn saveConnection.
+  // Повертає @username бота (для показу в UI); кидає 422 на невалідний токен.
+  static async validateTelegramToken(botToken: string): Promise<{ username: string | null }> {
+    let res: Response;
+    try {
+      // Короткий таймаут: config-екшн не має висіти, якщо Telegram недоступна.
+      res = await fetch(`https://api.telegram.org/bot${botToken.trim()}/getMe`, {
+        method: "GET",
+        signal: AbortSignal.timeout(5000),
+      });
+    } catch {
+      // Мережева помилка/таймаут — трактуємо як невалідну конфігурацію (токен не підтверджено).
+      throw AppError.unprocessable("невалідний bot token");
+    }
+    if (!res.ok) throw AppError.unprocessable("невалідний bot token");
+    const json = (await res.json().catch(() => null)) as
+      | { ok?: boolean; result?: { username?: string } }
+      | null;
+    if (!json || json.ok !== true) throw AppError.unprocessable("невалідний bot token");
+    const username = json.result?.username ?? null;
+    return { username: username ? `@${username}` : null };
+  }
+
   // Telegram: не OAuth — «connection» це bot token (шифрується) + chat id (external_account_id).
-  async configureTelegram(ctx: AuthCtx, botToken: string, chatId: string): Promise<void> {
-    // TODO(telegram-phase): валідувати botToken через Bot API getMe ПЕРЕД збереженням (foundation
-    // §5) — стаб зараз просто зберігає; фаза Telegram додасть перевірку й, за потреби, назву бота.
+  // Токен уже провалідовано в контролері (getMe ПОЗА txn); сюди приходить готова назва бота для UI.
+  async configureTelegram(
+    ctx: AuthCtx,
+    botToken: string,
+    chatId: string,
+    externalAccountName: string | null,
+  ): Promise<void> {
     const enc = encryptSecret(botToken.trim(), this.masterKey);
     await this.serviceConnections.upsert(ctx.accountId, {
       provider: "telegram",
@@ -134,7 +163,7 @@ export class ConnectionsService {
       accessTokenCt: enc.ciphertext,
       refreshTokenCt: null,
       externalAccountId: chatId.trim(),
-      externalAccountName: null,
+      externalAccountName,
       scopes: null,
       expiresAt: null,
       meta: {},

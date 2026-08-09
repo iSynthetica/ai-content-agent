@@ -6,6 +6,7 @@ import {
   telegramConfigRequest,
 } from "@forteq/shared";
 import type { Composition } from "../composition";
+import { ConnectionsService } from "../services/connections.service";
 import { asyncHandler } from "../http/async-handler";
 import { requireAuth } from "../http/middlewares/auth";
 import { oauthProviders } from "../lib/oauth/providers";
@@ -91,8 +92,11 @@ export function connectionsController(root: Composition) {
     telegram: asyncHandler(async (req: Request, res: Response) => {
       const auth = requireAuth(req);
       const body = telegramConfigRequest.parse(req.body);
+      // Валідація токена (getMe) — HTTP ПОЗА txn (hard-boundary #4), як exchange у OAuth-callback вище.
+      // Кидає 422 на невалідний токен ще до відкриття request-scope; повертає @username для UI.
+      const { username } = await ConnectionsService.validateTelegramToken(body.botToken);
       await root.openScope(auth, (s) =>
-        s.services.connections.configureTelegram(auth, body.botToken, body.chatId),
+        s.services.connections.configureTelegram(auth, body.botToken, body.chatId, username),
       );
       res.status(204).end();
     }),
