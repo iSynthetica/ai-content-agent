@@ -13,13 +13,25 @@ import { pagedRuns, type RunDTO } from "@/features/runs/schemas";
 
 const LIST_POLL_MS = 4000;
 
-export function useRuns(companyId: string, initialData?: RunDTO[]) {
+// archived (§run-archive): "exclude" (дефолт) — основний список без архіву; "only" — окремий вигляд
+// архіву компанії. Ключ архіву має спільний префікс ["runs", companyId], тож інвалідація
+// qk.runs(companyId) з мутацій архіву перечитує обидва списки. Архів не поллимо (нема активних
+// прогонів) і вмикаємо запит лише коли вкладку відкрито (enabled), щоб не тягнути його щоразу.
+export function useRuns(
+  companyId: string,
+  initialData?: RunDTO[],
+  archived: "exclude" | "only" | "all" = "exclude",
+  enabled = true,
+) {
+  const isArchiveView = archived === "only";
   return useQuery({
-    queryKey: qk.runs(companyId),
-    queryFn: async () => (await http.get(endpoints.runs(companyId), pagedRuns)).items,
+    queryKey: isArchiveView ? qk.runsArchived(companyId) : qk.runs(companyId),
+    queryFn: async () =>
+      (await http.get(endpoints.runs(companyId, isArchiveView ? "only" : undefined), pagedRuns)).items,
     initialData,
-    enabled: !!companyId,
-    refetchInterval: (q) => (hasActiveRun(q.state.data ?? []) ? LIST_POLL_MS : false),
+    enabled: !!companyId && enabled,
+    refetchInterval: (q) =>
+      !isArchiveView && hasActiveRun(q.state.data ?? []) ? LIST_POLL_MS : false,
     refetchIntervalInBackground: false,
   });
 }

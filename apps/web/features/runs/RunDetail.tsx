@@ -5,20 +5,24 @@
 // needs_review (Approve/Reject/Rerun по всьому run), стани generating/failed, ChannelTabs з картками.
 import * as React from "react";
 import Link from "next/link";
-import { AlertTriangle, Archive, ArrowLeft, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { AlertTriangle, Archive, ArchiveRestore, ArrowLeft, Loader2, Trash2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/common/status-badge";
 import { RerunDialog } from "@/components/common/rerun-dialog";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { ChannelTabs } from "@/features/content/ChannelTabs";
 import { PipelineFlow } from "@/components/runs/PipelineFlow";
 import { GenerateButton } from "@/features/runs/GenerateButton";
 import { useRun } from "@/features/runs/use-run";
 import { useItems } from "@/features/content/use-items";
 import { useRunDecision } from "@/features/runs/use-run-decision";
+import { useRunArchive } from "@/features/runs/use-run-archive";
 import { useConnections } from "@/features/connections/use-connections";
 import { usePublications, usePublish } from "@/features/publishing/use-publications";
 import type { PublicationDTO } from "@/lib/dto";
@@ -35,6 +39,7 @@ export function RunDetail({
   initialRun,
   initialItems,
   canEdit,
+  canArchive,
   canDelete,
   canPublish,
 }: {
@@ -44,23 +49,25 @@ export function RunDetail({
   // §content-editing: гейт Edit/Revert на постах — рахує роль сесії з RSC-сторінки (той самий
   // патерн, що й ApiKeysManager.canManage), тож клієнтський дерево нижче лишається "тупим".
   canEdit: boolean;
-  // §post-archive: гейт content:delete (кнопка «Видалити назавжди» в архіві) — рахується так само.
+  // §run-archive: гейт архів/розархів прогону (run:start) + незворотне видалення (run:delete) —
+  // рахуються на сторінці з ролі сесії, як і решта дій.
+  canArchive: boolean;
   canDelete: boolean;
   // §publishing: гейт кнопки «Опублікувати» — так само рахується на сторінці з ролі сесії.
   canPublish: boolean;
 }) {
   const { t, language } = useLanguage();
+  const router = useRouter();
   const qc = useQueryClient();
   const { data: run, isError } = useRun(runId, initialRun);
   const { data: items } = useItems(runId, initialItems);
   const runDecision = useRunDecision(runId, initialRun.companyId);
   const [rerunOpen, setRerunOpen] = React.useState(false);
+  const [deleteOpen, setDeleteOpen] = React.useState(false);
 
-  // §post-archive: окремий вигляд архіву прогону. Запит на архів вмикається лише коли вкладку
-  // відкрито (enabled=showArchive), щоб не тягнути архів на кожному завантаженні сторінки.
-  const [showArchive, setShowArchive] = React.useState(false);
-  const { data: archivedItems } = useItems(runId, undefined, "only", showArchive);
-  const archivedCount = archivedItems?.length ?? 0;
+  // §run-archive: архів/розархів/видалення ЦІЛОГО прогону. Мутації інвалідують список прогонів
+  // компанії (прогін зникає з основного вигляду) + сам прогін. Видалення веде назад до компанії.
+  const runArchive = useRunArchive(initialRun.companyId);
 
   // §publishing: connection'и (щоб знати, куди можна публікувати) + стан публікацій по прогону
   // (окремий полл — результат фонової джоби доїжджає ПІСЛЯ дії). publish триґерить enqueue.
@@ -113,6 +120,18 @@ export function RunDetail({
   const companyId = run.companyId;
   const generating = isRunGenerating(run.status);
   const decisionPending = runDecision.isPending;
+  const isArchived = Boolean(run.archivedAt);
+
+  function onDeleteRun() {
+    runArchive.remove.mutate(runId, {
+      onSuccess: () => {
+        toast.success(t("Прогін видалено назавжди"));
+        setDeleteOpen(false);
+        router.push(`/companies/${companyId}`);
+      },
+      onError: () => toast.error(t("Не вдалося видалити прогін")),
+    });
+  }
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-6">
@@ -135,21 +154,61 @@ export function RunDetail({
               {run.counts ? ` · ${t("постів")}: ${run.counts.items}` : ""}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            {/* §post-archive: перемикач архіву прогону (керування архівованими постами). */}
-            <Button
-              type="button"
-              variant={showArchive ? "secondary" : "outline"}
-              size="sm"
-              onClick={() => setShowArchive((v) => !v)}
-              aria-pressed={showArchive}
-            >
-              <Archive className="h-4 w-4" />
-              {t("Архів")}
-              {archivedCount > 0 && (
-                <span className="tabular-nums text-xs text-muted-foreground">{archivedCount}</span>
-              )}
-            </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {isArchived && (
+              <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                <Archive className="h-3.5 w-3.5" aria-hidden />
+                {t("В архіві")}
+              </span>
+            )}
+            {/* §run-archive: архів/розархів цілого прогону (run:start) + видалення назавжди (run:delete). */}
+            {canArchive && !isArchived && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  runArchive.archive.mutate(runId, {
+                    onSuccess: () => toast.success(t("Прогін заархівовано")),
+                    onError: () => toast.error(t("Не вдалося заархівувати прогін")),
+                  })
+                }
+                disabled={runArchive.archive.isPending}
+              >
+                <Archive className="h-4 w-4" />
+                {t("Архівувати")}
+              </Button>
+            )}
+            {canArchive && isArchived && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  runArchive.unarchive.mutate(runId, {
+                    onSuccess: () => toast.success(t("Прогін відновлено з архіву")),
+                    onError: () => toast.error(t("Не вдалося відновити прогін")),
+                  })
+                }
+                disabled={runArchive.unarchive.isPending}
+              >
+                <ArchiveRestore className="h-4 w-4" />
+                {t("Розархівувати")}
+              </Button>
+            )}
+            {canDelete && isArchived && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="text-destructive hover:text-destructive"
+                onClick={() => setDeleteOpen(true)}
+                disabled={runArchive.remove.isPending}
+              >
+                <Trash2 className="h-4 w-4" />
+                {t("Видалити назавжди")}
+              </Button>
+            )}
             {/* Поки граф працює, постів ще немає — вивантажувати нічого. */}
             <ExportMenu runId={run.id} disabled={generating} />
             <StatusBadge domain="run" status={run.status} />
@@ -255,34 +314,6 @@ export function RunDetail({
       {/* ── Флоу пайплайна: ролі-ноди й хто зараз виконується (над картками статей) ── */}
       <PipelineFlow run={run} />
 
-      {/* ── Архів прогону (§post-archive): керування архівованими постами ── */}
-      {showArchive && (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col gap-4 py-5">
-            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <Archive className="h-4 w-4" aria-hidden />
-              {t("Архівовані пости")}
-            </div>
-            {archivedCount > 0 ? (
-              <ChannelTabs
-                items={archivedItems ?? []}
-                runId={runId}
-                companyId={companyId}
-                canEdit={canEdit}
-                canDelete={canDelete}
-                canPublish={canPublish}
-                connectedProviders={connectedProviders}
-                publicationByItem={publicationByItem}
-                onPublish={(itemId) => publish.mutate([itemId])}
-                publishPending={publish.isPending}
-              />
-            ) : (
-              <p className="text-sm text-muted-foreground">{t("В архіві поки що порожньо.")}</p>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
       {/* ── Пости за каналами ── */}
       {items && items.length > 0 ? (
         <ChannelTabs
@@ -290,7 +321,6 @@ export function RunDetail({
           runId={runId}
           companyId={companyId}
           canEdit={canEdit}
-          canDelete={canDelete}
           canPublish={canPublish}
           connectedProviders={connectedProviders}
           publicationByItem={publicationByItem}
@@ -317,6 +347,17 @@ export function RunDetail({
             { onSuccess: () => setRerunOpen(false) },
           )
         }
+      />
+
+      {/* §run-archive: підтвердження незворотного видалення прогону. */}
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        pending={runArchive.remove.isPending}
+        title={t("Видалити прогін назавжди?")}
+        description={t("Прогін разом з усіма постами, історією версій та публікаціями буде видалено безповоротно. Цю дію не можна скасувати.")}
+        confirmLabel={t("Видалити назавжди")}
+        onConfirm={onDeleteRun}
       />
     </div>
   );

@@ -13,13 +13,11 @@ const listRunsQuery = z.object({
   status: runStatusSchema.optional(),
   from: z.string().datetime().optional(),
   to: z.string().datetime().optional(),
-});
-// archived — фільтр архіву (§post-archive). Дефолт "exclude": основний список прогону ховає архів;
-// "only" — окремий вигляд керування архівом; "all" — усі пости разом.
-const itemsQuery = z.object({
-  channel: channelSchema.optional(),
+  // archived — фільтр архіву (§run-archive). Дефолт "exclude": основний список ховає архів;
+  // "only" — окремий вигляд керування архівом; "all" — усі прогони разом.
   archived: z.enum(["exclude", "only", "all"]).default("exclude"),
 });
+const itemsQuery = z.object({ channel: channelSchema.optional() });
 // Дефолт md: FR-10.1 (Markdown) — MUST, JSON (FR-10.2) — SHOULD, тож без параметра віддаємо саме md.
 const exportQuery = z.object({ format: z.enum(["md", "json"]).default("md") });
 
@@ -81,6 +79,32 @@ export function runsController(root: Composition) {
       const id = idParam.parse(req.params.id);
       const run = await root.openScope(auth, (s) => s.services.runs.get(auth, id));
       res.status(200).json(run);
+    }),
+
+    // POST /v1/runs/:id/archive — м'яке архівування прогону (§run-archive). RBAC: run:start
+    // (оборотна дія). Тіло порожнє. Відповідь — оновлений runDTO (з archivedAt).
+    archive: asyncHandler(async (req: Request, res: Response) => {
+      const auth = requireAuth(req);
+      const id = idParam.parse(req.params.id);
+      const updated = await root.openScope(auth, (s) => s.services.runs.archiveRun(auth, id));
+      res.status(200).json(updated);
+    }),
+
+    // POST /v1/runs/:id/unarchive — розархівувати прогін (§run-archive). RBAC: run:start.
+    unarchive: asyncHandler(async (req: Request, res: Response) => {
+      const auth = requireAuth(req);
+      const id = idParam.parse(req.params.id);
+      const updated = await root.openScope(auth, (s) => s.services.runs.unarchiveRun(auth, id));
+      res.status(200).json(updated);
+    }),
+
+    // DELETE /v1/runs/:id — незворотне видалення прогону (§run-archive). RBAC: run:delete
+    // (owner/admin). Сервіс вимагає попередньої архівації (інакше 422). 204 без тіла.
+    remove: asyncHandler(async (req: Request, res: Response) => {
+      const auth = requireAuth(req);
+      const id = idParam.parse(req.params.id);
+      await root.openScope(auth, (s) => s.services.runs.deleteRun(auth, id));
+      res.status(204).end();
     }),
 
     items: asyncHandler(async (req: Request, res: Response) => {

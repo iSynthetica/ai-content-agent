@@ -282,6 +282,49 @@ export class RunsService {
     return run;
   }
 
+  // POST /v1/runs/:id/archive — м'яке архівування прогону (§run-archive). Оборотна дія (run:start):
+  // archived_at=now, БЕЗ зміни статусу — архів ортогональний до run_status. Прибирає прогін з основного
+  // списку компанії (list за замовчуванням archived=exclude); керувати ним можна в архівному вигляді.
+  async archiveRun(ctx: AuthCtx, id: string): Promise<RunSummary> {
+    const run = await this.runs.findById(ctx.accountId, id);
+    if (!run) throw AppError.notFound("run");
+
+    const updated = await this.runs.setArchivedAt(ctx.accountId, id, new Date());
+    if (!updated) throw AppError.notFound("run");
+
+    this.logger.info({ runId: id }, "run archived");
+    return updated;
+  }
+
+  // POST /v1/runs/:id/unarchive — розархівувати прогін (§run-archive). Оборотна дія (run:start):
+  // archived_at=null повертає прогін у основний список. Статус лишається тим, яким був до архівації.
+  async unarchiveRun(ctx: AuthCtx, id: string): Promise<RunSummary> {
+    const run = await this.runs.findById(ctx.accountId, id);
+    if (!run) throw AppError.notFound("run");
+
+    const updated = await this.runs.setArchivedAt(ctx.accountId, id, null);
+    if (!updated) throw AppError.notFound("run");
+
+    this.logger.info({ runId: id }, "run unarchived");
+    return updated;
+  }
+
+  // DELETE /v1/runs/:id — незворотне видалення прогону (§run-archive hard-delete, run:delete).
+  // Двокроковий захист: видалити можна ЛИШЕ вже архівований прогін (інакше 422) — щоб випадковий клік
+  // не знищив активний прогін разом з усіма постами, публікаціями та історією версій (каскад по FK).
+  async deleteRun(ctx: AuthCtx, id: string): Promise<void> {
+    const run = await this.runs.findById(ctx.accountId, id);
+    if (!run) throw AppError.notFound("run");
+    if (!run.archivedAt) {
+      throw AppError.unprocessable("спершу архівуйте прогін, а потім видаляйте назавжди");
+    }
+
+    const deleted = await this.runs.deleteById(ctx.accountId, id);
+    if (!deleted) throw AppError.notFound("run");
+
+    this.logger.info({ runId: id }, "run permanently deleted");
+  }
+
   async items(ctx: AuthCtx, runId: string, query: ItemsQuery): Promise<ContentItem[]> {
     const run = await this.runs.findById(ctx.accountId, runId);
     if (!run) throw AppError.notFound("run");

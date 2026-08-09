@@ -36,9 +36,7 @@ class FakeContentItemsRepo implements ContentItemsRepo {
     imageUrl: null,
     status: "draft",
     version: 1,
-    archivedAt: null,
   };
-  deleted = false;
 
   async listByRun(_a: string, _r: string, _q: ItemsQuery): Promise<ContentItem[]> {
     return [this.item];
@@ -59,16 +57,6 @@ class FakeContentItemsRepo implements ContentItemsRepo {
     if (accountId !== ACCOUNT || id !== this.item.id) return null;
     this.item = { ...this.item, text: patch.text, title: patch.title };
     return this.item;
-  }
-  async setArchivedAt(accountId: string, id: string, value: Date | null): Promise<ContentItem | null> {
-    if (accountId !== ACCOUNT || id !== this.item.id) return null;
-    this.item = { ...this.item, archivedAt: value ? value.toISOString() : null };
-    return this.item;
-  }
-  async deleteById(accountId: string, id: string): Promise<boolean> {
-    if (accountId !== ACCOUNT || id !== this.item.id) return false;
-    this.deleted = true;
-    return true;
   }
   async existsByImageUrl(accountId: string, imageUrl: string): Promise<boolean> {
     return accountId === ACCOUNT && this.item.imageUrl === imageUrl;
@@ -227,52 +215,5 @@ describe("ContentItemsService.listVersions", () => {
   it("404 на неіснуючий айтем", async () => {
     const { service } = build();
     await expect(service.listVersions(ctx, "does-not-exist")).rejects.toBeInstanceOf(AppError);
-  });
-});
-
-// §post-archive: архів/розархів (оборотні) + hard-delete із гвардом «спершу архівуйте».
-describe("ContentItemsService.archiveItem / unarchiveItem", () => {
-  it("archive виставляє archivedAt (в архів), не чіпаючи статус", async () => {
-    const { items, service } = build();
-    const updated = await service.archiveItem(ctx, ITEM_ID);
-    expect(updated.archivedAt).not.toBeNull();
-    expect(updated.status).toBe("draft"); // архів ортогональний до workflow-статусу
-    expect(items.item.archivedAt).not.toBeNull();
-  });
-
-  it("unarchive скидає archivedAt назад у null", async () => {
-    const { items, service } = build();
-    await service.archiveItem(ctx, ITEM_ID);
-    const restored = await service.unarchiveItem(ctx, ITEM_ID);
-    expect(restored.archivedAt).toBeNull();
-    expect(items.item.archivedAt).toBeNull();
-  });
-
-  it("404 на неіснуючий айтем", async () => {
-    const { service } = build();
-    await expect(service.archiveItem(ctx, "does-not-exist")).rejects.toBeInstanceOf(AppError);
-    await expect(service.unarchiveItem(ctx, "does-not-exist")).rejects.toBeInstanceOf(AppError);
-  });
-});
-
-describe("ContentItemsService.deleteItem", () => {
-  it("422 коли пост НЕ архівований — гвард «спершу архівуйте» (нічого не видаляє)", async () => {
-    const { items, service } = build();
-    await expect(service.deleteItem(ctx, ITEM_ID)).rejects.toMatchObject({
-      code: "unprocessable",
-    });
-    expect(items.deleted).toBe(false);
-  });
-
-  it("видаляє пост після архівації", async () => {
-    const { items, service } = build();
-    await service.archiveItem(ctx, ITEM_ID);
-    await service.deleteItem(ctx, ITEM_ID);
-    expect(items.deleted).toBe(true);
-  });
-
-  it("404 на неіснуючий айтем — до будь-якої перевірки архіву", async () => {
-    const { service } = build();
-    await expect(service.deleteItem(ctx, "does-not-exist")).rejects.toBeInstanceOf(AppError);
   });
 });

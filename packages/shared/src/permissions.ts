@@ -23,10 +23,10 @@ export const PERMISSIONS = [
   // Окремо від decision:make: рішення (approve/reject/rerun) — це workflow-статус, а edit —
   // авторська правка вмісту; reviewer вирішує долю поста, але не переписує його за автора.
   "content:edit",
-  // Незворотне видалення поста назавжди (§post-archive hard-delete). Окремо від content:edit:
-  // архів/розархів — оборотні дії (content:edit), а hard-delete знищує пост разом з публікаціями та
-  // історією версій (FK ON DELETE cascade) — тому лише owner/admin, як і решта деструктивних дозволів.
-  "content:delete",
+  // Незворотне видалення ЦІЛОГО прогону назавжди (§run-archive hard-delete). Окремо від run:start:
+  // архів/розархів прогону — оборотні дії (run:start), а hard-delete знищує прогін разом з усіма
+  // постами, публікаціями та історією версій (FK ON DELETE cascade) — тому лише owner/admin.
+  "run:delete",
   // Підключення/відключення сервіс-акаунтів (OAuth-токени соцмереж) + конфіг Telegram (§publishing).
   // Чутливий: тримає OAuth-токени орендаря — тому лише owner/admin, як і apikey:manage.
   "connection:manage",
@@ -55,7 +55,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "apikey:manage",
     "member:manage",
     "content:edit",
-    "content:delete",
+    "run:delete",
     "connection:manage",
     "publish:manage",
   ],
@@ -69,7 +69,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "apikey:manage",
     "member:manage",
     "content:edit",
-    "content:delete",
+    "run:delete",
     "connection:manage",
     "publish:manage",
   ],

@@ -473,23 +473,23 @@ export const en: Record<string, string> = {
   "Сервіс генерації тимчасово недоступний. Спробуйте ще раз.": "The generation service is temporarily unavailable. Please try again.",
   "Ресурс не знайдено.": "Resource not found.",
 
-  // ── Archive / Delete (§post-archive) ───────────────────────────────────
+  // ── Archive / Delete (§run-archive) ─────────────────────────────────────
   "Архівувати": "Archive",
   "В архіві": "Archived",
   "Розархівувати": "Unarchive",
   "Видалити назавжди": "Delete forever",
   "Архів": "Archive",
-  "Архівовані пости": "Archived posts",
+  "Архівовані прогони": "Archived runs",
   "В архіві поки що порожньо.": "The archive is empty for now.",
-  "Пост заархівовано": "Post archived",
-  "Не вдалося заархівувати пост": "Couldn't archive the post",
-  "Пост відновлено з архіву": "Post restored from the archive",
-  "Не вдалося відновити пост": "Couldn't restore the post",
-  "Пост видалено назавжди": "Post permanently deleted",
-  "Не вдалося видалити пост": "Couldn't delete the post",
-  "Видалити пост назавжди?": "Delete the post forever?",
-  "Пост, його історію версій та публікації буде видалено безповоротно. Цю дію не можна скасувати.":
-    "The post, its version history and publications will be removed permanently. This action cannot be undone.",
+  "Прогін заархівовано": "Run archived",
+  "Не вдалося заархівувати прогін": "Couldn't archive the run",
+  "Прогін відновлено з архіву": "Run restored from the archive",
+  "Не вдалося відновити прогін": "Couldn't restore the run",
+  "Прогін видалено назавжди": "Run permanently deleted",
+  "Не вдалося видалити прогін": "Couldn't delete the run",
+  "Видалити прогін назавжди?": "Delete the run forever?",
+  "Прогін разом з усіма постами, історією версій та публікаціями буде видалено безповоротно. Цю дію не можна скасувати.":
+    "The run, along with all its posts, version history and publications, will be removed permanently. This action cannot be undone.",
   "Видаляємо…": "Deleting…",
   "Підтвердити": "Confirm",
 

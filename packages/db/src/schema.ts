@@ -190,6 +190,11 @@ export const generationRuns = pgTable(
     progress: jsonb("progress").$type<RunProgressJson>(),
     createdBy: uuid("created_by").references(() => users.id),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    // archivedAt — м'яке архівування ЦІЛОГО прогону (§run-archive). Nullable-таймстемп, а НЕ статус:
+    // архів ортогональний до run_status (queued/needs_review/…), тож прогін зберігає свій статус і в
+    // архіві. null = активний; not-null = в архіві (ховаємо зі списку прогонів компанії). Hard-delete
+    // дозволений лише ПІСЛЯ архівації (service-гвард); каскад по FK знищить content_items/публікації/версії.
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
   },
   (t) => ({ companyIdx: index("generation_runs_company_idx").on(t.companyId, t.createdAt) }),
 );
@@ -217,11 +222,6 @@ export const contentItems = pgTable(
     version: integer("version").default(1).notNull(),
     revisionHistory: jsonb("revision_history").$type<string[]>().default([]).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-    // archivedAt — м'яке архівування поста (§post-archive). Nullable-таймстемп, а НЕ статус:
-    // архів ортогональний до workflow-статусу (approved/rejected/…), тож пост зберігає своє рішення
-    // й після архівації. null = активний; not-null = в архіві (ховаємо з основного списку прогону).
-    // Hard-delete дозволений лише ПІСЛЯ архівації (service-гвард) — незворотну дію відділяємо в два кроки.
-    archivedAt: timestamp("archived_at", { withTimezone: true }),
   },
   (t) => ({ runIdx: index("content_items_run_idx").on(t.runId) }),
 );

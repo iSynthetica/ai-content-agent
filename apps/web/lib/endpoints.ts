@@ -35,6 +35,10 @@ export const ALLOW: ReadonlyArray<{ method: string; pattern: RegExp }> = [
   { method: "POST", pattern: /^\/companies\/[^/]+\/runs\/estimate$/ }, // пре-ран оцінка вартості (Phase 4)
   { method: "GET", pattern: /^\/runs\/[^/]+$/ },
   { method: "GET", pattern: /^\/runs\/[^/]+\/items$/ },
+  // §run-archive: архів/розархів (run:start) + hard-delete (run:delete)
+  { method: "POST", pattern: /^\/runs\/[^/]+\/archive$/ },
+  { method: "POST", pattern: /^\/runs\/[^/]+\/unarchive$/ },
+  { method: "DELETE", pattern: /^\/runs\/[^/]+$/ }, // hard-delete (лише після архівації)
   { method: "POST", pattern: /^\/runs\/[^/]+\/decision$/ }, // { action, feedback } по всьому run
   { method: "POST", pattern: /^\/content-items\/[^/]+\/decision$/ }, // { action, feedback } по item
   { method: "GET", pattern: /^\/runs\/[^/]+\/export$/ },
@@ -55,11 +59,6 @@ export const ALLOW: ReadonlyArray<{ method: string; pattern: RegExp }> = [
   { method: "PATCH", pattern: /^\/content-items\/[^/]+$/ }, // { text, title? }
   { method: "GET", pattern: /^\/content-items\/[^/]+\/versions$/ },
   { method: "POST", pattern: /^\/content-items\/[^/]+\/revert$/ }, // { versionId }
-
-  // §post-archive: архів/розархів (content:edit) + hard-delete (content:delete)
-  { method: "POST", pattern: /^\/content-items\/[^/]+\/archive$/ },
-  { method: "POST", pattern: /^\/content-items\/[^/]+\/unarchive$/ },
-  { method: "DELETE", pattern: /^\/content-items\/[^/]+$/ }, // hard-delete (лише після архівації)
 
   // §13 онбординг + bootstrap
   { method: "POST", pattern: /^\/onboarding$/ },
@@ -117,15 +116,19 @@ export const endpoints = {
 
   company: (cid: string) => `/api/companies/${cid}`, // GET деталі + PATCH company core
   settings: (cid: string) => `/api/companies/${cid}/settings`, // PUT бренд + дефолти
-  runs: (cid: string) => `/api/companies/${cid}/runs`, // GET список + POST створити
+  // archived — фільтр архіву (§run-archive). Без параметра api дефолтить на "exclude" (ховає архів);
+  // "only" — окремий вигляд архіву. Query не входить у path, тож allowlist не змінюється.
+  runs: (cid: string, archived?: "exclude" | "only" | "all") =>
+    `/api/companies/${cid}/runs${archived ? `?archived=${archived}` : ""}`, // GET список + POST створити
   runEstimate: (cid: string) => `/api/companies/${cid}/runs/estimate`, // POST пре-ран оцінка вартості
   run: (id: string) => `/api/runs/${id}`,
-  // archived — фільтр архіву (§post-archive). Без параметра api дефолтить на "exclude" (ховає архів);
-  // "only" — окремий вигляд керування архівом. Query не входить у path, тож allowlist не змінюється.
-  items: (id: string, archived?: "exclude" | "only" | "all") =>
-    `/api/runs/${id}/items${archived ? `?archived=${archived}` : ""}`,
+  items: (id: string) => `/api/runs/${id}/items`,
   runStream: (id: string) => `/api/runs/${id}/stream`,
   runDecision: (id: string) => `/api/runs/${id}/decision`,
+  // §run-archive: архів/розархів + hard-delete прогону
+  runArchive: (id: string) => `/api/runs/${id}/archive`,
+  runUnarchive: (id: string) => `/api/runs/${id}/unarchive`,
+  runDelete: (id: string) => `/api/runs/${id}`, // DELETE (лише після архівації)
   itemDecision: (id: string) => `/api/content-items/${id}/decision`,
   export: (id: string) => `/api/runs/${id}/export`,
 
@@ -141,11 +144,6 @@ export const endpoints = {
   itemEdit: (id: string) => `/api/content-items/${id}`,
   itemVersions: (id: string) => `/api/content-items/${id}/versions`,
   itemRevert: (id: string) => `/api/content-items/${id}/revert`,
-
-  // §post-archive: архів/розархів + hard-delete поста
-  itemArchive: (id: string) => `/api/content-items/${id}/archive`,
-  itemUnarchive: (id: string) => `/api/content-items/${id}/unarchive`,
-  itemDelete: (id: string) => `/api/content-items/${id}`, // DELETE (лише після архівації)
 
   // §13 онбординг
   onboarding: () => "/api/onboarding",

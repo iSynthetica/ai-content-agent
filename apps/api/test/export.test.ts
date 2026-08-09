@@ -25,7 +25,6 @@ function item(over: Partial<ContentItem> = {}): ContentItem {
     imageUrl: null,
     status: "approved",
     version: 1,
-    archivedAt: null,
     ...over,
   };
 }

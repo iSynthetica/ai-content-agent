@@ -89,14 +89,14 @@ export interface RunListFilter {
   status?: RunStatus;
   from?: string; // ISO datetime
   to?: string; // ISO datetime
+  // Фільтр архіву (§run-archive). Дефолт (undefined) === "exclude": список компанії ховає
+  // архівовані прогони; "only" — лише архів (окремий вигляд керування); "all" — усі.
+  archived?: "exclude" | "only" | "all";
   page: number;
   pageSize: number;
 }
 export interface ItemsQuery {
   channel?: Channel;
-  // Фільтр архіву (§post-archive). Дефолт (undefined) трактуємо як "exclude": основний список
-  // прогону ховає архівовані пости; "only" — лише архів (окремий вигляд керування); "all" — усі.
-  archived?: "exclude" | "only" | "all";
 }
 
 // ── інтерфейси репозиторіїв ──────────────────────────────────────────────────
@@ -221,6 +221,12 @@ export interface RunsRepo {
   // HITL (§7/§7.1): читання під FOR UPDATE (compare-and-set статусу) + рух статусу прогону.
   getForDecision(accountId: string, id: string): Promise<RunDecisionRow | null>;
   updateStatus(accountId: string, id: string, status: RunStatus): Promise<void>;
+  // М'яке архівування прогону (§run-archive): archived_at (Date = в архів, null = розархівувати).
+  // Повертає оновлений прогін або null, якщо його немає / не належить акаунту.
+  setArchivedAt(accountId: string, id: string, value: Date | null): Promise<RunSummary | null>;
+  // Незворотне видалення прогону (§run-archive hard-delete). content_items/publications/версії
+  // зникають каскадом (FK ON DELETE cascade). Повертає true, якщо рядок справді видалено.
+  deleteById(accountId: string, id: string): Promise<boolean>;
 }
 
 // Правка тексту/заголовка людиною (§content-editing, PATCH /v1/content-items/:id). title — явно
@@ -238,12 +244,6 @@ export interface ContentItemsRepo {
   // Людська правка тексту/заголовка (§content-editing). НЕ чіпає status/scores/violations/imageUrl —
   // ті лишаються власністю пайплайна/reviewer'а; правка тексту — окрема дія, не workflow-рішення.
   updateContent(accountId: string, id: string, patch: ContentItemContentPatch): Promise<ContentItem | null>;
-  // М'яке архівування (§post-archive): виставляє archived_at (Date = в архів, null = розархівувати).
-  // Повертає оновлений айтем або null, якщо його немає / не належить акаунту.
-  setArchivedAt(accountId: string, id: string, value: Date | null): Promise<ContentItem | null>;
-  // Незворотне видалення поста (§post-archive hard-delete). publications + content_item_versions
-  // зникають каскадом (FK ON DELETE cascade). Повертає true, якщо рядок справді видалено.
-  deleteById(accountId: string, id: string): Promise<boolean>;
   // Роздача медіа (GET /media): чи існує айтем цього акаунта з таким image_url. RLS уже ізолює
   // рядки за accountId, тож знахідка = «ключ належить орендарю» → можна віддавати байти. Немає
   // рядка → 404, навіть якщо файл фізично лежить на спільному томі (крос-тенант захист).

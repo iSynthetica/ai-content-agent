@@ -87,6 +87,12 @@ export function businessRoutes(root: Composition): Router {
   r.get("/runs/:id/items", runs.items);
   r.get("/runs/:id/export", runs.export);
 
+  // §run-archive: архів/розархів (оборотні, run:start) + hard-delete (незворотний, run:delete →
+  // owner/admin). Видалення дозволене лише для вже архівованого прогону (гвард у сервісі → 422).
+  r.post("/runs/:id/archive", requirePermission("run:start"), runs.archive);
+  r.post("/runs/:id/unarchive", requirePermission("run:start"), runs.unarchive);
+  r.delete("/runs/:id", requirePermission("run:delete"), runs.remove);
+
   // Роздача згенерованих зображень (§4.3): байти картинки поста через спільний том. GET, без
   // RBAC-гварда — читає будь-який член акаунта; крос-тенант відсікає ownership-перевірка + RLS.
   r.get("/media/:runId/:file", media.serve);
@@ -116,12 +122,6 @@ export function businessRoutes(root: Composition): Router {
   r.patch("/content-items/:id", requirePermission("content:edit"), contentItems.edit);
   r.get("/content-items/:id/versions", contentItems.versions);
   r.post("/content-items/:id/revert", requirePermission("content:edit"), contentItems.revert);
-
-  // §post-archive: архів/розархів (оборотні, content:edit) + hard-delete (незворотний, content:delete
-  // → owner/admin). Видалення дозволене лише для вже архівованого поста (гвард у сервісі → 422).
-  r.post("/content-items/:id/archive", requirePermission("content:edit"), contentItems.archive);
-  r.post("/content-items/:id/unarchive", requirePermission("content:edit"), contentItems.unarchive);
-  r.delete("/content-items/:id", requirePermission("content:delete"), contentItems.remove);
 
   // Нотифікації + Inbox (§2.13) — персональний фід, без RBAC-гварда (див. коментар вище)
   r.get("/notifications", notifications.list);

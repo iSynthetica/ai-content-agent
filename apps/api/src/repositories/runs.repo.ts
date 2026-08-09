@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, isNotNull, isNull, lte, sql } from "drizzle-orm";
 import { contentItems, generationRuns } from "@forteq/db";
 import type { DbExecutor, Paged } from "../di/types";
 import type {
@@ -26,6 +26,8 @@ function toSummary(row: RunRow, counts?: RunSummary["counts"]): RunSummary {
     // безкоштовно, колонка вже в select). null, поки прогону ще не торкнувся жоден крок.
     progress: row.progress ?? null,
     runConfig: (row.runConfig ?? null) as RunSummary["runConfig"],
+    // archived_at — Date|null із драйвера; на межі віддаємо ISO-рядок або null (форма runDTO).
+    archivedAt: row.archivedAt ? row.archivedAt.toISOString() : null,
     ...(counts ? { counts } : {}),
   };
 }
@@ -84,6 +86,11 @@ export class DrizzleRunsRepo implements RunsRepo {
     if (filter.status) conds.push(eq(generationRuns.status, filter.status));
     if (filter.from) conds.push(gte(generationRuns.createdAt, new Date(filter.from)));
     if (filter.to) conds.push(lte(generationRuns.createdAt, new Date(filter.to)));
+    // Архів-фільтр (§run-archive): дефолт (undefined) === "exclude" — основний список ховає архів.
+    // "only" — лише архівовані (окремий вигляд), "all" — без фільтра (жодного нового condition).
+    const archived = filter.archived ?? "exclude";
+    if (archived === "exclude") conds.push(isNull(generationRuns.archivedAt));
+    else if (archived === "only") conds.push(isNotNull(generationRuns.archivedAt));
     const where = and(...conds);
 
     const offset = (filter.page - 1) * filter.pageSize;
@@ -127,6 +134,27 @@ export class DrizzleRunsRepo implements RunsRepo {
       .update(generationRuns)
       .set({ status })
       .where(and(eq(generationRuns.accountId, accountId), eq(generationRuns.id, id)));
+  }
+
+  // М'яке архівування прогону (§run-archive): value=Date → в архів, value=null → розархівувати.
+  // Свідомо НЕ чіпає status — архів ортогональний до run_status (прогін зберігає свій статус).
+  async setArchivedAt(accountId: string, id: string, value: Date | null): Promise<RunSummary | null> {
+    const [row] = await this.tx
+      .update(generationRuns)
+      .set({ archivedAt: value })
+      .where(and(eq(generationRuns.accountId, accountId), eq(generationRuns.id, id)))
+      .returning();
+    return row ? toSummary(row) : null;
+  }
+
+  // Незворотне видалення прогону (§run-archive hard-delete). content_items, publications та
+  // content_item_versions зникають каскадом (FK ON DELETE cascade). true лише коли рядок справді був.
+  async deleteById(accountId: string, id: string): Promise<boolean> {
+    const rows = await this.tx
+      .delete(generationRuns)
+      .where(and(eq(generationRuns.accountId, accountId), eq(generationRuns.id, id)))
+      .returning({ id: generationRuns.id });
+    return rows.length > 0;
   }
 
   async countActiveByCompany(accountId: string, companyId: string): Promise<number> {

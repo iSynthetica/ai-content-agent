@@ -318,10 +318,6 @@ export const contentItemDTO = z.object({
   imageUrl: z.string().nullable(),
   status: itemStatusSchema,
   version: z.number().int(),
-  // archivedAt — м'яке архівування поста (§post-archive). ISO-рядок або null. Це НЕ статус:
-  // архів ортогональний до workflow-статусу, тож пост зберігає approved/rejected і в архіві.
-  // Основний список прогону віддає лише неархівовані (archived=exclude); архів дивляться окремо.
-  archivedAt: z.string().nullable(),
 });
 // ── per-node прогрес пайплайна (n8n-подібний «хто зараз виконується») ──────────
 // Єдина форма прогресу, узгоджена з фронтом. Worker пише її per-node під час прогону графа
@@ -353,6 +349,11 @@ export const runDTO = z.object({
   progress: runProgress.nullable().optional(),
   // Конфігурація, що породила прогін (§spec 08). nullable — старі прогони; optional — list не проєктує.
   runConfig: runConfigDTO.nullable().optional(),
+  // archivedAt — м'яке архівування прогону (§run-archive). ISO-рядок або null. Це НЕ статус: архів
+  // ортогональний до run_status, тож прогін зберігає свій статус і в архіві. nullable — активний
+  // прогін / старі рядки; optional — list основного вигляду може не проєктувати. Список компанії
+  // за замовчуванням ховає архівовані (archived=exclude); архів дивляться окремо.
+  archivedAt: z.string().nullable().optional(),
 });
 
 // Відповідь на HITL-рішення по прогону (POST /v1/runs/:id/decision, §7). Тверда межа: api лише
