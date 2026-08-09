@@ -76,6 +76,9 @@ export const envSchema = z.object({
   // Заповнюються адаптер-фазами разом із apps/api-кредами того ж провайдера.
   LINKEDIN_CLIENT_ID: optionalSecret,
   LINKEDIN_CLIENT_SECRET: optionalSecret,
+  // Версія LinkedIn Posts/Images API (YYYYMM) — публікатор пінить її у /rest/*-хедер LinkedIn-Version
+  // (§publishing/01-linkedin §7). Дзеркалить apps/api LINKEDIN_API_VERSION; версії сансетяться ~15міс.
+  LINKEDIN_API_VERSION: z.string().regex(/^\d{6}$/).default("202606"),
   X_CLIENT_ID: optionalSecret,
   X_CLIENT_SECRET: optionalSecret,
   IG_CLIENT_ID: optionalSecret,

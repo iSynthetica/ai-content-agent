@@ -38,8 +38,20 @@ export const envSchema = z.object({
   PUBLIC_MEDIA_BASE_URL: z.string().url().default("https://saas.forteqsolution.com/api"),
   // Окремий секрет для підпису OAuth-state-cookie (шов). Не заданий → реюз MEDIA_SIGNING_SECRET.
   OAUTH_STATE_SECRET: z.string().min(16).optional(),
-  // Провайдерські client id/secret (LINKEDIN_/X_/IG_) додають АДАПТЕР-фази у lib/oauth/providers.ts —
-  // тут їх свідомо НЕ оголошуємо: провайдер без кред просто «не сконфігурований» (кнопка Connect off).
+
+  // ── LinkedIn OAuth + Posts API (§publishing/01-linkedin §7) ──
+  // Усі креди optional: без них провайдер «не сконфігурований» і кнопка Connect вимкнена
+  // (foundation §3.1, isConfigured → false). client_secret — тільки з env, у логи ніколи.
+  LINKEDIN_CLIENT_ID: z.string().optional(),
+  LINKEDIN_CLIENT_SECRET: z.string().optional(),
+  // Абсолютний HTTPS redirect, ЗБІГ із зареєстрованим у LinkedIn-застосунку (§2.1). Читається у
+  // linkedinOAuthConfig — тому з дефолтом, а не хардкодом у конфізі провайдера.
+  LINKEDIN_REDIRECT_URI: z
+    .string()
+    .url()
+    .default("https://saas.forteqsolution.com/api/connections/linkedin/callback"),
+  // Версія Posts/Images API у форматі YYYYMM; пінимо й періодично оновлюємо (версії сансетяться ~15міс).
+  LINKEDIN_API_VERSION: z.string().regex(/^\d{6}$/).default("202606"),
 
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
 });

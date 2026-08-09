@@ -29,14 +29,18 @@
 import type { PublishProvider } from "@forteq/shared";
 import type { AppConfig } from "../../config/env";
 import type { OAuthProviderConfig } from "./types";
+import { linkedinOAuthConfig } from "./providers/linkedin";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- env знадобиться, щойно адаптер-фаза
-// почне читати провайдерські креди; сигнатуру фіксуємо зараз, щоб реєстр-шов не мігрував пізніше.
 export function oauthProviders(
   env: AppConfig,
 ): Partial<Record<PublishProvider, OAuthProviderConfig>> {
-  void env;
-  return {};
+  const providers: Partial<Record<PublishProvider, OAuthProviderConfig>> = {};
+  // linkedin — запис присутній ЛИШЕ коли обидві креди задані; інакше провайдер «не сконфігурований»
+  // (isConfigured → false, UI вимикає кнопку Connect). Секрети — тільки з env, у логи ніколи.
+  if (env.LINKEDIN_CLIENT_ID && env.LINKEDIN_CLIENT_SECRET) {
+    providers.linkedin = linkedinOAuthConfig(env);
+  }
+  return providers;
 }
 
 // «Сконфігурований» = у реєстрі є запис (адаптер повертає undefined без кред). Дешева перевірка для
