@@ -1,42 +1,23 @@
-// §publishing: дашборд підключень (соцмережі OAuth + Telegram-нотифікації). Connection'и
-// account-scoped: api резолвить акаунт із сесії + RLS, тож гейт керування беремо з ролі сесії
-// (той самий підхід, що й settings/members). GET /connections доступний будь-якому члену (RLS
-// ізолює), тож SSR-знімок тягнемо завжди — без нього була б клієнтська waterfall.
+// «Підключення» переїхали в консолідований хаб /settings (§settings-hub). Лишаємо тонкий редірект,
+// щоб старі закладки не ламались.
+//
+// Важливо: OAuth-callback (в apps/api, поза скоупом) повертає 302 на /connections?connected=<provider>
+// (або ?error=<code>). Тому ПЕРЕНОСИМО ці query у ціль редіректу — тоді на хабі активується таб
+// «Підключення», ConnectionsManager.useCallbackToast зчитає connected/error і покаже тост, як раніше.
 import { redirect } from "next/navigation";
-
-import { apiClient } from "@/server/api-client";
-import { getSession } from "@/server/auth";
-import { endpoints } from "@/lib/endpoints";
-import { connectionsResponse, can } from "@forteq/shared";
-import { ConnectionsManager } from "@/features/connections/ConnectionsManager";
-import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
-export default async function ConnectionsPage() {
-  const session = await getSession();
-  if (!session) redirect("/login");
-
-  const t = await getT();
-  const connections = await apiClient.get(endpoints.connections(), connectionsResponse);
-  const canManage = can(session.account.role, "connection:manage");
-
-  return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{t("Підключення")}</h1>
-        <p className="text-muted-foreground">
-          {t("Підключіть соцмережі, щоб публікувати схвалені пости, і Telegram — щоб отримувати сповіщення про готовий контент.")}
-        </p>
-      </header>
-
-      <ConnectionsManager initialConnections={connections} canManage={canManage} />
-
-      {!canManage && (
-        <p className="text-sm text-muted-foreground">
-          {t("Керувати підключеннями можуть лише власник і адміністратор акаунта.")}
-        </p>
-      )}
-    </div>
-  );
+export default async function ConnectionsRedirect({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
+  const params = new URLSearchParams({ tab: "connections" });
+  const connected = Array.isArray(sp.connected) ? sp.connected[0] : sp.connected;
+  const error = Array.isArray(sp.error) ? sp.error[0] : sp.error;
+  if (connected) params.set("connected", connected);
+  if (error) params.set("error", error);
+  redirect(`/settings?${params.toString()}`);
 }

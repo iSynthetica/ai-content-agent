@@ -492,4 +492,11 @@ export const en: Record<string, string> = {
     "The post, its version history and publications will be removed permanently. This action cannot be undone.",
   "Видаляємо…": "Deleting…",
   "Підтвердити": "Confirm",
+
+  // ── Settings hub (§settings-hub) ────────────────────────────────────────
+  // «Ключі API» / «Команда» / «Підключення» вже є вище — не дублюємо.
+  "Налаштування": "Settings",
+  "Загальні налаштування акаунта: ключі API, команда та підключення.":
+    "General account settings: API keys, team and connections.",
+  "Розділи налаштувань": "Settings sections",
 };
