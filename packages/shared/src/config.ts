@@ -113,6 +113,37 @@ export const TEXT_MODELS: Record<Provider, ModelOption[]> = {
 // Зображення (Visual-агент) — лише OpenAI.
 export const IMAGE_MODELS: ModelOption[] = [{ id: "gpt-image-1", label: "GPT Image 1" }];
 
+// ── Пряма публікація в соцмережі + Telegram-нотифікації (§publishing foundation) ──
+// PUBLISH_PROVIDERS — куди МОЖНА опублікувати згенерований пост (повний OAuth-адаптер). blog таргета
+// не має; його channel не мапиться сюди. Publish мапить channel → однойменний provider.
+export const PUBLISH_PROVIDERS = ["linkedin", "twitter", "instagram"] as const;
+export type PublishProvider = (typeof PUBLISH_PROVIDERS)[number];
+
+// CONNECTION_PROVIDERS — усі провайдери, для яких орендар тримає "connection" (токени/конфіг у
+// service_connections). telegram — теж connection (bot token + chat id), але НЕ публікатор, тож його
+// нема у PUBLISH_PROVIDERS: він шле нотифікацію "контент готовий до рецензії", а не публікує пост.
+export const CONNECTION_PROVIDERS = ["linkedin", "twitter", "instagram", "telegram"] as const;
+export type ConnectionProvider = (typeof CONNECTION_PROVIDERS)[number];
+
+// Стан connection у UI: connected — активна; expired — токен протух (reconnect/refresh); error —
+// остання дія впала; disconnected — явно відключено (шов; MVP просто видаляє рядок).
+export const CONNECTION_STATUSES = ["connected", "expired", "error", "disconnected"] as const;
+export type ConnectionStatus = (typeof CONNECTION_STATUSES)[number];
+
+// Стан однієї спроби публікації (publications.status): pending → в черзі/виконується; published →
+// успіх (є externalUrl); failed → помилка (є error).
+export const PUBLICATION_STATUSES = ["pending", "published", "failed"] as const;
+export type PublicationStatus = (typeof PUBLICATION_STATUSES)[number];
+
+// Людські назви провайдерів-connection'ів — єдине джерело для карток UI (щоб новий провайдер не
+// показувався під захардкодженим лейблом). Дзеркалить PROVIDER_LABELS для BYOK.
+export const CONNECTION_PROVIDER_LABELS: Record<ConnectionProvider, string> = {
+  linkedin: "LinkedIn",
+  twitter: "X (Twitter)",
+  instagram: "Instagram",
+  telegram: "Telegram",
+};
+
 // Розумні дефолти per-agent (трейдоф T2: дешевша для ресерчу/планування, сильніша для Writer/Reviewer/Judge).
 export const DEFAULT_MODELS_BY_PROVIDER: Record<Provider, Record<string, string>> = {
   openai: {

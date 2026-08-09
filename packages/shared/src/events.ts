@@ -13,11 +13,17 @@ export const NOTIFICATION_TYPES = {
   runFailed: "run.failed",
   runApproved: "run.approved",
   runRejected: "run.rejected",
+  // Публікація (§publishing §1.5): успіх — інформація (є посилання на пост); невдача — теж
+  // нотифікація + окрема inbox-задача (людині треба перепідключити акаунт / повторити).
+  publishSucceeded: "publish.succeeded",
+  publishFailed: "publish.failed",
 } as const;
 
 export const INBOX_TYPES = {
   runNeedsReview: "run.needs_review",
   runFailed: "run.failed",
+  // Невдала публікація — actionable: перепідключити акаунт або повторити публікацію.
+  publishFailed: "publish.failed",
 } as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[keyof typeof NOTIFICATION_TYPES];
@@ -94,7 +100,52 @@ export function runDecidedEvent(input: { runId: string; approved: boolean }) {
   };
 }
 
-// Deep-link для inbox-задачі: UI не має сам вгадувати, куди вести задачу даного типу.
+/** Пост успішно опубліковано в провайдера (§publishing) — інформаційний слід + посилання. */
+export function publishSucceededEvent(input: {
+  runId: string;
+  contentItemId: string;
+  provider: string;
+  externalUrl: string;
+}) {
+  return {
+    type: NOTIFICATION_TYPES.publishSucceeded,
+    title: `Опубліковано в ${input.provider}`,
+    body: input.externalUrl,
+    data: {
+      runId: input.runId,
+      contentItemId: input.contentItemId,
+      provider: input.provider,
+      externalUrl: input.externalUrl,
+    },
+  };
+}
+
+/** Публікація впала — і сповіщення, і ЗАДАЧА (перепідключити акаунт / повторити). Дзеркалить
+ *  runFailedInbox: entityType=generation_run → inboxDeepLink веде на сторінку прогону. */
+export function publishFailedInbox(input: {
+  runId: string;
+  companyId: string;
+  contentItemId: string;
+  provider: string;
+  error?: string;
+}) {
+  return {
+    type: INBOX_TYPES.publishFailed,
+    title: `Публікація в ${input.provider} не вдалася`,
+    entityType: "generation_run",
+    entityId: input.runId,
+    companyId: input.companyId,
+    data: {
+      runId: input.runId,
+      contentItemId: input.contentItemId,
+      provider: input.provider,
+      error: input.error ?? null,
+    },
+  };
+}
+
+// Deep-link для inbox-задачі: UI не має сам вгадувати, куди вести задачу даного типу. publishFailed
+// теж прив'язана до generation_run (entityType), тож окрема гілка не потрібна — веде на /runs/:id.
 export function inboxDeepLink(entityType: string | null, entityId: string | null): string | null {
   if (entityType === "generation_run" && entityId) return `/runs/${entityId}`;
   return null;

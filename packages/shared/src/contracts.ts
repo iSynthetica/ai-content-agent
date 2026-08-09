@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   CHANNELS, ROLES, RUN_STATUSES, ITEM_STATUSES, PLAN_ENTRY_STATUSES, WEEKDAYS,
   CONTENT_VERSION_SOURCES,
+  CONNECTION_PROVIDERS, PUBLISH_PROVIDERS, CONNECTION_STATUSES, PUBLICATION_STATUSES,
 } from "./config";
 
 // ── базові ──────────────────────────────────────────────────────────────────
@@ -444,6 +445,67 @@ export type NotificationDTO = z.infer<typeof notificationDTO>;
 export type NotificationsResponse = z.infer<typeof notificationsResponse>;
 export type InboxItemDTO = z.infer<typeof inboxItemDTO>;
 export type InboxResponse = z.infer<typeof inboxResponse>;
+
+// ── Публікація в соцмережі + Telegram-конфіг (§publishing foundation §1.3) ────
+export const connectionProviderSchema = z.enum(CONNECTION_PROVIDERS);
+export const publishProviderSchema = z.enum(PUBLISH_PROVIDERS);
+export const connectionStatusSchema = z.enum(CONNECTION_STATUSES);
+export const publicationStatusSchema = z.enum(PUBLICATION_STATUSES);
+
+// Маскований DTO connection'а — НІКОЛИ не містить токенів/шифротексту (дзеркалить last4-правило
+// api_keys): назовні йдуть лише метадані підключення (акаунт, скоупи, строки). Розшифровує токени
+// виключно worker на момент публікації за accountId (як BYOK-ключі, §ADR-0016).
+export const connectionDTO = z.object({
+  provider: connectionProviderSchema,
+  status: connectionStatusSchema,
+  externalAccountId: z.string().nullable(),
+  externalAccountName: z.string().nullable(),
+  scopes: z.array(z.string()),
+  expiresAt: z.string().nullable(),
+  lastUsedAt: z.string().nullable(),
+  createdAt: z.string(),
+});
+export type ConnectionDTO = z.infer<typeof connectionDTO>;
+
+// connectionsResponse: items — реально підключені провайдери; configured — провайдери, чиї
+// СЕРВЕРНІ креди присутні (для соцмереж) + завжди telegram (він не потребує серверних кред). UI
+// вимикає кнопку Connect для не-configured провайдерів. configured — свідомий додаток поверх
+// foundation §1.3: без нього server-компонент (не має доступу до env api) не знав би, що вимкнути.
+export const connectionsResponse = z.object({
+  items: z.array(connectionDTO),
+  configured: z.array(connectionProviderSchema),
+});
+export type ConnectionsResponse = z.infer<typeof connectionsResponse>;
+
+// POST /connections/:provider/authorize → consent-URL провайдера (браузер редіректиться на нього).
+export const authorizeConnectionResponse = z.object({ authUrl: z.string() });
+export type AuthorizeConnectionResponse = z.infer<typeof authorizeConnectionResponse>;
+
+// Telegram не має OAuth: "connection" — це bot token + chat id (PUT /connections/telegram).
+export const telegramConfigRequest = z.object({
+  botToken: z.string().min(1),
+  chatId: z.string().min(1),
+});
+export type TelegramConfigRequest = z.infer<typeof telegramConfigRequest>;
+
+// POST /runs/:id/publish — які схвалені айтеми публікувати; provider деривується з channel кожного.
+export const publishRequest = z.object({ itemIds: z.array(z.string()).min(1) });
+export type PublishRequest = z.infer<typeof publishRequest>;
+
+// Стан однієї публікації айтема в провайдера (GET /runs/:id/publications → per-item стан у UI).
+export const publicationDTO = z.object({
+  id: z.string(),
+  contentItemId: z.string(),
+  provider: publishProviderSchema,
+  status: publicationStatusSchema,
+  externalUrl: z.string().nullable(),
+  error: z.string().nullable(),
+  publishedAt: z.string().nullable(),
+  createdAt: z.string(),
+});
+export type PublicationDTO = z.infer<typeof publicationDTO>;
+export const publicationsResponse = z.object({ items: z.array(publicationDTO) });
+export type PublicationsResponse = z.infer<typeof publicationsResponse>;
 
 // ── SSE run-подія (§api-contract /runs/:id/stream) ────────────────────────────
 export const runStreamEvent = z.object({

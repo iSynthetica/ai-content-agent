@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PUBLISH_PROVIDERS } from "./config";
 
 // Контракти черги (SH-3) — заморожують межу api↔worker.
 // jobId — детермінований (ідемпотентність); accountId — для job-scoped RLS-контексту.
@@ -70,6 +71,19 @@ export const contentVisualsJob = z.object({
   targets: z.array(z.object({ itemId: z.string(), prompt: z.string() })).min(1),
 });
 
+// Публікація схвалених постів у соцмережі (§publishing §1.4) — фонова job, як content.visuals:
+// зовнішній API повільний, тож поза request-path. targets несе лише itemId+provider; токени
+// resolve'ляться воркером за accountId на момент виконання (НЕ у payload/checkpointer, §ADR-0016).
+export const publishContentJob = z.object({
+  kind: z.literal("content.publish"),
+  jobId: z.string(),
+  accountId: z.string(),
+  runId: z.string(),
+  targets: z
+    .array(z.object({ itemId: z.string(), provider: z.enum(PUBLISH_PROVIDERS) }))
+    .min(1),
+});
+
 export const job = z.discriminatedUnion("kind", [
   generationStartJob,
   generationResumeJob,
@@ -77,5 +91,6 @@ export const job = z.discriminatedUnion("kind", [
   suggestTopicsJob,
   suggestRunTopicsJob,
   contentVisualsJob,
+  publishContentJob,
 ]);
 export type Job = z.infer<typeof job>;

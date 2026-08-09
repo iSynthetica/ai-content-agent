@@ -23,6 +23,12 @@ export const PERMISSIONS = [
   // Окремо від decision:make: рішення (approve/reject/rerun) — це workflow-статус, а edit —
   // авторська правка вмісту; reviewer вирішує долю поста, але не переписує його за автора.
   "content:edit",
+  // Підключення/відключення сервіс-акаунтів (OAuth-токени соцмереж) + конфіг Telegram (§publishing).
+  // Чутливий: тримає OAuth-токени орендаря — тому лише owner/admin, як і apikey:manage.
+  "connection:manage",
+  // Запуск публікації схваленого контенту в підключені соцмережі (§publishing). Дозволено ще й
+  // editor'у: публікація — це доставка вже схваленого контенту, а не керування секретами.
+  "publish:manage",
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -45,6 +51,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "apikey:manage",
     "member:manage",
     "content:edit",
+    "connection:manage",
+    "publish:manage",
   ],
   admin: [
     "company:write",
@@ -56,6 +64,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "apikey:manage",
     "member:manage",
     "content:edit",
+    "connection:manage",
+    "publish:manage",
   ],
   editor: [
     "company:write",
@@ -64,6 +74,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "run:start",
     "decision:make",
     "content:edit",
+    "publish:manage",
   ],
   reviewer: ["decision:make"],
   viewer: [],
