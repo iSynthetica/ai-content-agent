@@ -476,6 +476,60 @@ export const en: Record<string, string> = {
   "Спершу підключіть провайдера на сторінці «Підключення».":
     "Connect the provider first on the Connections page.",
 
+  // ── Connection setup help popup (§publishing) ────────────────────────────
+  "Як налаштувати": "How to set up",
+  "як налаштувати": "how to set up",
+  "URL перенаправлення — зареєструйте його у застосунку": "Redirect URL — register it in your app",
+  // LinkedIn
+  "Потрібна Company Page — LinkedIn вимагає прив'язати застосунок до сторінки компанії.":
+    "You need a Company Page — LinkedIn requires linking the app to a company page.",
+  "Створіть застосунок на": "Create an app at",
+  "(назва, Page, лого, privacy URL).": "(name, Page, logo, privacy URL).",
+  "додайте «Sign In with LinkedIn using OpenID Connect» і «Share on LinkedIn».":
+    "add \"Sign In with LinkedIn using OpenID Connect\" and \"Share on LinkedIn\".",
+  "додайте URL перенаправлення (нижче) до Authorized redirect URLs.":
+    "add the redirect URL (below) to Authorized redirect URLs.",
+  "Там же скопіюйте Client ID і Client Secret.": "From there, copy the Client ID and Client Secret.",
+  "Вставте їх у поля цієї картки → Зберегти ключі застосунку → Підключити.":
+    "Paste them into this card's fields → Save app keys → Connect.",
+  "MVP публікує від імені особи, яка авторизується, а не від Company Page.":
+    "The MVP posts as the person who signs in, not as the Company Page.",
+  // X / Twitter
+  "створіть проєкт і застосунок, оберіть ПЛАТНИЙ тариф із write-доступом.":
+    "create a project and app, and choose a PAID tier with write access.",
+  "У налаштуваннях увімкніть": "In the settings, enable",
+  "тип —": "type —",
+  "(confidential).": "(confidential).",
+  "Додайте URL перенаправлення (нижче) як Callback URI.": "Add the redirect URL (below) as the Callback URI.",
+  "Переконайтеся, що scope включає": "Make sure the scope includes",
+  "Скопіюйте Client ID і Client Secret (OAuth 2.0).": "Copy the Client ID and Client Secret (OAuth 2.0).",
+  "Вставте їх у поля картки → Зберегти ключі застосунку → Підключити.":
+    "Paste them into the card's fields → Save app keys → Connect.",
+  "Нюанс: write у X платний (~$0.015/пост) і за замовчуванням лімітований ~10 постів/24 год — ліміт піднімається вручну в порталі.":
+    "Caveat: write access on X is paid (~$0.015/post) and rate-limited to ~10 posts/24h by default — the limit is raised manually in the portal.",
+  // Instagram
+  "Переведіть IG-акаунт у Business/Creator і залінкуйте з Facebook-сторінкою.":
+    "Switch the IG account to Business/Creator and link it to a Facebook Page.",
+  "створіть Meta app (тип Business).": "create a Meta app (Business type).",
+  "Додайте продукт": "Add the product",
+  "У Valid OAuth Redirect URIs додайте URL перенаправлення (нижче).":
+    "Under Valid OAuth Redirect URIs, add the redirect URL (below).",
+  "Запросіть дозволи": "Request the permissions",
+  "та ін. (потрібен App Review).": "and others (App Review required).",
+  "Скопіюйте App ID і App Secret → вставте у поля картки → Зберегти → Підключити.":
+    "Copy the App ID and App Secret → paste into the card's fields → Save → Connect.",
+  "Нюанс: App Review + верифікація бізнесу займають ~1–4 тижні; до схвалення працює лише в тестовому режимі.":
+    "Caveat: App Review + business verification take ~1–4 weeks; until approved it works only in test mode.",
+  // Telegram
+  "У Telegram напишіть": "In Telegram, message",
+  "отримаєте bot token.": "and get a bot token.",
+  "Дізнайтеся chat id: напишіть боту будь-що, відкрийте getUpdates і візьміть chat.id — або напишіть @userinfobot.":
+    "Find the chat id: message the bot anything, open getUpdates and take chat.id — or message @userinfobot.",
+  "Вставте bot token і chat id у поля картки → Зберегти.":
+    "Paste the bot token and chat id into the card's fields → Save.",
+  "Реєстрація застосунку й URL перенаправлення тут не потрібні.":
+    "No app registration or redirect URL is needed here.",
+
   // ── Global error fallbacks (BFF proxy, query client, api-error) ─────────
   "Сталася непередбачена помилка. Спробуйте ще раз.": "An unexpected error occurred. Please try again.",
   "Сталася помилка. Спробуйте ще раз.": "Something went wrong. Please try again.",

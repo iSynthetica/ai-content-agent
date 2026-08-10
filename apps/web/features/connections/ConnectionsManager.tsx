@@ -7,7 +7,7 @@
 // форсить connection:manage; ховаємо недоступну дію, як в ApiKeysManager).
 import * as React from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Check, Copy, Link2, Send, Trash2 } from "lucide-react";
+import { Check, Copy, Info, Link2, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -30,7 +30,25 @@ import {
   useDisconnect,
   useSetAppCredentials,
 } from "@/features/connections/use-connections";
+import { ConnectionHelpDialog } from "@/features/connections/ConnectionHelpDialog";
 import { useT } from "@/lib/i18n";
+
+// Кнопка-іконка «як налаштувати» біля заголовка картки — відкриває попап з інструкцією. Доступна
+// завжди (навіть без canManage): інструкція корисна, а керування ховається окремо.
+function HelpButton({ onClick }: { onClick: () => void }) {
+  const t = useT();
+  return (
+    <button
+      type="button"
+      aria-label={t("Як налаштувати")}
+      title={t("Як налаштувати")}
+      className="text-muted-foreground transition-colors hover:text-foreground"
+      onClick={onClick}
+    >
+      <Info className="h-4 w-4" />
+    </button>
+  );
+}
 
 function isPublishProvider(p: ConnectionProvider): p is PublishProvider {
   return (PUBLISH_PROVIDERS as readonly string[]).includes(p);
@@ -236,6 +254,7 @@ function SocialCard({
   const authorize = useAuthorize(companyId);
   const disconnect = useDisconnect(companyId);
   const [changeKeysOpen, setChangeKeysOpen] = React.useState(false);
+  const [helpOpen, setHelpOpen] = React.useState(false);
 
   function onConnect() {
     authorize.mutate(provider, {
@@ -267,6 +286,7 @@ function SocialCard({
           <CardTitle className="flex items-center gap-2 text-base">
             <Link2 className="h-4 w-4 text-muted-foreground" />
             {label}
+            <HelpButton onClick={() => setHelpOpen(true)} />
           </CardTitle>
           {statusBadge(current, t)}
         </div>
@@ -335,6 +355,8 @@ function SocialCard({
           )}
         </CardContent>
       )}
+
+      <ConnectionHelpDialog provider={provider} open={helpOpen} onOpenChange={setHelpOpen} />
     </Card>
   );
 }
@@ -351,6 +373,7 @@ function TelegramCard({
   const t = useT();
   const [botToken, setBotToken] = React.useState("");
   const [chatId, setChatId] = React.useState("");
+  const [helpOpen, setHelpOpen] = React.useState(false);
   const configure = useConfigureTelegram(companyId);
 
   function onSave() {
@@ -383,6 +406,7 @@ function TelegramCard({
           <CardTitle className="flex items-center gap-2 text-base">
             <Send className="h-4 w-4 text-muted-foreground" />
             {CONNECTION_PROVIDER_LABELS.telegram}
+            <HelpButton onClick={() => setHelpOpen(true)} />
           </CardTitle>
           {connected ? (
             <Badge variant="secondary">{t("Налаштовано")}</Badge>
@@ -429,6 +453,8 @@ function TelegramCard({
           </Button>
         </CardContent>
       )}
+
+      <ConnectionHelpDialog provider="telegram" open={helpOpen} onOpenChange={setHelpOpen} />
     </Card>
   );
 }
