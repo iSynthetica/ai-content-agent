@@ -19,7 +19,7 @@ export async function handleContentVisuals(
   job: ContentVisualsJob,
   ctx: HandlerContext,
 ): Promise<void> {
-  const { accountId, runId, targets } = job;
+  const { accountId, companyId, runId, targets } = job;
   ctx.logger.info({ runId, targets: targets.length }, "content.visuals");
 
   // Ідемпотентність: перемальовуємо лише те, що ще без картинки. Захищає від повторної оплати
@@ -47,7 +47,7 @@ export async function handleContentVisuals(
   // НЕ фейлимо job (картинки поза критичним шляхом): лишаємо image_url=null і виходимо.
   let models;
   try {
-    const build = await tenantModelsBuilder(ctx, accountId, ["openai"]);
+    const build = await tenantModelsBuilder(ctx, accountId, companyId, ["openai"]);
     models = build(modelConfig);
   } catch (e) {
     if (!(e instanceof NoTenantKeyError)) throw e;

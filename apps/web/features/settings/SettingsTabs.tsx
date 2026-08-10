@@ -18,31 +18,30 @@ import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 
-export type SettingsTab = "keys" | "team" | "connections";
+// Узагальнений таб-хаб: приймає масив уже підготовлених панелей (§per-company-settings — тепер його
+// реюзає company-scoped сторінка налаштувань з табами «Ключі API» + «Підключення»). id — вільний
+// рядок (напр. "keys"|"connections"); ярлики приходять уже перекладені від сервера.
+export interface SettingsTabDef {
+  id: string;
+  label: string;
+  panel: React.ReactNode;
+}
 
 export function SettingsTabs({
   initialTab,
-  keysPanel,
-  teamPanel,
-  connectionsPanel,
+  tabs,
 }: {
-  initialTab: SettingsTab;
-  keysPanel: React.ReactNode;
-  teamPanel: React.ReactNode;
-  connectionsPanel: React.ReactNode;
+  initialTab: string;
+  tabs: SettingsTabDef[];
 }) {
   const t = useT();
   const router = useRouter();
   const pathname = usePathname();
-  const [active, setActive] = React.useState<SettingsTab>(initialTab);
+  const [active, setActive] = React.useState<string>(
+    tabs.some((tb) => tb.id === initialTab) ? initialTab : (tabs[0]?.id ?? ""),
+  );
 
-  const tabs: Array<{ id: SettingsTab; label: string; panel: React.ReactNode }> = [
-    { id: "keys", label: t("Ключі API"), panel: keysPanel },
-    { id: "team", label: t("Команда"), panel: teamPanel },
-    { id: "connections", label: t("Підключення"), panel: connectionsPanel },
-  ];
-
-  function selectTab(id: SettingsTab) {
+  function selectTab(id: string) {
     setActive(id);
     // Робимо підрозділ лінкабельним/шарабельним; replace (не push), щоб не засмічувати історію.
     router.replace(`${pathname}?tab=${id}`, { scroll: false });

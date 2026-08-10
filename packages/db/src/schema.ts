@@ -94,15 +94,17 @@ export const companies = pgTable(
   (t) => ({ accountIdx: index("companies_account_idx").on(t.accountId) }),
 );
 
-// BYOK — ключі провайдерів на рівні АКАУНТА (не компанії): один ключ на (account, provider)
-// оплачує генерацію всього акаунта. Зберігаємо лише шифротекст (AES-256-GCM, iv|tag|ct у base64) —
-// plaintext ключа не лежить у БД ніколи; last4 — тільки для маскованого показу в UI. Розшифровує
-// воркер на момент виконання за accountId (ключ НЕ їде у снапшот прогону — ADR-0016).
+// BYOK — ключі провайдерів на рівні КОМПАНІЇ (§per-company-settings): один ключ на (company, provider)
+// оплачує генерацію цієї компанії. Рядок тримає ОБИДВА id: account_id (RLS-ізоляція, незмінна) +
+// company_id (партиція в межах акаунта + WHERE-фільтр у репо, defense-in-depth). Зберігаємо лише
+// шифротекст (AES-256-GCM, iv|tag|ct у base64) — plaintext ключа не лежить у БД ніколи; last4 —
+// тільки для маскованого показу в UI. Розшифровує воркер на момент виконання (ADR-0016).
 export const apiKeys = pgTable(
   "api_keys",
   {
     id: uuid("id").defaultRandom().primaryKey(),
     accountId: uuid("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
+    companyId: uuid("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
     provider: text("provider").notNull(), // openai | anthropic | tavily
     ciphertext: text("ciphertext").notNull(), // base64(iv | authTag | ciphertext)
     last4: text("last4").notNull(),
@@ -112,7 +114,7 @@ export const apiKeys = pgTable(
     lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
   },
   (t) => ({
-    accountProviderUq: uniqueIndex("api_keys_account_provider_uq").on(t.accountId, t.provider),
+    companyProviderUq: uniqueIndex("api_keys_company_provider_uq").on(t.companyId, t.provider),
   }),
 );
 
@@ -335,13 +337,15 @@ export const inboxItems = pgTable(
 // OAuth-токени сервісів (LinkedIn/X/Instagram) + конфіг Telegram-бота. Клонує BYOK-підхід api_keys:
 // у БД лежить лише шифротекст (*_ct = AES-256-GCM base64), plaintext токена не зберігаємо ніколи;
 // розшифровує воркер на момент виконання (crypto.ts encrypt/decryptSecret). provider — PLAIN TEXT,
-// не pg-enum (як api_keys.provider), щоб додавання провайдера не тягло міграцію enum. UNIQUE(account,
-// provider): один конект на провайдера в межах орендаря (MVP). Тенант-ізоляція за account_id (RLS).
+// не pg-enum (як api_keys.provider), щоб додавання провайдера не тягло міграцію enum. UNIQUE(company,
+// provider): один конект на провайдера в межах КОМПАНІЇ (§per-company-settings). Рядок тримає обидва
+// id: account_id (RLS-ізоляція) + company_id (партиція + WHERE-фільтр у репо, defense-in-depth).
 export const serviceConnections = pgTable(
   "service_connections",
   {
     id: uuid("id").defaultRandom().primaryKey(),
     accountId: uuid("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
+    companyId: uuid("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
     provider: text("provider").notNull(), // linkedin | twitter | instagram | telegram
     status: text("status").default("connected").notNull(), // connected | expired | error | disconnected
     accessTokenCt: text("access_token_ct"), // base64(iv|tag|ct); nullable для telegram (лише bot-token)
@@ -362,8 +366,8 @@ export const serviceConnections = pgTable(
     lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
   },
   (t) => ({
-    accountProviderUq: uniqueIndex("service_connections_account_provider_uq").on(
-      t.accountId,
+    companyProviderUq: uniqueIndex("service_connections_company_provider_uq").on(
+      t.companyId,
       t.provider,
     ),
   }),

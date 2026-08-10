@@ -146,11 +146,13 @@ export interface NewApiKey {
   last4: string;
   label?: string | null;
 }
+// §per-company-settings: усі методи скоупляться (accountId, companyId) — companyId як WHERE-фільтр
+// поверх RLS (account_id). exists — для BYOK-гварда прогону (провайдер уведено В ЦІЙ компанії).
 export interface ApiKeysRepo {
-  list(accountId: string): Promise<ApiKeyMasked[]>;
-  upsert(accountId: string, data: NewApiKey): Promise<void>;
-  delete(accountId: string, provider: string): Promise<boolean>;
-  exists(accountId: string, provider: string): Promise<boolean>;
+  list(accountId: string, companyId: string): Promise<ApiKeyMasked[]>;
+  upsert(accountId: string, companyId: string, data: NewApiKey): Promise<void>;
+  delete(accountId: string, companyId: string, provider: string): Promise<boolean>;
+  exists(accountId: string, companyId: string, provider: string): Promise<boolean>;
 }
 
 export interface ContentPlansRepo {
@@ -439,18 +441,25 @@ export interface NewServiceConnection {
 
 // getDecryptedForProvider тут НЕМАЄ свідомо: розшифрування — відповідальність сервісу/воркера (з
 // master-ключем), репо віддає лише масковану форму (defense-in-depth поверх RLS, accountId перший).
+// §per-company-settings: усі методи скоупляться (accountId, companyId) — companyId як WHERE-фільтр
+// поверх RLS (account_id). Один конект на (company, provider).
 export interface ServiceConnectionsRepo {
-  list(accountId: string): Promise<ServiceConnectionMasked[]>;
-  upsert(accountId: string, data: NewServiceConnection): Promise<void>;
-  delete(accountId: string, provider: string): Promise<boolean>;
-  existsByProvider(accountId: string, provider: string): Promise<boolean>;
+  list(accountId: string, companyId: string): Promise<ServiceConnectionMasked[]>;
+  upsert(accountId: string, companyId: string, data: NewServiceConnection): Promise<void>;
+  delete(accountId: string, companyId: string, provider: string): Promise<boolean>;
+  existsByProvider(accountId: string, companyId: string, provider: string): Promise<boolean>;
   // BYO-app (§byo-oauth-app-creds): креди застосунку орендаря для OAuth-обміну (сервіс розшифрує
-  // секрет). null → рядка немає (сервіс падає на env-fallback).
-  getAppCredentials(accountId: string, provider: string): Promise<ServiceConnectionAppCreds | null>;
+  // секрет). null → рядка немає (провайдер не сконфігуровано для цієї компанії).
+  getAppCredentials(
+    accountId: string,
+    companyId: string,
+    provider: string,
+  ): Promise<ServiceConnectionAppCreds | null>;
   // Записує ЛИШЕ креди застосунку (app_client_id + app_client_secret_ct), зберігаючи токени/статус
   // наявного рядка. Створює рядок (status 'disconnected', без токенів), якщо його ще немає.
   setAppCredentials(
     accountId: string,
+    companyId: string,
     provider: string,
     clientId: string,
     clientSecretCt: string,

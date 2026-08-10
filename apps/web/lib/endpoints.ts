@@ -81,18 +81,19 @@ export const ALLOW: ReadonlyArray<{ method: string; pattern: RegExp }> = [
   { method: "PATCH", pattern: /^\/plan-entries\/[^/]+$/ },
   { method: "POST", pattern: /^\/plan-entries\/approve$/ },
 
-  // BYOK: ключі провайдерів акаунта (list + set/remove per provider)
-  { method: "GET", pattern: /^\/api-keys$/ },
-  { method: "PUT", pattern: /^\/api-keys\/[^/]+$/ },
-  { method: "DELETE", pattern: /^\/api-keys\/[^/]+$/ },
+  // BYOK: ключі провайдерів КОМПАНІЇ (§per-company-settings): list + set/remove per provider
+  { method: "GET", pattern: /^\/companies\/[^/]+\/api-keys$/ },
+  { method: "PUT", pattern: /^\/companies\/[^/]+\/api-keys\/[^/]+$/ },
+  { method: "DELETE", pattern: /^\/companies\/[^/]+\/api-keys\/[^/]+$/ },
 
-  // §publishing: підключення соцмереж/Telegram + публікація схвалених постів
-  { method: "GET", pattern: /^\/connections$/ },
-  { method: "PUT", pattern: /^\/connections\/[^/]+\/app-credentials$/ }, // BYO-app: { clientId, clientSecret }
-  { method: "POST", pattern: /^\/connections\/[^/]+\/authorize$/ }, // → { authUrl } + state-cookie
+  // §publishing/per-company-settings: підключення соцмереж/Telegram КОМПАНІЇ + публікація постів.
+  // ВИНЯТОК — OAuth callback: лишається НЕ company-scoped (redirect URI провайдера фіксований).
+  { method: "GET", pattern: /^\/companies\/[^/]+\/connections$/ },
+  { method: "PUT", pattern: /^\/companies\/[^/]+\/connections\/[^/]+\/app-credentials$/ }, // BYO-app: { clientId, clientSecret }
+  { method: "POST", pattern: /^\/companies\/[^/]+\/connections\/[^/]+\/authorize$/ }, // → { authUrl } + state-cookie
   { method: "GET", pattern: /^\/connections\/[^/]+\/callback$/ }, // OAuth redirect-target (302 назад)
-  { method: "PUT", pattern: /^\/connections\/telegram$/ }, // { botToken, chatId }
-  { method: "DELETE", pattern: /^\/connections\/[^/]+$/ }, // відключити провайдера
+  { method: "PUT", pattern: /^\/companies\/[^/]+\/connections\/telegram$/ }, // { botToken, chatId }
+  { method: "DELETE", pattern: /^\/companies\/[^/]+\/connections\/[^/]+$/ }, // відключити провайдера
   { method: "POST", pattern: /^\/runs\/[^/]+\/publish$/ }, // { itemIds } → enqueue content.publish
   { method: "GET", pattern: /^\/runs\/[^/]+\/publications$/ }, // per-run стан публікацій
   // Публічна роздача медіа за підписаним токеном (IG тягне сервером без сесії; транскод у JPEG)
@@ -165,17 +166,20 @@ export const endpoints = {
   planEntry: (id: string) => `/api/plan-entries/${id}`,
   planEntriesApprove: () => "/api/plan-entries/approve",
 
-  // BYOK: ключі провайдерів акаунта
-  apiKeys: () => "/api/api-keys",
-  apiKey: (provider: string) => `/api/api-keys/${provider}`,
+  // BYOK: ключі провайдерів КОМПАНІЇ (§per-company-settings)
+  apiKeys: (cid: string) => `/api/companies/${cid}/api-keys`,
+  apiKey: (cid: string, provider: string) => `/api/companies/${cid}/api-keys/${provider}`,
 
-  // §publishing: підключення соцмереж/Telegram + публікація
-  connections: () => "/api/connections", // GET список (items + configured)
-  connectionAppCredentials: (provider: string) => `/api/connections/${provider}/app-credentials`, // PUT BYO-app
-  connectionAuthorize: (provider: string) => `/api/connections/${provider}/authorize`, // POST
-  connectionCallback: (provider: string) => `/api/connections/${provider}/callback`, // GET redirect
-  connectionTelegram: () => "/api/connections/telegram", // PUT { botToken, chatId }
-  connection: (provider: string) => `/api/connections/${provider}`, // DELETE відключити
+  // §publishing/per-company-settings: підключення соцмереж/Telegram КОМПАНІЇ + публікація. callback
+  // лишається НЕ company-scoped (фіксований redirect URI провайдера).
+  connections: (cid: string) => `/api/companies/${cid}/connections`, // GET список (items + configured)
+  connectionAppCredentials: (cid: string, provider: string) =>
+    `/api/companies/${cid}/connections/${provider}/app-credentials`, // PUT BYO-app
+  connectionAuthorize: (cid: string, provider: string) =>
+    `/api/companies/${cid}/connections/${provider}/authorize`, // POST
+  connectionCallback: (provider: string) => `/api/connections/${provider}/callback`, // GET redirect (non-company)
+  connectionTelegram: (cid: string) => `/api/companies/${cid}/connections/telegram`, // PUT { botToken, chatId }
+  connection: (cid: string, provider: string) => `/api/companies/${cid}/connections/${provider}`, // DELETE відключити
   runPublish: (id: string) => `/api/runs/${id}/publish`, // POST { itemIds }
   runPublications: (id: string) => `/api/runs/${id}/publications`, // GET per-run стан
   mediaPublic: (token: string) => `/api/media/public/${token}`, // GET публічне зображення (JPEG)

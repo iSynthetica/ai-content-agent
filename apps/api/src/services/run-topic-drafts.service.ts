@@ -54,9 +54,9 @@ export class RunTopicDraftsService {
     // BYOK (§ADR-0016): підбір тем — теж LLM-виклик ключем ОРЕНДАРЯ (strategist-слот). Швидкий 422
     // тут, а не мовчазний фейл після enqueue — дешевше для UX (не треба чекати поллінг, щоб дізнатись).
     const provider = settings.agentModels?.strategist?.provider ?? settings.provider;
-    if (!(await this.apiKeys.exists(ctx.accountId, provider))) {
+    if (!(await this.apiKeys.exists(ctx.accountId, companyId, provider))) {
       throw AppError.unprocessable(
-        `Додайте API-ключ провайдера '${provider}' у налаштуваннях акаунта, щоб пропонувати теми`,
+        `Додайте API-ключ провайдера '${provider}' у налаштуваннях компанії, щоб пропонувати теми`,
       );
     }
 

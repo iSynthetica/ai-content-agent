@@ -156,7 +156,7 @@ export async function handleStart(job: GenerationStartJob, ctx: HandlerContext):
   // повідомленням і задачею в Inbox, а не витрачаємо платформенний ключ на генерацію орендаря. ──
   let tenantModels: ModelFactoryBuilder;
   try {
-    tenantModels = await tenantModelsBuilder(ctx, accountId, textProvidersUsed(input.modelConfig));
+    tenantModels = await tenantModelsBuilder(ctx, accountId, companyId, textProvidersUsed(input.modelConfig));
   } catch (e) {
     if (!(e instanceof NoTenantKeyError)) throw e;
     ctx.logger.warn({ runId, provider: e.provider }, "generation.start blocked: no tenant API key");
@@ -190,7 +190,7 @@ export async function handleStart(job: GenerationStartJob, ctx: HandlerContext):
   const progress = makeProgressReporter(ctx, accountId, runId);
   // Веб-пошук (Tavily) — на ключі орендаря з платформенним фолбеком (§Tavily BYOK). Резолвиться
   // per-run, як і моделі; researcher — єдиний, хто його кличе, тож достатньо підмінити тут (start).
-  const webSearch = await tenantWebSearch(ctx, accountId);
+  const webSearch = await tenantWebSearch(ctx, accountId, companyId);
   // Пайплайн сам кличе deps.models(modelConfig) — тож підміняємо саме models на tenant-білдер (§ADR-0016).
   const res = await createPipeline({ ...ctx.pipeline, models: tenantModels, webSearch }).start(input, runId, {
     onProgress: progress.onProgress,

@@ -18,46 +18,51 @@ import {
   type TelegramConfigRequest,
 } from "@/lib/dto";
 
-export function useConnections(initialData?: ConnectionsResponse) {
+export function useConnections(companyId: string, initialData?: ConnectionsResponse) {
   return useQuery({
-    queryKey: qk.connections(),
-    queryFn: () => http.get(endpoints.connections(), connectionsResponse),
+    queryKey: qk.connections(companyId),
+    queryFn: () => http.get(endpoints.connections(companyId), connectionsResponse),
     initialData,
   });
 }
 
 // authorize → { authUrl }. Викликач сам робить window.location.assign(authUrl): редірект на consent
 // провайдера — це навігація браузера, не fetch, тож мутація лише дістає URL.
-export function useAuthorize() {
+export function useAuthorize(companyId: string) {
   return useMutation({
     mutationFn: (provider: PublishProvider) =>
-      http.post(endpoints.connectionAuthorize(provider), undefined, authorizeConnectionResponse),
+      http.post(
+        endpoints.connectionAuthorize(companyId, provider),
+        undefined,
+        authorizeConnectionResponse,
+      ),
   });
 }
 
 // BYO-app: зберегти креди власного OAuth-застосунку орендаря (client id + secret) для провайдера.
 // Секрет назад НІКОЛИ не приходить; після успіху інвалідуємо connections (appConfigured/appClientId).
-export function useSetAppCredentials() {
+export function useSetAppCredentials(companyId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ provider, input }: { provider: PublishProvider; input: SetAppCredentialsRequest }) =>
-      http.put(endpoints.connectionAppCredentials(provider), input),
-    onSuccess: () => qc.invalidateQueries({ queryKey: qk.connections() }),
+      http.put(endpoints.connectionAppCredentials(companyId, provider), input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.connections(companyId) }),
   });
 }
 
-export function useConfigureTelegram() {
+export function useConfigureTelegram(companyId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: TelegramConfigRequest) => http.put(endpoints.connectionTelegram(), input),
-    onSuccess: () => qc.invalidateQueries({ queryKey: qk.connections() }),
+    mutationFn: (input: TelegramConfigRequest) =>
+      http.put(endpoints.connectionTelegram(companyId), input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.connections(companyId) }),
   });
 }
 
-export function useDisconnect() {
+export function useDisconnect(companyId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (provider: string) => http.del(endpoints.connection(provider)),
-    onSuccess: () => qc.invalidateQueries({ queryKey: qk.connections() }),
+    mutationFn: (provider: string) => http.del(endpoints.connection(companyId, provider)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.connections(companyId) }),
   });
 }

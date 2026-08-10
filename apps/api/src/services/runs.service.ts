@@ -130,9 +130,9 @@ export class RunsService {
     const hasInstagram = scoped || (counts?.instagram ?? 0) > 0;
     if (hasInstagram) requiredProviders.add("openai"); // зображення завжди OpenAI (gpt-image-1)
     for (const provider of requiredProviders) {
-      if (!(await this.apiKeys.exists(ctx.accountId, provider))) {
+      if (!(await this.apiKeys.exists(ctx.accountId, companyId, provider))) {
         throw AppError.unprocessable(
-          `Додайте API-ключ провайдера '${provider}' у налаштуваннях акаунта, щоб запускати генерацію`,
+          `Додайте API-ключ провайдера '${provider}' у налаштуваннях компанії, щоб запускати генерацію`,
         );
       }
     }

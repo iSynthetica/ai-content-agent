@@ -95,7 +95,7 @@ class FakeApiKeysRepo implements ApiKeysRepo {
   async delete(): Promise<boolean> {
     return true;
   }
-  async exists(_accountId: string, provider: string): Promise<boolean> {
+  async exists(_accountId: string, _companyId: string, provider: string): Promise<boolean> {
     return this.present.has(provider);
   }
 }

@@ -5,6 +5,8 @@
 //
 // accountId/userId у cookie НЕ кладемо: вони беруться з автентифікованої сесії в обох хендлерах
 // (authorize і callback під requireAuth). Cookie відповідає лише за CSRF (звірка state) і PKCE.
+// companyId — виняток (§per-company-settings): callback НЕ company-scoped у path (redirect URI
+// фіксований у застосунку провайдера), тож компанію, під яку відкрито flow, відновлюємо з cookie.
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 export const OAUTH_STATE_COOKIE = "forteq_oauth_state";
@@ -13,6 +15,7 @@ export const OAUTH_STATE_TTL_SEC = 600; // 10 хв — з запасом на co
 export interface OAuthStatePayload {
   state: string; // CSRF-токен, звіряється з query ?state на callback
   provider: string; // проти якого провайдера відкрито flow (захист від крос-провайдерного reuse)
+  companyId: string; // компанія, під яку відкрито flow (callback зберігає конект саме їй)
   verifier?: string; // PKCE code_verifier (лише коли usesPkce)
   exp: number; // unix-секунди протухання (single-use + TTL)
 }
@@ -50,6 +53,7 @@ export function verifyState(value: string, secret: string): OAuthStatePayload | 
     !payload ||
     typeof payload.state !== "string" ||
     typeof payload.provider !== "string" ||
+    typeof payload.companyId !== "string" ||
     typeof payload.exp !== "number"
   ) {
     return null;

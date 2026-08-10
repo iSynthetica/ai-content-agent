@@ -468,7 +468,7 @@ export function RunConfigDialog({
 
               <div className="flex flex-col gap-2">
                 <Label>{t("Моделі під ролі (необов’язково — інакше за налаштуваннями)")}</Label>
-                <AgentModelsSection value={agentModels} onChange={setAgentModels} />
+                <AgentModelsSection companyId={companyId} value={agentModels} onChange={setAgentModels} />
               </div>
 
               {!scoped && (

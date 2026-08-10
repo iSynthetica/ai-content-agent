@@ -17,10 +17,10 @@ export const qk = {
   // §14 нотифікації + inbox (глобальні)
   notifications: () => ["notifications"] as const,
   inbox: () => ["inbox"] as const,
-  // BYOK: ключі провайдерів акаунта (§ADR-0016)
-  apiKeys: () => ["api-keys"] as const,
-  // §publishing: підключення соцмереж/Telegram (глобальні) + стан публікацій по прогону
-  connections: () => ["connections"] as const,
+  // BYOK: ключі провайдерів КОМПАНІЇ (§per-company-settings)
+  apiKeys: (companyId: string) => ["api-keys", companyId] as const,
+  // §publishing: підключення соцмереж/Telegram КОМПАНІЇ + стан публікацій по прогону
+  connections: (companyId: string) => ["connections", companyId] as const,
   publications: (runId: string) => ["publications", runId] as const,
   // §15 план + слоти
   plan: (companyId: string) => ["plan", companyId] as const,

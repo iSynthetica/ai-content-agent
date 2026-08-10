@@ -9,8 +9,10 @@ import {
 } from "@forteq/pipeline";
 import { TavilyWebSearch, withAccountScope, type HandlerContext } from "../composition.js";
 
-// BYOK (§ADR-0016): ключ провайдера орендаря резолвиться на МОМЕНТ ВИКОНАННЯ за accountId і НІКОЛИ
-// не потрапляє у снапшот прогону чи checkpointer (секрет у стані графа в БД — недопустимо). Тут же
+// BYOK (§ADR-0016/per-company-settings): ключ провайдера резолвиться на МОМЕНТ ВИКОНАННЯ за
+// (accountId, companyId) і НІКОЛИ не потрапляє у снапшот прогону чи checkpointer (секрет у стані
+// графа в БД — недопустимо). Ключі тепер per-company (unique(company_id, provider)), тож companyId
+// у WHERE обов'язковий — інакше в multi-company акаунті вибірка тягне рядки чужих компаній. Тут же
 // enforcement «block, no fallback»: без ключа потрібного провайдера — NoTenantKeyError, а не тихий
 // перехід на платформенний ключ (він генерацію орендаря не оплачує).
 
@@ -27,15 +29,23 @@ function keyFor(secrets: ModelSecrets, provider: string): string | undefined {
   return secrets.openaiApiKey;
 }
 
-// Завантажує й розшифровує ВСІ ключі акаунта у ModelSecrets. RLS скоупить вибірку за accountId,
-// тож крос-акаунт неможливий навіть тут. GCM-decrypt падає на побитому шифротексті (не повертає сміття).
-async function loadTenantSecrets(ctx: HandlerContext, accountId: string): Promise<ModelSecrets> {
+// Завантажує й розшифровує ключі КОМПАНІЇ у ModelSecrets. RLS скоупить за accountId (крос-акаунт
+// неможливий), companyId звужує до конкретної компанії (§per-company-settings). GCM-decrypt падає на
+// побитому шифротексті (не повертає сміття).
+async function loadTenantSecrets(
+  ctx: HandlerContext,
+  accountId: string,
+  companyId: string,
+): Promise<ModelSecrets> {
   if (!ctx.masterKey) {
     throw new Error("tenantModels: masterKey відсутній (BYOK_ENCRYPTION_KEY не заданий у real-режимі)");
   }
   const key = ctx.masterKey;
   const rows = await withAccountScope(ctx, accountId, (tx) =>
-    tx.select({ provider: apiKeys.provider, ciphertext: apiKeys.ciphertext }).from(apiKeys),
+    tx
+      .select({ provider: apiKeys.provider, ciphertext: apiKeys.ciphertext })
+      .from(apiKeys)
+      .where(eq(apiKeys.companyId, companyId)),
   );
   const out: ModelSecrets = {};
   for (const r of rows) {
@@ -49,12 +59,23 @@ async function loadTenantSecrets(ctx: HandlerContext, accountId: string): Promis
 
 // Позначка «ключ використано» — окремою короткою txn. Збій НЕ має валити прогін: суто інформаційне
 // поле для UI. Тому свій try/catch у виклику, а не в цьому helper'і.
-async function touchLastUsed(ctx: HandlerContext, accountId: string, provider: string): Promise<void> {
+async function touchLastUsed(
+  ctx: HandlerContext,
+  accountId: string,
+  companyId: string,
+  provider: string,
+): Promise<void> {
   await withAccountScope(ctx, accountId, (tx) =>
     tx
       .update(apiKeys)
       .set({ lastUsedAt: new Date() })
-      .where(and(eq(apiKeys.accountId, accountId), eq(apiKeys.provider, provider))),
+      .where(
+        and(
+          eq(apiKeys.accountId, accountId),
+          eq(apiKeys.companyId, companyId),
+          eq(apiKeys.provider, provider),
+        ),
+      ),
   );
 }
 
@@ -66,17 +87,18 @@ async function touchLastUsed(ctx: HandlerContext, accountId: string, provider: s
 export async function tenantModelsBuilder(
   ctx: HandlerContext,
   accountId: string,
+  companyId: string,
   requiredProviders: string[],
 ): Promise<ModelFactoryBuilder> {
   if (ctx.env.FAKE_MODELS === "1") return ctx.pipeline.models;
 
-  const secrets = await loadTenantSecrets(ctx, accountId);
+  const secrets = await loadTenantSecrets(ctx, accountId, companyId);
   const missing = requiredProviders.find((p) => !keyFor(secrets, p));
   if (missing) throw new NoTenantKeyError(missing);
 
   // use-mark кожного задіяного провайдера для UI; збій оновлення не критичний.
   try {
-    for (const p of requiredProviders) await touchLastUsed(ctx, accountId, p);
+    for (const p of requiredProviders) await touchLastUsed(ctx, accountId, companyId, p);
   } catch (e) {
     ctx.logger.warn({ err: e instanceof Error ? e.message : String(e) }, "tenantModels: touch last_used_at failed");
   }
@@ -93,6 +115,7 @@ export async function tenantModelsBuilder(
 export async function tenantWebSearch(
   ctx: HandlerContext,
   accountId: string,
+  companyId: string,
 ): Promise<WebSearchTool> {
   if (ctx.env.FAKE_MODELS === "1") return ctx.pipeline.webSearch;
 
@@ -103,14 +126,20 @@ export async function tenantWebSearch(
       tx
         .select({ ciphertext: apiKeys.ciphertext })
         .from(apiKeys)
-        .where(and(eq(apiKeys.accountId, accountId), eq(apiKeys.provider, "tavily"))),
+        .where(
+          and(
+            eq(apiKeys.accountId, accountId),
+            eq(apiKeys.companyId, companyId),
+            eq(apiKeys.provider, "tavily"),
+          ),
+        ),
     );
     if (rows[0]) tenantKey = decryptSecret(rows[0].ciphertext, master);
   }
 
   if (tenantKey) {
     try {
-      await touchLastUsed(ctx, accountId, "tavily");
+      await touchLastUsed(ctx, accountId, companyId, "tavily");
     } catch (e) {
       ctx.logger.warn(
         { err: e instanceof Error ? e.message : String(e) },

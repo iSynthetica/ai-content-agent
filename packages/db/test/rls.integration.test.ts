@@ -14,6 +14,10 @@ const APP_URL = process.env.DATABASE_URL ?? "postgres://forteq_app:app@localhost
 
 const ACCOUNT_A = "e2e0a000-0000-4000-8000-00000000000a";
 const ACCOUNT_B = "e2e0b000-0000-4000-8000-00000000000b";
+// Явні id компаній: api_keys тепер company-scoped (company_id NOT NULL, unique(company,provider)),
+// тож сидимо ключі з конкретною компанією й перевіряємо, що cross-tenant запис падає саме на RLS.
+const COMPANY_A = "c0a0a000-0000-4000-8000-00000000000a";
+const COMPANY_B = "c0a0b000-0000-4000-8000-00000000000b";
 
 let owner: postgres.Sql;
 let app: postgres.Sql;
@@ -35,15 +39,15 @@ beforeAll(async () => {
   await owner`DELETE FROM accounts WHERE id IN (${ACCOUNT_A}, ${ACCOUNT_B})`;
   await owner`INSERT INTO accounts (id, name) VALUES (${ACCOUNT_A}, 'RLS A'), (${ACCOUNT_B}, 'RLS B')`;
   await owner`
-    INSERT INTO companies (account_id, name) VALUES
-      (${ACCOUNT_A}, 'Company A'),
-      (${ACCOUNT_B}, 'Company B')`;
+    INSERT INTO companies (id, account_id, name) VALUES
+      (${COMPANY_A}, ${ACCOUNT_A}, 'Company A'),
+      (${COMPANY_B}, ${ACCOUNT_B}, 'Company B')`;
   // BYOK: ключі орендарів — секрети, ізоляція тут критичніша за все (ADR-0016). Прибираються
-  // каскадом при видаленні акаунтів в afterAll (FK on delete cascade).
+  // каскадом при видаленні акаунтів в afterAll (FK on delete cascade). company_id тепер обов'язковий.
   await owner`
-    INSERT INTO api_keys (account_id, provider, ciphertext, last4) VALUES
-      (${ACCOUNT_A}, 'openai', 'ct-A', 'aaaa'),
-      (${ACCOUNT_B}, 'openai', 'ct-B', 'bbbb')`;
+    INSERT INTO api_keys (account_id, company_id, provider, ciphertext, last4) VALUES
+      (${ACCOUNT_A}, ${COMPANY_A}, 'openai', 'ct-A', 'aaaa'),
+      (${ACCOUNT_B}, ${COMPANY_B}, 'openai', 'ct-B', 'bbbb')`;
 });
 
 afterAll(async () => {
@@ -140,7 +144,7 @@ describe("RLS: ізоляція ключів api_keys (секрети оренд
       asAccount(
         ACCOUNT_A,
         (tx) =>
-          tx`INSERT INTO api_keys (account_id, provider, ciphertext, last4) VALUES (${ACCOUNT_B}, 'anthropic', 'ct-x', 'xxxx')`,
+          tx`INSERT INTO api_keys (account_id, company_id, provider, ciphertext, last4) VALUES (${ACCOUNT_B}, ${COMPANY_B}, 'anthropic', 'ct-x', 'xxxx')`,
       ),
     ).rejects.toThrow();
   });

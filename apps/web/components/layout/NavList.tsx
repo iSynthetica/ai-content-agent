@@ -44,14 +44,16 @@ export function NavList({
         { href: `/companies/${cid}/plan`, label: t("Планувальник"), icon: CalendarDays },
         { href: `/companies/${cid}/brief`, label: t("Бренд"), icon: SquarePen },
         { href: `/companies/${cid}/plan/settings`, label: t("Розклад"), icon: Settings2 },
+        // §per-company-settings: ключі API + підключення компанії (переїхали з account-рівня).
+        { href: `/companies/${cid}/settings`, label: t("Налаштування"), icon: Settings },
       ]
     : [];
 
   const globalItems: NavItem[] = [
     { href: "/inbox", label: t("Задачі"), icon: Inbox },
-    // §settings-hub: єдиний вхід у загальні налаштування акаунта (ключі API + команда + підключення).
-    // Колишні окремі пункти «Команда» (/members) і «Підключення» (/connections) звели сюди.
-    { href: "/settings", label: t("Налаштування"), icon: Settings },
+    // §per-company-settings: загальний /settings звівся до керування командою (account-рівень);
+    // ключі API та підключення тепер живуть у company-scoped «Налаштування» вище.
+    { href: "/settings", label: t("Команда"), icon: Settings },
   ];
 
   return (

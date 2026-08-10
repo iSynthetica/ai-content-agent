@@ -37,13 +37,15 @@ function isPublishProvider(p: ConnectionProvider): p is PublishProvider {
 }
 
 export function ConnectionsManager({
+  companyId,
   initialConnections,
   canManage,
 }: {
+  companyId: string;
   initialConnections?: ConnectionsResponse;
   canManage: boolean;
 }) {
-  const { data } = useConnections(initialConnections);
+  const { data } = useConnections(companyId, initialConnections);
   const items = data?.items ?? [];
 
   useCallbackToast();
@@ -53,10 +55,11 @@ export function ConnectionsManager({
       {(Object.keys(CONNECTION_PROVIDER_LABELS) as ConnectionProvider[]).map((provider) => {
         const current = items.find((c) => c.provider === provider) ?? null;
         return provider === "telegram" ? (
-          <TelegramCard key={provider} current={current} canManage={canManage} />
+          <TelegramCard key={provider} companyId={companyId} current={current} canManage={canManage} />
         ) : (
           <SocialCard
             key={provider}
+            companyId={companyId}
             provider={provider as PublishProvider}
             current={current}
             canManage={canManage}
@@ -153,16 +156,18 @@ function RedirectUriRow({ provider }: { provider: PublishProvider }) {
 // Форма вводу кред застосунку (client id + secret). Використовується і як первинний ввід, і як
 // колапс «змінити ключі». onSaved закриває колапс (де він є).
 function AppCredentialsForm({
+  companyId,
   provider,
   onSaved,
 }: {
+  companyId: string;
   provider: PublishProvider;
   onSaved?: () => void;
 }) {
   const t = useT();
   const [clientId, setClientId] = React.useState("");
   const [clientSecret, setClientSecret] = React.useState("");
-  const setCreds = useSetAppCredentials();
+  const setCreds = useSetAppCredentials(companyId);
 
   function onSave() {
     const id = clientId.trim();
@@ -216,18 +221,20 @@ function AppCredentialsForm({
 }
 
 function SocialCard({
+  companyId,
   provider,
   current,
   canManage,
 }: {
+  companyId: string;
   provider: PublishProvider;
   current: ConnectionDTO | null;
   canManage: boolean;
 }) {
   const t = useT();
   const label = CONNECTION_PROVIDER_LABELS[provider];
-  const authorize = useAuthorize();
-  const disconnect = useDisconnect();
+  const authorize = useAuthorize(companyId);
+  const disconnect = useDisconnect(companyId);
   const [changeKeysOpen, setChangeKeysOpen] = React.useState(false);
 
   function onConnect() {
@@ -279,7 +286,7 @@ function SocialCard({
             // Ще нема кред застосунку: показуємо форму вводу; Connect недоступний.
             <>
               <p className="text-sm text-muted-foreground">{t("Потрібні ключі застосунку")}</p>
-              <AppCredentialsForm provider={provider} />
+              <AppCredentialsForm companyId={companyId} provider={provider} />
               <Button className="w-fit" disabled>
                 {t("Підключити")}
               </Button>
@@ -318,7 +325,11 @@ function SocialCard({
                 {t("змінити ключі застосунку")}
               </button>
               {changeKeysOpen && (
-                <AppCredentialsForm provider={provider} onSaved={() => setChangeKeysOpen(false)} />
+                <AppCredentialsForm
+                  companyId={companyId}
+                  provider={provider}
+                  onSaved={() => setChangeKeysOpen(false)}
+                />
               )}
             </>
           )}
@@ -329,16 +340,18 @@ function SocialCard({
 }
 
 function TelegramCard({
+  companyId,
   current,
   canManage,
 }: {
+  companyId: string;
   current: ConnectionDTO | null;
   canManage: boolean;
 }) {
   const t = useT();
   const [botToken, setBotToken] = React.useState("");
   const [chatId, setChatId] = React.useState("");
-  const configure = useConfigureTelegram();
+  const configure = useConfigureTelegram(companyId);
 
   function onSave() {
     const token = botToken.trim();

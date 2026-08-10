@@ -104,7 +104,7 @@ export async function handleSuggestTopics(
   // лог і вихід, слоти лишаються порожні, людина побачить причину в статусі ключа.
   let builder;
   try {
-    builder = await tenantModelsBuilder(ctx, accountId, [
+    builder = await tenantModelsBuilder(ctx, accountId, companyId, [
       slotModel(input.modelConfig, "strategist").provider,
     ]);
   } catch (e) {

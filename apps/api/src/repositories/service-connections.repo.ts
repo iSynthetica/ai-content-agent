@@ -34,24 +34,31 @@ function toMasked(row: Row): ServiceConnectionMasked {
   };
 }
 
-// service_connections — 1 запис на (account, provider) під RLS-скоупом за account_id. Upsert по
-// UNIQUE(account_id, provider): повторне підключення ротує токени на місці, а не плодить рядки.
+// service_connections — 1 запис на (company, provider) під RLS-скоупом за account_id + company_id
+// як WHERE-фільтр (§per-company-settings). Upsert по UNIQUE(company_id, provider): повторне
+// підключення ротує токени компанії на місці, а не плодить рядки.
 export class DrizzleServiceConnectionsRepo implements ServiceConnectionsRepo {
   constructor(private readonly tx: DbExecutor) {}
 
-  async list(accountId: string): Promise<ServiceConnectionMasked[]> {
+  async list(accountId: string, companyId: string): Promise<ServiceConnectionMasked[]> {
     const rows = await this.tx
       .select()
       .from(serviceConnections)
-      .where(eq(serviceConnections.accountId, accountId));
+      .where(
+        and(
+          eq(serviceConnections.accountId, accountId),
+          eq(serviceConnections.companyId, companyId),
+        ),
+      );
     return rows.map(toMasked);
   }
 
-  async upsert(accountId: string, data: NewServiceConnection): Promise<void> {
+  async upsert(accountId: string, companyId: string, data: NewServiceConnection): Promise<void> {
     await this.tx
       .insert(serviceConnections)
       .values({
         accountId,
+        companyId,
         provider: data.provider,
         status: data.status ?? "connected",
         accessTokenCt: data.accessTokenCt,
@@ -63,7 +70,7 @@ export class DrizzleServiceConnectionsRepo implements ServiceConnectionsRepo {
         meta: data.meta ?? {},
       })
       .onConflictDoUpdate({
-        target: [serviceConnections.accountId, serviceConnections.provider],
+        target: [serviceConnections.companyId, serviceConnections.provider],
         set: {
           status: data.status ?? "connected",
           accessTokenCt: data.accessTokenCt,
@@ -78,22 +85,30 @@ export class DrizzleServiceConnectionsRepo implements ServiceConnectionsRepo {
       });
   }
 
-  async delete(accountId: string, provider: string): Promise<boolean> {
+  async delete(accountId: string, companyId: string, provider: string): Promise<boolean> {
     const deleted = await this.tx
       .delete(serviceConnections)
       .where(
-        and(eq(serviceConnections.accountId, accountId), eq(serviceConnections.provider, provider)),
+        and(
+          eq(serviceConnections.accountId, accountId),
+          eq(serviceConnections.companyId, companyId),
+          eq(serviceConnections.provider, provider),
+        ),
       )
       .returning({ id: serviceConnections.id });
     return deleted.length > 0;
   }
 
-  async existsByProvider(accountId: string, provider: string): Promise<boolean> {
+  async existsByProvider(accountId: string, companyId: string, provider: string): Promise<boolean> {
     const [row] = await this.tx
       .select({ id: serviceConnections.id })
       .from(serviceConnections)
       .where(
-        and(eq(serviceConnections.accountId, accountId), eq(serviceConnections.provider, provider)),
+        and(
+          eq(serviceConnections.accountId, accountId),
+          eq(serviceConnections.companyId, companyId),
+          eq(serviceConnections.provider, provider),
+        ),
       )
       .limit(1);
     return Boolean(row);
@@ -101,6 +116,7 @@ export class DrizzleServiceConnectionsRepo implements ServiceConnectionsRepo {
 
   async getAppCredentials(
     accountId: string,
+    companyId: string,
     provider: string,
   ): Promise<ServiceConnectionAppCreds | null> {
     const [row] = await this.tx
@@ -110,7 +126,11 @@ export class DrizzleServiceConnectionsRepo implements ServiceConnectionsRepo {
       })
       .from(serviceConnections)
       .where(
-        and(eq(serviceConnections.accountId, accountId), eq(serviceConnections.provider, provider)),
+        and(
+          eq(serviceConnections.accountId, accountId),
+          eq(serviceConnections.companyId, companyId),
+          eq(serviceConnections.provider, provider),
+        ),
       )
       .limit(1);
     return row ?? null;
@@ -121,6 +141,7 @@ export class DrizzleServiceConnectionsRepo implements ServiceConnectionsRepo {
   // без токенів: конект «сконфігуровано, але не підключено», доки користувач не пройде OAuth.
   async setAppCredentials(
     accountId: string,
+    companyId: string,
     provider: string,
     clientId: string,
     clientSecretCt: string,
@@ -129,6 +150,7 @@ export class DrizzleServiceConnectionsRepo implements ServiceConnectionsRepo {
       .insert(serviceConnections)
       .values({
         accountId,
+        companyId,
         provider,
         status: "disconnected",
         accessTokenCt: null,
@@ -136,7 +158,7 @@ export class DrizzleServiceConnectionsRepo implements ServiceConnectionsRepo {
         appClientSecretCt: clientSecretCt,
       })
       .onConflictDoUpdate({
-        target: [serviceConnections.accountId, serviceConnections.provider],
+        target: [serviceConnections.companyId, serviceConnections.provider],
         set: {
           appClientId: clientId,
           appClientSecretCt: clientSecretCt,

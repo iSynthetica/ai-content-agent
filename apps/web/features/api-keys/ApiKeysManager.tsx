@@ -24,18 +24,21 @@ const PROVIDERS: Array<{ id: ApiKeyProvider; label: string; hint: string }> = [
 ];
 
 export function ApiKeysManager({
+  companyId,
   initialKeys,
   canManage,
 }: {
+  companyId: string;
   initialKeys?: ApiKeyDTO[];
   canManage: boolean;
 }) {
-  const { data: keys = [] } = useApiKeys(initialKeys);
+  const { data: keys = [] } = useApiKeys(companyId, initialKeys);
   return (
     <div className="flex flex-col gap-4">
       {PROVIDERS.map((p) => (
         <ProviderCard
           key={p.id}
+          companyId={companyId}
           provider={p.id}
           label={p.label}
           hint={p.hint}
@@ -48,12 +51,14 @@ export function ApiKeysManager({
 }
 
 function ProviderCard({
+  companyId,
   provider,
   label,
   hint,
   current,
   canManage,
 }: {
+  companyId: string;
   provider: ApiKeyProvider;
   label: string;
   hint: string;
@@ -62,8 +67,8 @@ function ProviderCard({
 }) {
   const t = useT();
   const [value, setValue] = useState("");
-  const setKey = useSetApiKey();
-  const delKey = useDeleteApiKey();
+  const setKey = useSetApiKey(companyId);
+  const delKey = useDeleteApiKey(companyId);
 
   function onSave() {
     const key = value.trim();

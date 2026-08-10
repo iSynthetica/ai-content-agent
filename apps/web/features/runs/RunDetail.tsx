@@ -71,7 +71,7 @@ export function RunDetail({
 
   // §publishing: connection'и (щоб знати, куди можна публікувати) + стан публікацій по прогону
   // (окремий полл — результат фонової джоби доїжджає ПІСЛЯ дії). publish триґерить enqueue.
-  const { data: connections } = useConnections();
+  const { data: connections } = useConnections(initialRun.companyId);
   const publications = usePublications(runId);
   const publish = usePublish(runId);
 

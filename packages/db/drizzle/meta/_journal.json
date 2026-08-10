@@ -155,6 +155,13 @@
       "when": 1786298470097,
       "tag": "0021_organic_the_order",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1786349853185,
+      "tag": "0022_remarkable_jean_grey",
+      "breakpoints": true
     }
   ]
 }

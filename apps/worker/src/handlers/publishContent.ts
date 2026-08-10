@@ -13,20 +13,6 @@ import {
   type DecryptedConnection,
   type OAuthClientCreds,
 } from "../lib/publishTokens.js";
-import type { Env } from "../config/env.js";
-
-// Платформенні env-креди провайдера (тихий fallback, коли орендар не приніс власний застосунок).
-// BYO-app (§byo-oauth-app-creds): у пріоритеті креди орендаря з рядка service_connections.
-function envOauthCreds(env: Env, provider: PublishProvider): OAuthClientCreds | null {
-  const pair: Record<PublishProvider, [string | undefined, string | undefined]> = {
-    linkedin: [env.LINKEDIN_CLIENT_ID, env.LINKEDIN_CLIENT_SECRET],
-    twitter: [env.X_CLIENT_ID, env.X_CLIENT_SECRET],
-    instagram: [env.IG_CLIENT_ID, env.IG_CLIENT_SECRET],
-  };
-  const [clientId, clientSecret] = pair[provider];
-  return clientId && clientSecret ? { clientId, clientSecret } : null;
-}
-
 type PublishContentJob = Extract<Job, { kind: "content.publish" }>;
 
 type Target = PublishContentJob["targets"][number];
@@ -145,8 +131,11 @@ async function publishOne(
   item: ItemRow,
 ): Promise<Outcome> {
   const provider = target.provider;
+  // §per-company-settings: конект резолвиться за (companyId, provider) — companyId прогону несе
+  // content_items-рядок (item.companyId). Без цього фільтра в multi-company акаунті тягнули б чужий конект.
+  const companyId = item.companyId;
 
-  // 2a) КОРОТКА txn: прочитати рядок service_connections для provider.
+  // 2a) КОРОТКА txn: прочитати рядок service_connections для (company, provider).
   const connRow = await withAccountScope(ctx, accountId, async (tx) => {
     const rows = await tx
       .select({
@@ -160,7 +149,13 @@ async function publishOne(
         appClientSecretCt: serviceConnections.appClientSecretCt,
       })
       .from(serviceConnections)
-      .where(and(eq(serviceConnections.accountId, accountId), eq(serviceConnections.provider, provider)))
+      .where(
+        and(
+          eq(serviceConnections.accountId, accountId),
+          eq(serviceConnections.companyId, companyId),
+          eq(serviceConnections.provider, provider),
+        ),
+      )
       .limit(1);
     return rows[0];
   });
@@ -182,17 +177,16 @@ async function publishOne(
     meta: connRow.meta ?? undefined,
   };
 
-  // 2c) Рефреш, якщо протух. Креди для refresh: КРЕДИ ОРЕНДАРЯ (BYO-app, розшифровуємо secret) у
-  // пріоритеті → інакше платформенні env → інакше null. null-результат refreshIfNeeded (нема
-  // refresh_token/кред) → reconnect required.
-  const tenantCreds: OAuthClientCreds | null =
+  // 2c) Рефреш, якщо протух. Креди для refresh — ВИКЛЮЧНО креди застосунку КОМПАНІЇ (BYO-app,
+  // розшифровуємо secret); env-fallback прибрано (§per-company-settings). Немає кред / refresh_token
+  // → refreshIfNeeded поверне null → reconnect required.
+  const creds: OAuthClientCreds | null =
     connRow.appClientId && connRow.appClientSecretCt
       ? {
           clientId: connRow.appClientId,
           clientSecret: decryptSecret(connRow.appClientSecretCt, ctx.masterKey),
         }
       : null;
-  const creds = tenantCreds ?? envOauthCreds(ctx.env, provider);
   const wasExpired = isExpired(conn.expiresAt);
   const refreshed = await refreshIfNeeded(provider, conn, creds, ctx.logger);
   if (!refreshed) {
@@ -200,7 +194,7 @@ async function publishOne(
   }
   // Якщо реально рефрешнули — перезберігаємо новий токен (best-effort; не критично для цієї спроби).
   if (wasExpired) {
-    await persistRefreshedToken(ctx, accountId, provider, refreshed).catch(() => {});
+    await persistRefreshedToken(ctx, accountId, companyId, provider, refreshed).catch(() => {});
   }
 
   // 2d) Байти зображення, якщо item.imageUrl заданий. Читання може впасти (файлу нема) — тоді
@@ -296,12 +290,16 @@ async function persistOutcome(
             updatedAt: now,
           },
         });
-      // last_used_at — інформаційне поле для UI; лише при успіху.
+      // last_used_at — інформаційне поле для UI; лише при успіху. Скоуп за (company, provider).
       await tx
         .update(serviceConnections)
         .set({ lastUsedAt: now })
         .where(
-          and(eq(serviceConnections.accountId, accountId), eq(serviceConnections.provider, target.provider)),
+          and(
+            eq(serviceConnections.accountId, accountId),
+            eq(serviceConnections.companyId, item.companyId),
+            eq(serviceConnections.provider, target.provider),
+          ),
         );
       // Успіх — інформаційна нотифікація з посиланням на пост.
       await writeNotification(
@@ -349,6 +347,7 @@ async function persistOutcome(
 async function persistRefreshedToken(
   ctx: HandlerContext,
   accountId: string,
+  companyId: string,
   provider: PublishProvider,
   refreshed: { accessToken: string; refreshToken?: string; expiresAt?: Date | null },
 ): Promise<void> {
@@ -366,7 +365,13 @@ async function persistRefreshedToken(
         status: "connected",
         updatedAt: new Date(),
       })
-      .where(and(eq(serviceConnections.accountId, accountId), eq(serviceConnections.provider, provider)));
+      .where(
+        and(
+          eq(serviceConnections.accountId, accountId),
+          eq(serviceConnections.companyId, companyId),
+          eq(serviceConnections.provider, provider),
+        ),
+      );
   });
 }
 

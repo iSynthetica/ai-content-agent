@@ -75,7 +75,7 @@ export async function handleBootstrapOnboarding(
 
     // BYOK (§ADR-0016): чернетка брифу теж генерується ключем ОРЕНДАРЯ. Немає ключа →
     // NoTenantKeyError, який catch нижче кладе у bootstrap_status=failed з повідомленням «додайте ключ».
-    const build = await tenantModelsBuilder(ctx, accountId, [
+    const build = await tenantModelsBuilder(ctx, accountId, companyId, [
       slotModel(input.modelConfig, "researcher").provider,
     ]);
     const models = build(input.modelConfig);

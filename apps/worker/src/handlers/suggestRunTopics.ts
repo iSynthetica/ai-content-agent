@@ -117,7 +117,7 @@ export async function handleSuggestRunTopics(
   // щоб людина побачила причину замість вічного "pending" в UI.
   let builder;
   try {
-    builder = await tenantModelsBuilder(ctx, accountId, [
+    builder = await tenantModelsBuilder(ctx, accountId, companyId, [
       slotModel(input.modelConfig, "strategist").provider,
     ]);
   } catch (e) {

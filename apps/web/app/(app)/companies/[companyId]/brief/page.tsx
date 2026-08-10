@@ -1,10 +1,9 @@
 // Редагування brief/settings існуючої компанії (S-7). RSC prefetch компанії + settings → client
 // BriefForm (edit). Settings читаються з GET .../settings (companySettingsDTO), запис — PUT .../settings.
 // Settings-fetch толерантний: якщо бек ще не віддає GET, форма стартує з дефолтів (provider+моделі).
-import { can, companyDTO, companySettingsDTO } from "@forteq/shared";
+import { companyDTO, companySettingsDTO } from "@forteq/shared";
 
 import { apiClient } from "@/server/api-client";
-import { getSession } from "@/server/auth";
 import { endpoints } from "@/lib/endpoints";
 import { BriefForm } from "@/features/companies/brief/BriefForm";
 import { getT } from "@/lib/i18n/server";
@@ -18,13 +17,10 @@ export default async function BriefPage({
 }) {
   const { companyId } = await params;
   const t = await getT();
-  const session = await getSession();
   const company = await apiClient.get(endpoints.company(companyId), companyDTO);
   const settings = await apiClient
     .get(endpoints.settings(companyId), companySettingsDTO)
     .catch(() => null);
-  // Керувати ключами провайдерів можуть лише owner/admin (той самий гейт, що форсить API).
-  const canManageKeys = session ? can(session.account.role, "apikey:manage") : false;
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
@@ -34,7 +30,7 @@ export default async function BriefPage({
           {t("Ці дані визначають, як агенти пишуть контент. Заповнюйте докладно — це впливає на якість.")}
         </p>
       </header>
-      <BriefForm company={company} settings={settings} canManageKeys={canManageKeys} />
+      <BriefForm company={company} settings={settings} />
     </div>
   );
 }

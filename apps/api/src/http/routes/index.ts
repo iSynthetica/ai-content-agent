@@ -130,11 +130,12 @@ export function businessRoutes(root: Composition): Router {
   r.get("/inbox", notifications.inbox);
   r.post("/inbox/:id/resolve", notifications.resolveInbox);
 
-  // BYOK (§ADR-0016): ключі провайдерів акаунта. list — статус для будь-якого члена; set/remove —
-  // лише owner/admin (apikey:manage). Provider у path (openai|anthropic), ключ у тілі.
-  r.get("/api-keys", apiKeys.list);
-  r.put("/api-keys/:provider", requirePermission("apikey:manage"), apiKeys.set);
-  r.delete("/api-keys/:provider", requirePermission("apikey:manage"), apiKeys.remove);
+  // BYOK (§ADR-0016/per-company-settings): ключі провайдерів КОМПАНІЇ. companyId у path; сервіс
+  // звіряє приналежність компанії акаунту. list — статус для будь-якого члена; set/remove — лише
+  // owner/admin (apikey:manage). Provider у path (openai|anthropic), ключ у тілі.
+  r.get("/companies/:companyId/api-keys", apiKeys.list);
+  r.put("/companies/:companyId/api-keys/:provider", requirePermission("apikey:manage"), apiKeys.set);
+  r.delete("/companies/:companyId/api-keys/:provider", requirePermission("apikey:manage"), apiKeys.remove);
 
   // Планувальник (§2.11): слоти плану окремо від прогонів. Усі мутації — plan:write.
   r.get("/companies/:companyId/plan-entries", planner.list);
@@ -147,14 +148,17 @@ export function businessRoutes(root: Composition): Router {
   // list — read (будь-який член, RLS ізолює); мутації токенів — connection:manage (owner/admin);
   // публікація — publish:manage (+ editor). callback — ЛИШЕ під auth (сесія долітає з редіректом
   // провайдера), без permission-гварда: це технічний redirect-target, а не мутація-намір.
-  r.get("/connections", connections.list);
+  // §per-company-settings: підключення тепер company-scoped (companyId у path). ВИНЯТОК — OAuth
+  // callback: він лишається НЕ company-scoped (зареєстрований redirect URI провайдера фіксований),
+  // компанію відновлюємо зі state-cookie.
+  r.get("/companies/:companyId/connections", connections.list);
   // BYO-app (§byo-oauth-app-creds): орендар вводить креди власного OAuth-застосунку (client id +
   // secret) — connection:manage, як решта мутацій токенів.
-  r.put("/connections/:provider/app-credentials", requirePermission("connection:manage"), connections.setAppCredentials);
-  r.post("/connections/:provider/authorize", requirePermission("connection:manage"), connections.authorize);
+  r.put("/companies/:companyId/connections/:provider/app-credentials", requirePermission("connection:manage"), connections.setAppCredentials);
+  r.post("/companies/:companyId/connections/:provider/authorize", requirePermission("connection:manage"), connections.authorize);
   r.get("/connections/:provider/callback", connections.callback);
-  r.put("/connections/telegram", requirePermission("connection:manage"), connections.telegram);
-  r.delete("/connections/:provider", requirePermission("connection:manage"), connections.disconnect);
+  r.put("/companies/:companyId/connections/telegram", requirePermission("connection:manage"), connections.telegram);
+  r.delete("/companies/:companyId/connections/:provider", requirePermission("connection:manage"), connections.disconnect);
   r.post("/runs/:id/publish", requirePermission("publish:manage"), publications.publish);
   r.get("/runs/:id/publications", publications.list);
 

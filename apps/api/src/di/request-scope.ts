@@ -136,8 +136,9 @@ export function buildRequestScope(
       logger,
     ),
     notifications,
-    // BYOK: шифрування ключів орендаря master-ключем застосунку (§ADR-0016).
-    apiKeys: new ApiKeysService(repos.apiKeys, masterKey),
+    // BYOK: шифрування ключів компанії master-ключем застосунку (§ADR-0016/per-company-settings).
+    // companies — для звірки приналежності компанії акаунту (companyId приходить із path).
+    apiKeys: new ApiKeysService(repos.apiKeys, repos.companies, masterKey),
     // Topic preview (§runtopics): AI-підбір тем ДО генерації — окремий сервіс від planner
     // (немає content_plan/plan_entries) і від RunsService (не запускає прогін, лише пропонує теми).
     runTopicDrafts: new RunTopicDraftsService(
@@ -154,7 +155,7 @@ export function buildRequestScope(
     members: new MembersService(repos.members, authInstance, logger),
     // Підключення соцмереж/Telegram (§publishing §3): шифрує токени master-ключем; OAuth-реєстр і
     // секрети cookie бере з config. HTTP-обмін — у контролері ПОЗА txn.
-    connections: new ConnectionsService(repos.serviceConnections, masterKey, config),
+    connections: new ConnectionsService(repos.serviceConnections, repos.companies, masterKey, config),
     // Публікація схвалених постів (§publishing §3): валідує + pending + after-commit enqueuePublish.
     publications: new PublicationsService(
       repos.publications,

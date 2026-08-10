@@ -26,15 +26,18 @@ type Override = { provider: Provider; model: string };
 export type AgentModelsValue = Record<string, Override>;
 
 export function AgentModelsSection({
+  companyId,
   value,
   onChange,
 }: {
+  companyId: string;
   value: AgentModelsValue;
   onChange: (next: AgentModelsValue) => void;
 }) {
   const t = useT();
-  // Спільний кеш із менеджером ключів вище: ввів ключ → тут одразу видно.
-  const { data: keys = [] } = useApiKeys();
+  // Ключі КОМПАНІЇ (§per-company-settings): дропдаун знає, для яких провайдерів уведено ключ у ЦІЙ
+  // компанії. Спільний query-key з ApiKeysManager на сторінці налаштувань компанії.
+  const { data: keys = [] } = useApiKeys(companyId);
   const configured = new Set(keys.map((k) => k.provider));
 
   function setProvider(agent: string, provider: Provider | "") {

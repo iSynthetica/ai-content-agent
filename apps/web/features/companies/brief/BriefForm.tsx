@@ -45,7 +45,6 @@ import type { CompanySettingsDTO } from "@/lib/dto";
 import { useUpdateCompany } from "@/features/companies/brief/use-update-company";
 import { useUpdateSettings } from "@/features/companies/brief/use-update-settings";
 import { AgentModelsSection, type AgentModelsValue } from "@/features/companies/brief/AgentModelsSection";
-import { ApiKeysManager } from "@/features/api-keys/ApiKeysManager";
 import { LanguageSwitcher } from "@/features/companies/brief/LanguageSwitcher";
 import { useT } from "@/lib/i18n";
 import {
@@ -58,11 +57,9 @@ import {
 export function BriefForm({
   company,
   settings,
-  canManageKeys = false,
 }: {
   company: Company;
   settings?: CompanySettingsDTO | null;
-  canManageKeys?: boolean;
 }) {
   const t = useT();
   const updateCompany = useUpdateCompany(company.id);
@@ -277,19 +274,6 @@ export function BriefForm({
           </CardContent>
         </Card>
 
-        {/* ── Провайдери та ключі (account-level BYOK) ── */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("Провайдери та ключі")}</CardTitle>
-            <CardDescription>
-              {t("Введіть API-ключ будь-якого або кількох провайдерів. Генерація йде на ваш ключ; роль без ключа обраного провайдера блокує прогін. Ключі спільні для всіх компаній акаунта.")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ApiKeysManager canManage={canManageKeys} />
-          </CardContent>
-        </Card>
-
         {/* ── Бренд і генерація ── */}
         <Card>
           <CardHeader>
@@ -495,6 +479,7 @@ export function BriefForm({
             <div className="space-y-2">
               <p className="text-sm font-medium leading-none">{t("Модель під кожну роль (розширено)")}</p>
               <AgentModelsSection
+                companyId={company.id}
                 value={(form.watch("agentModels") ?? {}) as AgentModelsValue}
                 onChange={(next) => form.setValue("agentModels", next, { shouldDirty: true })}
               />
